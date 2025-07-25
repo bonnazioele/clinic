@@ -1,0 +1,21 @@
+// Body
+$body-bg: #f8fafc;
+
+// Typography
+$font-family-sans-serif: 'Nunito', sans-serif;
+$font-size-base: 0.9rem;
+$line-height-base: 1.6;
+
+// Override Bootstrap defaults BEFORE importing it
+$body-bg:       #f5f7fa;
+$font-family-base: 'Segoe UI', sans-serif;
+$primary:       #0056b3;
+$secondary:     #6c757d;
+$success:       #28a745;
+$info:          #17a2b8;
+$warning:       #ffc107;
+$danger:        #dc3545;
+
+// Card border‐radius & shadows
+$card-border-radius: .75rem;
+$enable-shadows:      true;
