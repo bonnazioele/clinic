@@ -10,10 +10,9 @@ class ServiceController extends Controller
 {
     public function __construct()
     {
-        // require authentication...
+        // require login…
         $this->middleware('auth');
-
-        // ...and require is_admin flag
+        // …and require admin flag
         $this->middleware(function($request, $next) {
             if (! $request->user()?->is_admin) {
                 abort(403, 'Forbidden');
@@ -23,7 +22,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Display a paginated list of services.
+     * Show paginated services.
      */
     public function index()
     {
@@ -32,7 +31,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Show form to create a new service.
+     * Form to create a new service.
      */
     public function create()
     {
@@ -40,7 +39,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Persist a new service.
+     * Store a new service.
      */
     public function store(Request $request)
     {
@@ -53,11 +52,11 @@ class ServiceController extends Controller
 
         return redirect()
             ->route('admin.services.index')
-            ->with('status', 'Service added successfully.');
+            ->with('status','Service added successfully.');
     }
 
     /**
-     * Show form to edit an existing service.
+     * Form to edit an existing service.
      */
     public function edit(Service $service)
     {
@@ -65,19 +64,18 @@ class ServiceController extends Controller
     }
 
     /**
-     * Persist updates to a service.
+     * Update a service.
      */
     public function update(Request $request, Service $service)
     {
         $data = $request->validate([
-            'name'        => 'required|string|unique:services,name,' . $service->id,
+            'name'        => 'required|string|unique:services,name,'.$service->id,
             'description' => 'nullable|string',
         ]);
 
         $service->update($data);
 
-        return back()
-            ->with('status', 'Service updated successfully.');
+        return back()->with('status','Service updated successfully.');
     }
 
     /**
@@ -86,8 +84,6 @@ class ServiceController extends Controller
     public function destroy(Service $service)
     {
         $service->delete();
-
-        return back()
-            ->with('status', 'Service removed.');
+        return back()->with('status','Service removed.');
     }
 }

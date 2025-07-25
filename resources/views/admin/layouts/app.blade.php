@@ -17,6 +17,9 @@
     .sidebar { width:200px; }
     .map-picker { height:250px; border:1px solid #ccc; margin-bottom:1rem; }
   </style>
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
 </head>
 <body>
   <div class="d-flex">

@@ -72,7 +72,7 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-md">
     <div class="container">
-      <a class="navbar-brand" href="{{ url('/') }}">CliniQ</a>
+      <a class="navbar-brand" href="{{ url('/dashboard') }}">CliniQ</a>
       <button class="navbar-toggler" type="button"
               data-bs-toggle="collapse" data-bs-target="#nav">
         <span class="navbar-toggler-icon"></span>

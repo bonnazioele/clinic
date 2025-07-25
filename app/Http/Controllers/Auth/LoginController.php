@@ -14,7 +14,7 @@ class LoginController extends Controller
     /**
      * Where to redirect users by default.
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/dashboard';
 
     public function __construct()
     {
@@ -31,5 +31,18 @@ class LoginController extends Controller
         }
         // fallback to the normal post-login page
         return redirect($this->redirectTo);
+    }
+
+     public function logout(Request $request)
+    {
+        // Log out
+        Auth::logout();
+
+        // Invalidate their session & regenerate CSRF token
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // Redirect them to the login page
+        return redirect()->route('login');
     }
 }

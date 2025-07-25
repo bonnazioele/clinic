@@ -1,53 +1,78 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
+use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 
-// 1) Landing page at `/` & `/welcome`
-Route::get('/', [HomeController::class,'index']);
-Route::get('/welcome', [HomeController::class,'index'])->name('welcome');
+// Landing / welcome page
+Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
+Route::get('/welcome', [DashboardController::class, 'welcome']);
 
-// 2) Auth routes (register/login/logout), sending users to `/home`
+// Clinics directory (publicly accessible)
+Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
+
+/*
+|--------------------------------------------------------------------------
+| Authentication
+|--------------------------------------------------------------------------
+*/
+
 Auth::routes(['verify' => true]);
 
-// 3) Make sure `/home` exists and points to the same controller
-Route::get('/home', [HomeController::class,'index'])->name('home');
+// Custom logout to ensure proper session cleanup
+Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
-// 4) Clinics directory stays at `/clinics`
-Route::get('clinics', [ClinicController::class,'index'])->name('clinics.index');
+/*
+|--------------------------------------------------------------------------
+| Patient (Authenticated) Routes
+|--------------------------------------------------------------------------
+*/
 
-// 5) Protected profile & booking routes
-Route::middleware(['auth','verified'])->group(function(){
-    Route::get('profile',   [ProfileController::class,'edit'])->name('profile.edit');
-    Route::post('profile',  [ProfileController::class,'update'])->name('profile.update');
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard (landing page after login)
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('appointments/create',[AppointmentController::class,'create'])
+    // Profile management
+    Route::get('/profile', [ProfileController::class,'show'])->name('profile.show');
+     Route::get('/profile/edit', [ProfileController::class,'edit'])->name('profile.edit');
+     Route::post('/profile', [ProfileController::class,'update'])->name('profile.update');
+     
+    // Appointment booking
+    Route::get('/appointments/create', [AppointmentController::class, 'create'])
          ->name('appointments.create');
-    Route::post('appointments',[AppointmentController::class,'store'])
+    Route::post('/appointments', [AppointmentController::class, 'store'])
          ->name('appointments.store');
-    Route::get('appointments',[AppointmentController::class,'index'])
+    Route::get('/appointments', [AppointmentController::class, 'index'])
          ->name('appointments.index');
 });
 
-// routes/web.php
+/*
+|--------------------------------------------------------------------------
+| Admin (Authenticated + is_admin) Routes
+|--------------------------------------------------------------------------
+*/
 
-use App\Http\Controllers\Admin\ClinicController as AdminClinic;
-use App\Http\Controllers\Admin\ServiceController as AdminService;
-
-// … your existing patient‐facing routes …
-
-// Admin area – only for auth + admin users
-Route::middleware(['auth', AdminMiddleware::class])
-     ->prefix('admin')
+Route::prefix('admin')
+     ->middleware(['auth', AdminMiddleware::class])
      ->name('admin.')
-     ->group(function(){
-         Route::resource('clinics',  AdminClinic::class);
-         Route::resource('services', AdminService::class)->except('show');
+     ->group(function () {
+         // Manage clinics
+         Route::resource('clinics', AdminClinicController::class);
+
+         // Manage services (no show route needed)
+         Route::resource('services', AdminServiceController::class)
+              ->except('show');
      });
-
-
