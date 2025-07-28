@@ -57,6 +57,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
          ->name('appointments.store');
     Route::get('/appointments', [AppointmentController::class, 'index'])
          ->name('appointments.index');
+    Route::delete('appointments/{appointment}',[AppointmentController::class,'destroy'])
+          ->name('appointments.destroy');
 });
 
 /*

@@ -38,5 +38,17 @@ class AppointmentController extends Controller
         return redirect()->route('appointments.index')
                          ->with('status','Appointment scheduled');
     }
+
+      public function destroy(Appointment $appointment)
+    {
+        // Ensure the user owns it
+        if ($appointment->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $appointment->delete();
+
+        return back()->with('status','Appointment canceled.');
+    }
 }
 

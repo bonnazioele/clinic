@@ -11,40 +11,35 @@ class ClinicController extends Controller
 {
     public function __construct()
     {
-        // require login…
         $this->middleware('auth');
-        // …and require admin flag
-        $this->middleware(function($request, $next) {
-            if (! $request->user()?->is_admin) {
-                abort(403, 'Forbidden');
-            }
-            return $next($request);
-        });
+        $this->middleware(fn($req, $next) =>
+            $req->user()?->is_admin
+                ? $next($req)
+                : abort(403)
+        );
     }
 
     /**
-     * Show paginated clinics (with services loaded).
+     * Display clinics.
      */
     public function index()
     {
-        $clinics = Clinic::with('services')
-                         ->latest()
-                         ->paginate(10);
-
+        $clinics = Clinic::with('services')->latest()->paginate(10);
         return view('admin.clinics.index', compact('clinics'));
     }
 
     /**
-     * Form to create a new clinic.
+     * Show the form to create a new clinic.
      */
     public function create()
     {
+        // Pass all services into the view
         $services = Service::all();
         return view('admin.clinics.create', compact('services'));
     }
 
     /**
-     * Store a new clinic, and attach selected services.
+     * Store a new clinic.
      */
     public function store(Request $request)
     {
@@ -64,7 +59,7 @@ class ClinicController extends Controller
             'longitude' => $data['longitude'],
         ]);
 
-        // sync pivot table
+        // Attach selected services
         $clinic->services()->sync($data['service_ids'] ?? []);
 
         return redirect()
@@ -73,7 +68,7 @@ class ClinicController extends Controller
     }
 
     /**
-     * Form to edit an existing clinic.
+     * Show the form to edit an existing clinic.
      */
     public function edit(Clinic $clinic)
     {
@@ -82,7 +77,7 @@ class ClinicController extends Controller
     }
 
     /**
-     * Update clinic attributes and its services.
+     * Update a clinic.
      */
     public function update(Request $request, Clinic $clinic)
     {
@@ -102,7 +97,7 @@ class ClinicController extends Controller
             'longitude' => $data['longitude'],
         ]);
 
-        // sync pivot
+        // Sync services pivot
         $clinic->services()->sync($data['service_ids'] ?? []);
 
         return back()->with('status','Clinic updated successfully.');
