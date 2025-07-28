@@ -17,27 +17,40 @@ class AppointmentController extends Controller
 
     public function create()
     {
-        $clinics = Clinic::with('services')->get();
-        return view('appointments.create', compact('clinics'));
+        $clinics = Clinic::with([
+            'services',
+            // load each doctor’s services so we can filter in JS
+            'doctors.services'
+        ])->get();
+        $doctors = \App\Models\User::where('is_doctor', true)->get();
+
+        return view('appointments.create', compact('clinics', 'doctors'));
     }
 
-    public function store(Request $req)
-    {
-        $data = $req->validate([
-            'clinic_id'=>'required|exists:clinics,id',
-            'service_id'=>'required|exists:services,id',
-            'appointment_date'=>'required|date',
-            'appointment_time'=>'required|date_format:H:i',
-        ]);
+   public function store(Request $req)
+{
+    $data = $req->validate([
+        'clinic_id'        => 'required|exists:clinics,id',
+        'service_id'       => 'required|exists:services,id',
+        'doctor_id'        => 'required|exists:users,id',
+        'appointment_date' => 'required|date|after_or_equal:today',
+        'appointment_time' => 'required',
+    ]);
 
-        Appointment::create([
-            'user_id'=>Auth::id(),
-            ...$data
-        ]);
+    // This will now save doctor_id on the appointment
+    Auth::user()->appointments()->create([
+        'clinic_id'        => $data['clinic_id'],
+        'service_id'       => $data['service_id'],
+        'doctor_id'        => $data['doctor_id'],
+        'appointment_date' => $data['appointment_date'],
+        'appointment_time' => $data['appointment_time'],
+        'status'           => 'scheduled',
+    ]);
 
-        return redirect()->route('appointments.index')
-                         ->with('status','Appointment scheduled');
-    }
+    return redirect()
+         ->route('appointments.index')
+         ->with('status','Appointment booked.');
+}
 
       public function destroy(Appointment $appointment)
     {

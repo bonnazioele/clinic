@@ -10,6 +10,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
+use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
+use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,3 +80,20 @@ Route::prefix('admin')
          Route::resource('services', AdminServiceController::class)
               ->except('show');
      });
+
+
+
+Route::prefix('secretary')
+     ->middleware(['auth'])
+     ->name('secretary.')
+     ->group(function(){
+         // existing appointments…
+         Route::resource('appointments', SecAppt::class)
+              ->only(['index','edit','update','destroy']);
+
+         // ↓ new doctors resource ↓
+         Route::resource('doctors', SecDoctor::class)
+              ->except(['show']);
+     });
+
+     

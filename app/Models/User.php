@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Appointment;
+use App\Models\Clinic;
+use App\Models\Service;
 
 
 class User extends Authenticatable
@@ -22,7 +24,7 @@ class User extends Authenticatable
      protected $fillable = [
         'name','email','password',
         'phone','address','medical_document',
-        'is_admin',  
+        'is_admin',  'is_secretary', 'is_doctor',
     ];
 
     /**
@@ -45,6 +47,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_admin'          => 'boolean',
+            'is_secretary'      => 'boolean',
+            'is_doctor'         => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -57,4 +61,23 @@ public function appointments()
     return $this->hasMany(Appointment::class);
 }
 
+ public function clinics()
+    {
+        return $this->belongsToMany(
+            Clinic::class,
+            'clinic_doctor',
+            'doctor_id',
+            'clinic_id'
+        );
+    }
+
+    public function services()
+    {
+        return $this->belongsToMany(
+            Service::class,
+            'doctor_service',
+            'doctor_id',
+            'service_id'
+        );
+    }
 }

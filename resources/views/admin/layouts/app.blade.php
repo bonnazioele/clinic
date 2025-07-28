@@ -1,65 +1,37 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin – @yield('title')</title>
+{{-- resources/views/admin/layouts/app.blade.php --}}
+@extends('layouts.app')
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-        rel="stylesheet">
-
-  <!-- Leaflet CSS (for the lat/lng picker) -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <style>
-    body { background:#f8f9fa; }
-    .sidebar { width:200px; }
-    .map-picker { height:250px; border:1px solid #ccc; margin-bottom:1rem; }
-  </style>
-
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
-</head>
-<body>
-  <div class="d-flex">
-    <nav class="sidebar bg-light p-3">
-      <h5>Admin Panel</h5>
+@section('content')
+<div class="container-fluid">
+  <div class="row">
+    {{-- Sidebar --}}
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar pt-4">
       <ul class="nav flex-column">
-        <li class="nav-item">
+        <li class="nav-item mb-2">
           <a class="nav-link @if(request()->routeIs('admin.clinics.*')) active @endif"
              href="{{ route('admin.clinics.index') }}">
             Manage Clinics
           </a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item mb-2">
           <a class="nav-link @if(request()->routeIs('admin.services.*')) active @endif"
              href="{{ route('admin.services.index') }}">
             Manage Services
           </a>
         </li>
-        <li class="nav-item mt-3">
-          <a class="nav-link text-danger" href="#"
-             onclick="event.preventDefault();document.getElementById('logout').submit()">
-            Logout
-          </a>
-          <form id="logout" action="{{ route('logout') }}" method="POST" class="d-none">
+        <li class="nav-item mt-4">
+          <form method="POST" action="{{ route('logout') }}">
             @csrf
+            <button class="btn btn-link text-danger p-0">Logout</button>
           </form>
         </li>
       </ul>
     </nav>
 
-    <div class="flex-fill p-4">
-      @include('partials.alerts')
+    {{-- Main Admin Content --}}
+    <main class="col-md-10 ms-sm-auto px-4 py-4">
       @yield('content')
-    </div>
+    </main>
   </div>
-
-  <!-- Bootstrap JS + dependencies -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  @yield('scripts')
-</body>
-</html>
+</div>
+@endsection

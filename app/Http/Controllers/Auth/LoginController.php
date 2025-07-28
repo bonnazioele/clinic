@@ -29,6 +29,10 @@ class LoginController extends Controller
         if ($user->is_admin) {
             return redirect()->route('admin.clinics.index');
         }
+
+          if ($user->is_secretary) {
+            return redirect()->route('secretary.appointments.index');
+        }
         // fallback to the normal post-login page
         return redirect($this->redirectTo);
     }

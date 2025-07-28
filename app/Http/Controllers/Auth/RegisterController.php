@@ -55,6 +55,10 @@ class RegisterController extends Controller
         if ($user->is_admin) {
             return redirect()->route('admin.clinics.index');
         }
+
+         if ($user->is_secretary) {
+        return redirect()->route('secretary.appointments.index');
+    }
         return redirect($this->redirectTo);
     }
 }
