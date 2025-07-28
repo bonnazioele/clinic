@@ -10,13 +10,24 @@
           <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data">
             @csrf
 
-            {{-- Name --}}
+            {{-- First Name --}}
             <div class="mb-3">
-              <label for="name" class="form-label">Full Name</label>
-              <input id="name" type="text"
-                     class="form-control @error('name') is-invalid @enderror"
-                     name="name" value="{{ old('name') }}" required autofocus>
-              @error('name')
+              <label for="first_name" class="form-label">First Name</label>
+              <input id="first_name" type="text"
+                     class="form-control @error('first_name') is-invalid @enderror"
+                     name="first_name" value="{{ old('first_name') }}">
+              @error('first_name')
+                <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
+            </div>
+
+            {{-- Last Name --}}
+            <div class="mb-3">
+              <label for="last_name" class="form-label">Last Name</label>
+              <input id="last_name" type="text"
+                     class="form-control @error('last_name') is-invalid @enderror"
+                     name="last_name" value="{{ old('last_name') }}">
+              @error('last_name')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>
@@ -26,7 +37,7 @@
               <label for="email" class="form-label">Email Address</label>
               <input id="email" type="email"
                      class="form-control @error('email') is-invalid @enderror"
-                     name="email" value="{{ old('email') }}" required>
+                     name="email" value="{{ old('email') }}">
               @error('email')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
@@ -45,7 +56,7 @@
 
             {{-- Address --}}
             <div class="mb-3">
-              <label for="address" class="form-label">Address</label>
+              <label for="address" class="form-label">Address (optional)</label>
               <textarea id="address"
                         class="form-control @error('address') is-invalid @enderror"
                         name="address">{{ old('address') }}</textarea>
@@ -54,13 +65,25 @@
               @enderror
             </div>
 
-            {{-- Medical Document --}}
+
+            {{-- Age --}}
             <div class="mb-3">
-              <label for="medical_document" class="form-label">Medical Document (PDF/DOC)</label>
-              <input id="medical_document" type="file"
-                     class="form-control @error('medical_document') is-invalid @enderror"
-                     name="medical_document">
-              @error('medical_document')
+              <label for="age" class="form-label">Age (optional)</label>
+              <input id="age" type="number" min="0" max="120"
+                     class="form-control @error('age') is-invalid @enderror"
+                     name="age" value="{{ old('age') }}">
+              @error('age')
+                <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
+            </div>
+
+            {{-- Birthdate --}}
+            <div class="mb-3">
+              <label for="birthdate" class="form-label">Birthdate</label>
+              <input id="birthdate" type="date"
+                     class="form-control @error('birthdate') is-invalid @enderror"
+                     name="birthdate" value="{{ old('birthdate') }}">
+              @error('birthdate')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>
@@ -71,7 +94,7 @@
                 <label for="password" class="form-label">Password</label>
                 <input id="password" type="password"
                        class="form-control @error('password') is-invalid @enderror"
-                       name="password" required>
+                       name="password">
                 @error('password')
                   <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
@@ -79,7 +102,7 @@
               <div class="col">
                 <label for="password-confirm" class="form-label">Confirm Password</label>
                 <input id="password-confirm" type="password" class="form-control"
-                       name="password_confirmation" required>
+                       name="password_confirmation">
               </div>
             </div>
 

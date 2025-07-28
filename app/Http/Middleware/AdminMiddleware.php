@@ -10,7 +10,7 @@ class AdminMiddleware
 {
     public function handle(Request $req, Closure $next)
     {
-        if (! $req->user()?->is_admin) {
+        if (! $req->user()?->is_system_admin) {
             abort(403, 'Forbidden');
         }
         return $next($req);

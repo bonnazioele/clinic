@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="container py-4">
-  <h1 class="mb-4">Welcome, {{ Auth::user()->name }}!</h1>
+  <h1 class="mb-4">Welcome, {{ Auth::user()->first_name }}!</h1>
 
   <div class="row g-3">
     {{-- Upcoming Appointments --}}

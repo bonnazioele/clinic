@@ -13,6 +13,14 @@ class DashboardController extends Controller
         $this->middleware('auth');
     }
 
+    /**
+     * Show the welcome page.
+     */
+    public function welcome()
+    {
+        return view('welcome');
+    }
+
     public function index()
     {
         $user = Auth::user();

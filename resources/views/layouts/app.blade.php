@@ -101,7 +101,7 @@
           @else
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-              {{ Auth::user()->name }}
+              {{ Auth::user()->first_name }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a></li>
@@ -125,7 +125,6 @@
 
   <!-- Alerts & Content -->
   <main class="container py-4">
-    @include('partials.alerts')
     @yield('content')
   </main>
 
