@@ -9,14 +9,14 @@
     @csrf
 
     <div class="mb-3">
-      <label for="name" class="form-label">Service Name</label>
+      <label for="service_name" class="form-label">Service Name</label>
       <input type="text"
-             id="name"
-             name="name"
-             class="form-control @error('name') is-invalid @enderror"
-             value="{{ old('name') }}"
-             required>
-      @error('name')
+             id="service_name"
+             name="service_name"
+             class="form-control @error('service_name') is-invalid @enderror"
+             value="{{ old('service_name') }}"
+             required maxlength="100">
+      @error('service_name')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
     </div>
@@ -30,6 +30,13 @@
       @error('description')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
+    </div>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" value="1" id="is_active" name="is_active" {{ old('is_active', true) ? 'checked' : '' }}>
+      <label class="form-check-label" for="is_active">
+        Active
+      </label>
     </div>
 
     <button type="submit" class="btn btn-primary">Save Service</button>

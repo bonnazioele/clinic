@@ -35,16 +35,46 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name'        => 'required|string|unique:services,name',
-            'description' => 'nullable|string',
-        ]);
+        $validated = $this->validator($request->all())->validate();
+        $validated['is_active'] = $request->boolean('is_active', true);
 
-        Service::create($data);
+        try {
+            $service = Service::create([
+                'service_name' => $validated['service_name'],
+                'description'  => $validated['description'] ?? null,
+                'is_active'    => $validated['is_active'],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Service creation failed: ' . $e->getMessage());
+            return back()->withErrors([
+                'service_name' => 'Could not add service. Please try again.'
+            ])->withInput();
+        }
 
         return redirect()
-            ->route('admin.services.index')
-            ->with('status','Service added successfully.');
+            ->route('admin.dashboard')
+            ->with('status', 'Service added successfully.');
+    }
+
+    /**
+     * Get a validator for an incoming service creation request.
+     */
+    protected function validator(array $data)
+    {
+        return \Validator::make($data, [
+            'service_name' => [
+                'required',
+                'string',
+                'max:100',
+                'unique:services,service_name',
+            ],
+            'description' => ['nullable', 'string'],
+            'is_active' => ['nullable', 'boolean'],
+        ], [
+            'service_name.required' => 'Service name is required.',
+            'service_name.unique' => 'This service already exists. Please modify the name.',
+            'service_name.max' => 'Service name must not exceed 100 characters.',
+        ]);
     }
 
     /**

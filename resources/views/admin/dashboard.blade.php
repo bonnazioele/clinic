@@ -1,4 +1,5 @@
-@extends('layouts.app')
+@extends('admin.layouts.app')
+@section('title', 'Dashboard')
 
 @section('content')
 <div class="container-fluid px-4">
@@ -6,15 +7,15 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">CliniQ Admin Dashboard</h1>
         <div class="d-flex">
-            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addClinicModal">
+            <a href="{{ route('admin.clinics.create') }}" class="btn btn-primary me-2">
                 <i class="fas fa-plus me-1"></i> Add Clinic
-            </button>
+            </a>
             <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addAdminModal">
                 <i class="fas fa-user-plus me-1"></i> Add Admin
             </button>
-            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+            <a href="{{ route('admin.services.create') }}" class="btn btn-info">
                 <i class="fas fa-plus-circle me-1"></i> Add Service
-            </button>
+            </a>
         </div>
     </div>
 
@@ -233,75 +234,6 @@
     </div>
 </div>
 
-<!-- Add Clinic Modal -->
-<div class="modal fade" id="addClinicModal" tabindex="-1" aria-labelledby="addClinicModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addClinicModalLabel">Register New Clinic</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="clinicRegistrationForm">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="clinicName" class="form-label">Clinic Name</label>
-                            <input type="text" class="form-control" id="clinicName" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="clinicType" class="form-label">Clinic Type</label>
-                            <select class="form-select" id="clinicType" required>
-                                <option value="">Select Type</option>
-                                @foreach($clinicTypes as $type)
-                                <option value="{{ $type->type_id }}">{{ $type->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="branchCode" class="form-label">Branch Code</label>
-                            <input type="text" class="form-control" id="branchCode" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="contactNumber" class="form-label">Contact Number</label>
-                            <input type="tel" class="form-control" id="contactNumber" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
-                        <textarea class="form-control" id="address" rows="2" required></textarea>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="logo" class="form-label">Logo</label>
-                            <input type="file" class="form-control" id="logo">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="latitude" class="form-label">GPS Latitude</label>
-                            <input type="number" step="0.0000001" class="form-control" id="latitude">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="longitude" class="form-label">GPS Longitude</label>
-                            <input type="number" step="0.0000001" class="form-control" id="longitude">
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveClinicBtn">Register Clinic</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Add Admin Modal -->
 <div class="modal fade" id="addAdminModal" tabindex="-1" aria-labelledby="addAdminModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -333,42 +265,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="saveAdminBtn">Add Admin</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Service Modal -->
-<div class="modal fade" id="addServiceModal" tabindex="-1" aria-labelledby="addServiceModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addServiceModalLabel">Add New Service</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="serviceRegistrationForm">
-                    <div class="mb-3">
-                        <label for="serviceName" class="form-label">Service Name</label>
-                        <input type="text" class="form-control" id="serviceName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="serviceDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="serviceDescription" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="serviceCategory" class="form-label">Category</label>
-                        <input type="text" class="form-control" id="serviceCategory">
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="isActive" checked>
-                        <label class="form-check-label" for="isActive">Active Service</label>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveServiceBtn">Add Service</button>
             </div>
         </div>
     </div>

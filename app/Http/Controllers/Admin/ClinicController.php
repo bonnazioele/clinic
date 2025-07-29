@@ -106,4 +106,6 @@ class ClinicController extends Controller
         $clinic->delete();
         return back()->with('status','Clinic removed.');
     }
+
+    
 }

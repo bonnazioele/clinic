@@ -30,7 +30,7 @@ class LoginController extends Controller
         if ($user->is_system_admin) {
             // Set welcome message for admin
             $request->session()->flash('status', 'Welcome, Admin ' . $user->first_name);
-            return redirect()->route('admin.clinics.index');
+            return redirect()->route('admin.dashboard');
         }
         // Non-admin users go to dashboard
         return redirect()->route('dashboard');
