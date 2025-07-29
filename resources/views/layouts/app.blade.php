@@ -19,6 +19,12 @@
     href="https://unpkg.com/leaflet/dist/leaflet.css"
   />
 
+  <!-- Bootstrap Icons CSS (for notification bell) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+  />
+
   <style>
     body {
       background: #f5f7fa;
@@ -145,27 +151,58 @@
             <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Login</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ route('register') }}">Register</a></li>
           @else
+            {{-- Notifications Bell --}}
+            <li class="nav-item dropdown me-3">
+              @php $unread = auth()->user()->unreadNotifications->count(); @endphp
+              <a class="nav-link position-relative" href="#" id="notifDropdown" data-bs-toggle="dropdown">
+                <i class="bi bi-bell" style="font-size:1.2rem;"></i>
+                @if($unread)
+                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {{ $unread }}
+                  </span>
+                @endif
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notifDropdown" style="min-width:300px;">
+                @forelse(auth()->user()->notifications()->latest()->take(5)->get() as $note)
+                  <li>
+                    <a class="dropdown-item {{ $note->read_at ? '' : 'fw-bold' }}"
+                       href="{{ route('notifications.index') }}">
+                      {{ \Illuminate\Support\Str::limit($note->data['message'], 50) }}
+                      <br><small class="text-muted">{{ $note->created_at->diffForHumans() }}</small>
+                    </a>
+                  </li>
+                @empty
+                  <li><span class="dropdown-item text-muted">No notifications</span></li>
+                @endforelse
+                <li><hr class="dropdown-divider"></li>
+                <li class="text-center">
+                  <a class="dropdown-item" href="{{ route('notifications.index') }}">View All</a>
+                </li>
+              </ul>
+            </li>
+
+            {{-- User dropdown --}}
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <a id="userDropdown"
+                 class="nav-link dropdown-toggle"
+                 href="#"
+                 data-bs-toggle="dropdown"
+                 aria-expanded="false">
                 {{ Auth::user()->name }}
               </a>
-              <ul class="dropdown-menu dropdown-menu-end">
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                 <li><a class="dropdown-item" href="{{ route('profile.show') }}">My Profile</a></li>
                 <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Edit Profile</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <a class="dropdown-item" href="#"
-                     onclick="event.preventDefault();
-                              document.getElementById('logout-form').submit();">
+                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                     Logout
                   </a>
                 </li>
               </ul>
-              <form id="logout-form"
-                    action="{{ route('logout') }}"
-                    method="POST"
-                    class="d-none">@csrf</form>
             </li>
+            <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
           @endguest
         </ul>
       </div>
@@ -179,11 +216,7 @@
   </main>
 
   {{-- Scripts --}}
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-……"
-    crossorigin="anonymous"
-  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-……" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   @yield('scripts')
 </body>

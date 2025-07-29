@@ -82,7 +82,7 @@
       </ul>
 
       {{-- RIGHT SIDE --}}
-      <ul class="navbar-nav ms-auto">
+      <ul class="navbar-nav ms-auto align-items-center">
         @guest
           <li class="nav-item">
             <a class="nav-link" href="{{ route('login') }}">Login</a>
@@ -91,15 +91,55 @@
             <a class="nav-link" href="{{ route('register') }}">Register</a>
           </li>
         @else
+          {{-- Notifications Bell --}}
+          <li class="nav-item dropdown me-3">
+            @php $unread = auth()->user()->unreadNotifications->count(); @endphp
+            <a class="nav-link position-relative"
+               href="#"
+               id="notifDropdown"
+               data-bs-toggle="dropdown"
+               aria-expanded="false">
+              <i class="bi bi-bell" style="font-size: 1.2rem;"></i>
+              @if($unread)
+                <span class="position-absolute top-0 start-100 translate-middle
+                             badge rounded-pill bg-danger">
+                  {{ $unread }}
+                </span>
+              @endif
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notifDropdown" style="min-width:300px;">
+              @forelse(auth()->user()->notifications()->latest()->take(5)->get() as $note)
+                <li>
+                  <a href="{{ route('notifications.index') }}"
+                     class="dropdown-item {{ $note->read_at ? '' : 'fw-bold' }}">
+                    {{ \Illuminate\Support\Str::limit($note->data['message'], 50) }}
+                    <br>
+                    <small class="text-muted">{{ $note->created_at->diffForHumans() }}</small>
+                  </a>
+                </li>
+              @empty
+                <li><span class="dropdown-item text-muted">No notifications</span></li>
+              @endforelse
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item text-center"
+                   href="{{ route('notifications.index') }}">
+                  View All
+                </a>
+              </li>
+            </ul>
+          </li>
+
+          {{-- User dropdown --}}
           <li class="nav-item dropdown">
             <a id="userDropdown"
                class="nav-link dropdown-toggle"
-               href="#" role="button"
+               href="#"
+               role="button"
                data-bs-toggle="dropdown"
                aria-expanded="false">
               {{ Auth::user()->name }}
             </a>
-
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
               <li>
                 <a class="dropdown-item" href="{{ route('profile.show') }}">
@@ -114,13 +154,11 @@
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item" href="#"
-                   onclick="event.preventDefault();
-                            document.getElementById('logout-form').submit();">
+                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                   Logout
                 </a>
               </li>
             </ul>
-
             <form id="logout-form"
                   action="{{ route('logout') }}"
                   method="POST"

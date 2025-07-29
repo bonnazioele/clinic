@@ -8,6 +8,7 @@ use App\Models\Clinic;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Notifications\AppointmentStatusChanged;
 
 class AppointmentController extends Controller
 {
@@ -68,6 +69,9 @@ class AppointmentController extends Controller
         ]);
 
         $appointment->update($data);
+
+        $appointment->user->notify(new AppointmentStatusChanged($appointment));
+
 
         return redirect()
             ->route('secretary.appointments.index')

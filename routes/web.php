@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
+use App\Http\Controllers\NotificationsController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +63,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
          ->name('appointments.index');
     Route::delete('appointments/{appointment}',[AppointmentController::class,'destroy'])
           ->name('appointments.destroy');
+
+     Route::get('notifications', [NotificationsController::class,'index'])
+         ->name('notifications.index');
+    Route::post('notifications/mark-read', [NotificationsController::class,'markAllRead'])
+         ->name('notifications.markRead');
 });
 
 /*
