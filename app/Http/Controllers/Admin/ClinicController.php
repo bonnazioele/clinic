@@ -11,12 +11,7 @@ class ClinicController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
-        $this->middleware(fn($req, $next) =>
-            $req->user()?->is_admin
-                ? $next($req)
-                : abort(403)
-        );
+        // Authorization handled by route middleware ('auth', 'can:access-admin-panel')
     }
 
     /**

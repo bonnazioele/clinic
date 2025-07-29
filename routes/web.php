@@ -1,21 +1,12 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClinicController;
-use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Middleware\AdminMiddleware;
-use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
-use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
+use App\Http\Controllers\AppointmentController;
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes
-|--------------------------------------------------------------------------
-*/
 
 // Landing / welcome page
 Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
@@ -61,20 +52,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
           ->name('appointments.destroy');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Admin (Authenticated + is_admin) Routes
-|--------------------------------------------------------------------------
-*/
 
-Route::prefix('admin')
-     ->middleware(['auth', AdminMiddleware::class])
-     ->name('admin.')
-     ->group(function () {
-         // Manage clinics
-         Route::resource('clinics', AdminClinicController::class);
 
-         // Manage services (no show route needed)
-         Route::resource('services', AdminServiceController::class)
-              ->except('show');
-     });
+// Admin routes are now loaded via RouteServiceProvider from routes/admin.php

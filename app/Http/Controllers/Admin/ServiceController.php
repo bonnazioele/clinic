@@ -10,15 +10,7 @@ class ServiceController extends Controller
 {
     public function __construct()
     {
-        // require login…
-        $this->middleware('auth');
-        // …and require admin flag
-        $this->middleware(function($request, $next) {
-            if (! $request->user()?->is_admin) {
-                abort(403, 'Forbidden');
-            }
-            return $next($request);
-        });
+        // Authorization handled by route middleware ('auth', 'can:access-admin-panel')
     }
 
     /**
