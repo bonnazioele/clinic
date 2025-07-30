@@ -7,6 +7,7 @@ use App\Models\Clinic;
 use App\Models\Service;
 use App\Models\ClinicType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ClinicController extends Controller
 {
@@ -20,7 +21,7 @@ class ClinicController extends Controller
      */
     public function index()
     {
-        $clinics = Clinic::with('services')->latest()->paginate(10);
+        $clinics = Clinic::with(['services', 'type'])->latest()->paginate(10);
         return view('admin.clinics.index', compact('clinics'));
     }
 
@@ -41,14 +42,24 @@ class ClinicController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'address'       => 'required|string',
-            'type_id'       => 'required|exists:clinic_types,id',
-            'latitude'      => 'required|numeric|between:-90,90',
-            'longitude'     => 'required|numeric|between:-180,180',
-            'service_ids'   => 'array',
-            'service_ids.*' => 'exists:services,id',
+            'name'           => 'required|string|max:255',
+            'address'        => 'required|string',
+            'type_id'        => 'required|exists:clinic_types,id',
+            'latitude'       => 'required|numeric|between:-90,90',
+            'longitude'      => 'required|numeric|between:-180,180',
+            'branch_code'    => 'required|string|max:50|unique:clinics,branch_code',
+            'contact_number' => 'required|string|max:20',
+            'email'          => 'required|email|max:255|unique:clinics,email',
+            'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'service_ids'    => 'array',
+            'service_ids.*'  => 'exists:services,id',
         ]);
+
+        // Handle logo upload
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('clinic-logos', 'public');
+        }
 
         $clinic = Clinic::create([
             'name'           => $data['name'],
@@ -56,6 +67,10 @@ class ClinicController extends Controller
             'type_id'        => $data['type_id'],
             'gps_latitude'   => $data['latitude'],
             'gps_longitude'  => $data['longitude'],
+            'branch_code'    => $data['branch_code'],
+            'contact_number' => $data['contact_number'],
+            'email'          => $data['email'],
+            'logo'           => $logoPath,
         ]);
 
         // Attach selected services
@@ -82,14 +97,27 @@ class ClinicController extends Controller
     public function update(Request $request, Clinic $clinic)
     {
         $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'address'       => 'required|string',
-            'type_id'       => 'required|exists:clinic_types,id',
-            'latitude'      => 'required|numeric|between:-90,90',
-            'longitude'     => 'required|numeric|between:-180,180',
-            'service_ids'   => 'array',
-            'service_ids.*' => 'exists:services,id',
+            'name'           => 'required|string|max:255',
+            'address'        => 'required|string',
+            'type_id'        => 'required|exists:clinic_types,id',
+            'latitude'       => 'required|numeric|between:-90,90',
+            'longitude'      => 'required|numeric|between:-180,180',
+            'branch_code'    => 'required|string|max:50|unique:clinics,branch_code,' . $clinic->id,
+            'contact_number' => 'required|string|max:20',
+            'email'          => 'required|email|max:255|unique:clinics,email,' . $clinic->id,
+            'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'service_ids'    => 'array',
+            'service_ids.*'  => 'exists:services,id',
         ]);
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            // Delete old logo if exists
+            if ($clinic->logo && \Storage::disk('public')->exists($clinic->logo)) {
+                \Storage::disk('public')->delete($clinic->logo);
+            }
+            $data['logo'] = $request->file('logo')->store('clinic-logos', 'public');
+        }
 
         $clinic->update([
             'name'           => $data['name'],
@@ -97,6 +125,10 @@ class ClinicController extends Controller
             'type_id'        => $data['type_id'],
             'gps_latitude'   => $data['latitude'],
             'gps_longitude'  => $data['longitude'],
+            'branch_code'    => $data['branch_code'],
+            'contact_number' => $data['contact_number'],
+            'email'          => $data['email'],
+            'logo'           => $data['logo'] ?? $clinic->logo,
         ]);
 
         // Sync services pivot
