@@ -60,7 +60,7 @@ return new class extends Migration
             if (Schema::hasColumn('users', 'is_admin')) {
                 $table->dropColumn('is_admin');
             }
-            $table->unsignedTinyInteger('age')->nullable()->after('last_name');
+            $table->unsignedTinyInteger('age')->after('last_name');
             $table->date('birthdate')->after('age');
 
             $table->index('email', 'idx_email');
