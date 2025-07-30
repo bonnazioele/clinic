@@ -72,8 +72,8 @@ class RegisterController extends Controller
         }
 
          if ($user->is_secretary) {
-        return redirect()->route('secretary.appointments.index');
-    }
+            return redirect()->route('secretary.appointments.index');
+        }
         return redirect($this->redirectTo)->with('success', 'Account created successfully.');
     }
 
