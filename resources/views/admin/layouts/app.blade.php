@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -13,8 +14,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <!-- Leaflet CSS (for the lat/lng picker) -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     body { background:#f8f9fa; }
     .sidebar { width:200px; }
@@ -22,7 +22,7 @@
   </style>
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -56,7 +56,7 @@
         <a href="#" class="list-group-item list-group-item-action py-3">
           <i class="fas fa-cog me-2"></i> Settings
         </a>
-        <form method="POST" action="{{ route('admin.logout') }}" class="list-group-item list-group-item-action py-3 border-0 p-0" style="background: none;">
+        <form method="POST" action="{{ route('logout') }}" class="list-group-item list-group-item-action py-3 border-0 p-0" style="background: none;">
           @csrf
           <button type="submit" class="btn btn-link w-100 text-start px-3 py-3" style="text-decoration: none; color: inherit;">
             <i class="fas fa-sign-out-alt me-2"></i> Logout
@@ -68,7 +68,7 @@
     <main class="flex-grow-1 p-4" style="min-width:0;">
       @include('partials.alerts')
       @yield('content')
+      @yield('scripts')
     </main>
   </div>
-</div>
-@endsection
+</body>

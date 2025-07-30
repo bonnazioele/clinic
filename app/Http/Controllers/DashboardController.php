@@ -24,7 +24,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->is_admin) {
+        if ($user->is_system_admin) {
             // send admins straight to their panel
             return redirect()->route('admin.clinics.index');
         }
