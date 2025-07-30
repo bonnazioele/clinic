@@ -136,3 +136,10 @@ class Clinic extends Model
 
 
 }
+
+    // public function doctors()
+    // {
+    //     return $this->belongsToMany(User::class, 'clinic_doctor', 'clinic_id', 'doctor_id')
+    //                 ->where('is_doctor', true);
+    // }
+

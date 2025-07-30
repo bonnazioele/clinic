@@ -67,10 +67,13 @@ class RegisterController extends Controller
 
     protected function registered(Request $request, $user)
     {
-        // This method can be used for post-registration redirects
-        if ($user && $user->is_system_admin) {
-            return redirect()->route('admin.clinics.index')->with('success', 'Admin account created successfully.');
+        if ($user->is_admin) {
+            return redirect()->route('admin.clinics.index');
         }
+
+         if ($user->is_secretary) {
+        return redirect()->route('secretary.appointments.index');
+    }
         return redirect($this->redirectTo)->with('success', 'Account created successfully.');
     }
 

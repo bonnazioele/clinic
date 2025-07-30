@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -25,9 +24,19 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Next 5 upcoming appointments
+        if ($user->is_admin) {
+            // send admins straight to their panel
+            return redirect()->route('admin.clinics.index');
+        }
+
+        if ($user->is_secretary) {
+            // send secretaries to their manage-appointments
+            return redirect()->route('secretary.appointments.index');
+        }
+
+        // patient: load the patient dashboard
         $upcoming = $user->appointments()
-                         ->where('appointment_date', '>=', now()->toDateString())
+                         ->where('appointment_date','>=',now()->toDateString())
                          ->where('status','scheduled')
                          ->orderBy('appointment_date')
                          ->orderBy('appointment_time')
@@ -35,7 +44,6 @@ class DashboardController extends Controller
                          ->with('clinic','service')
                          ->get();
 
-        // Last 5 past appointments
         $past = $user->appointments()
                      ->where('appointment_date','<', now()->toDateString())
                      ->orderBy('appointment_date','desc')

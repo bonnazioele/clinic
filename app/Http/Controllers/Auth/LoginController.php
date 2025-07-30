@@ -26,14 +26,15 @@ class LoginController extends Controller
      */
     protected function authenticated(Request $request, $user)
     {
-        // Use Gate or property for admin check
-        if ($user->is_system_admin) {
-            // Set welcome message for admin
-            $request->session()->flash('status', 'Welcome, Admin ' . $user->first_name);
-            return redirect()->route('admin.dashboard');
+        if ($user->is_admin) {
+            return redirect()->route('admin.clinics.index');
         }
-        // Non-admin users go to dashboard
-        return redirect()->route('dashboard');
+
+          if ($user->is_secretary) {
+            return redirect()->route('secretary.appointments.index');
+        }
+        // fallback to the normal post-login page
+        return redirect($this->redirectTo);
     }
 
      public function logout(Request $request)

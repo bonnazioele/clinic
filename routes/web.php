@@ -6,6 +6,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AppointmentController;
+// use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
+// use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
+use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
+use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
+use App\Http\Controllers\NotificationsController;
+
 
 
 // Landing / welcome page
@@ -50,8 +56,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
          ->name('appointments.index');
     Route::delete('appointments/{appointment}',[AppointmentController::class,'destroy'])
           ->name('appointments.destroy');
+
+     Route::get('notifications', [NotificationsController::class,'index'])
+         ->name('notifications.index');
+    Route::post('notifications/mark-read', [NotificationsController::class,'markAllRead'])
+         ->name('notifications.markRead');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Admin (Authenticated + is_admin) Routes
+|--------------------------------------------------------------------------
+*/
+
+// Route::prefix('admin')
+//      ->middleware(['auth', AdminMiddleware::class])
+//      ->name('admin.')
+//      ->group(function () {
+//          // Manage clinics
+//          Route::resource('clinics', AdminClinicController::class);
+
+//          // Manage services (no show route needed)
+//          Route::resource('services', AdminServiceController::class)
+//               ->except('show');
+//      });
 
 
-// Admin routes are now loaded via RouteServiceProvider from routes/admin.php
+
+Route::prefix('secretary')
+     ->middleware(['auth'])
+     ->name('secretary.')
+     ->group(function(){
+         // existing appointments…
+         Route::resource('appointments', SecAppt::class)
+              ->only(['index','edit','update','destroy']);
+
+         // ↓ new doctors resource ↓
+         Route::resource('doctors', SecDoctor::class)
+              ->except(['show']);
+     });
+
+     
