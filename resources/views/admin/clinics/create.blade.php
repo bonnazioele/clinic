@@ -29,6 +29,23 @@
       @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
+    <!-- Clinic Type -->
+    <div class="mb-3">
+      <label class="form-label">Clinic Type</label>
+      <select name="type_id" 
+              class="form-select @error('type_id') is-invalid @enderror" 
+              required>
+        <option value="">Select Clinic Type</option>
+        @foreach($clinicTypes as $clinicType)
+          <option value="{{ $clinicType->id }}" 
+                  {{ old('type_id') == $clinicType->id ? 'selected' : '' }}>
+            {{ $clinicType->type_name }}
+          </option>
+        @endforeach
+      </select>
+      @error('type_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+
 
     <!-- Map Picker -->
     <div id="mapPicker" class="map-picker mb-3"></div>

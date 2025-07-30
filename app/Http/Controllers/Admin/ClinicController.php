@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Service;
+use App\Models\ClinicType;
 use Illuminate\Http\Request;
 
 class ClinicController extends Controller
@@ -28,9 +29,10 @@ class ClinicController extends Controller
      */
     public function create()
     {
-        // Pass all services into the view
+        // Pass all services and clinic types into the view
         $services = Service::all();
-        return view('admin.clinics.create', compact('services'));
+        $clinicTypes = ClinicType::all();
+        return view('admin.clinics.create', compact('services', 'clinicTypes'));
     }
 
     /**
@@ -41,6 +43,7 @@ class ClinicController extends Controller
         $data = $request->validate([
             'name'          => 'required|string|max:255',
             'address'       => 'required|string',
+            'type_id'       => 'required|exists:clinic_types,id',
             'latitude'      => 'required|numeric|between:-90,90',
             'longitude'     => 'required|numeric|between:-180,180',
             'service_ids'   => 'array',
@@ -50,6 +53,7 @@ class ClinicController extends Controller
         $clinic = Clinic::create([
             'name'           => $data['name'],
             'address'        => $data['address'],
+            'type_id'        => $data['type_id'],
             'gps_latitude'   => $data['latitude'],
             'gps_longitude'  => $data['longitude'],
         ]);
@@ -68,7 +72,8 @@ class ClinicController extends Controller
     public function edit(Clinic $clinic)
     {
         $services = Service::all();
-        return view('admin.clinics.edit', compact('clinic','services'));
+        $clinicTypes = ClinicType::all();
+        return view('admin.clinics.edit', compact('clinic','services','clinicTypes'));
     }
 
     /**
@@ -79,6 +84,7 @@ class ClinicController extends Controller
         $data = $request->validate([
             'name'          => 'required|string|max:255',
             'address'       => 'required|string',
+            'type_id'       => 'required|exists:clinic_types,id',
             'latitude'      => 'required|numeric|between:-90,90',
             'longitude'     => 'required|numeric|between:-180,180',
             'service_ids'   => 'array',
@@ -86,10 +92,11 @@ class ClinicController extends Controller
         ]);
 
         $clinic->update([
-            'name'      => $data['name'],
-            'address'   => $data['address'],
-            'latitude'  => $data['latitude'],
-            'longitude' => $data['longitude'],
+            'name'           => $data['name'],
+            'address'        => $data['address'],
+            'type_id'        => $data['type_id'],
+            'gps_latitude'   => $data['latitude'],
+            'gps_longitude'  => $data['longitude'],
         ]);
 
         // Sync services pivot

@@ -63,7 +63,7 @@ class Clinic extends Model
 
     public function type(): BelongsTo
     {
-        return $this->belongsTo(ClinicType::class, 'clinic_type_id');
+        return $this->belongsTo(ClinicType::class, 'type_id');
     }
 
     /**

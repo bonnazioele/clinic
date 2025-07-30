@@ -16,6 +16,9 @@
             <a href="{{ route('admin.services.create') }}" class="btn btn-info">
                 <i class="fas fa-plus-circle me-1"></i> Add Service
             </a>
+            <a href="{{ route('admin.clinic-types.create') }}" class="btn btn-info">
+                <i class="fas fa-plus-circle me-1"></i> Add Clinic Type
+            </a>
         </div>
     </div>
 

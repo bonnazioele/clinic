@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ClinicType extends Model
 {
     use HasFactory;
-    protected $fillable = ['type_name'];
+    
+    protected $fillable = ['type_name', 'description'];
 
     /**
      * Get all clinics of this type.
