@@ -125,13 +125,6 @@
                         <option value="{{ $type->id }}">{{ $type->type_name }}</option>
                     @endforeach
                 </select>
-                <select class="form-select" id="filterByStatus" style="width: 130px;">
-                    <option value="">All Status</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Flagged">Flagged</option>
-                </select>
             </div>
         </div>
         <div class="card-body">
@@ -167,6 +160,7 @@
                             <td>
                                 <div>
                                     <strong>{{ $clinic->name }}</strong>
+                                </div>
                             </td>
                             <td>
                                 <div class="small">
@@ -299,42 +293,6 @@
     </div>
 </div>
 
-<!-- Add Admin Modal -->
-<div class="modal fade" id="addAdminModal" tabindex="-1" aria-labelledby="addAdminModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addAdminModalLabel">Add System Admin</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="adminRegistrationForm">
-                    <div class="mb-3">
-                        <label for="adminName" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="adminName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminEmail" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="adminEmail" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminPassword" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="adminPassword" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminPasswordConfirmation" class="form-label">Confirm Password</label>
-                        <input type="password" class="form-control" id="adminPasswordConfirmation" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveAdminBtn">Add Admin</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Rejection Reason Modal -->
 <div class="modal fade" id="rejectionModal" tabindex="-1" aria-labelledby="rejectionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -360,193 +318,6 @@
     </div>
 </div>
 
-@endsection
-
-@section('scripts')
-<script>
-    $(document).ready(function() {
-        // Search functionality
-        $('#searchClinics').on('keyup', function() {
-            const searchValue = $(this).val().toLowerCase();
-            filterTable();
-        });
-
-        // Filter by type
-        $('#filterByType').on('change', function() {
-            filterTable();
-        });
-
-        // Filter by status
-        $('#filterByStatus').on('change', function() {
-            filterTable();
-        });
-
-        // Combined filter function
-        function filterTable() {
-            const searchValue = $('#searchClinics').val().toLowerCase();
-            const typeFilter = $('#filterByType').val();
-            const statusFilter = $('#filterByStatus').val();
-
-            $('#clinicsTable tbody tr').each(function() {
-                const row = $(this);
-                const searchText = row.data('search') || '';
-                const rowType = row.data('type') || '';
-                const rowStatus = row.data('status') || '';
-
-                let showRow = true;
-
-                // Search filter
-                if (searchValue && !searchText.includes(searchValue)) {
-                    showRow = false;
-                }
-
-                // Type filter
-                if (typeFilter && rowType != typeFilter) {
-                    showRow = false;
-                }
-
-                // Status filter
-                if (statusFilter && rowStatus !== statusFilter) {
-                    showRow = false;
-                }
-
-                if (showRow) {
-                    row.show();
-                } else {
-                    row.hide();
-                }
-            });
-
-            // Update showing count
-            updateShowingCount();
-        }
-
-        // Update showing count
-        function updateShowingCount() {
-            const visibleRows = $('#clinicsTable tbody tr:visible').length;
-            const totalRows = $('#clinicsTable tbody tr').length;
-            $('.card-header small').text(`Showing ${visibleRows} of ${totalRows} clinics`);
-        }
-
-        // Approve clinic with AJAX
-        $('.approve-btn').click(function() {
-            const clinicId = $(this).data('id');
-            const button = $(this);
-            
-            if (confirm('Are you sure you want to approve this clinic?')) {
-                // Show loading state
-                button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-                
-                $.ajax({
-                    url: `/admin/clinics/${clinicId}/approve`,
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            showAlert('success', response.message);
-                            // Reload page to update the table
-                            setTimeout(() => {
-                                location.reload();
-                            }, 1500);
-                        } else {
-                            showAlert('danger', response.message);
-                            button.prop('disabled', false).html('<i class="fas fa-check"></i>');
-                        }
-                    },
-                    error: function(xhr) {
-                        const message = xhr.responseJSON?.message || 'An error occurred while approving the clinic';
-                        showAlert('danger', message);
-                        button.prop('disabled', false).html('<i class="fas fa-check"></i>');
-                    }
-                });
-            }
-        });
-
-        // Reject clinic - open modal
-        $('.reject-btn').click(function() {
-            const clinicId = $(this).data('id');
-            $('#rejectClinicId').val(clinicId);
-            $('#rejectionModal').modal('show');
-        });
-
-        // Confirm rejection
-        $('#confirmRejectBtn').click(function() {
-            const clinicId = $('#rejectClinicId').val();
-            const reason = $('#rejectionReason').val().trim();
-            const button = $(this);
-            
-            if (!reason || reason.length < 10) {
-                showAlert('warning', 'Please provide a rejection reason (minimum 10 characters)');
-                return;
-            }
-            
-            // Show loading state
-            button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Rejecting...');
-            
-            $.ajax({
-                url: `/admin/clinics/${clinicId}/reject`,
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                data: {
-                    rejection_reason: reason
-                },
-                success: function(response) {
-                    if (response.success) {
-                        showAlert('success', response.message);
-                        $('#rejectionModal').modal('hide');
-                        // Reload page to update the table
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        showAlert('danger', response.message);
-                    }
-                },
-                error: function(xhr) {
-                    const message = xhr.responseJSON?.message || 'An error occurred while rejecting the clinic';
-                    showAlert('danger', message);
-                },
-                complete: function() {
-                    button.prop('disabled', false).html('<i class="fas fa-times me-1"></i> Confirm Rejection');
-                }
-            });
-        });
-
-        // Show alert function
-        function showAlert(type, message) {
-            const alertClass = type === 'success' ? 'alert-success' : 
-                              type === 'danger' ? 'alert-danger' : 
-                              type === 'warning' ? 'alert-warning' : 'alert-info';
-            
-            const alertHtml = `
-                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'times-circle' : 'exclamation-triangle'} me-2"></i>
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            
-            $('.container-fluid').prepend(alertHtml);
-            
-            // Auto dismiss success messages
-            if (type === 'success') {
-                setTimeout(() => {
-                    $('.alert-success').alert('close');
-                }, 5000);
-            }
-        }
-
-        // Initialize tooltips
-        $('[data-bs-toggle="tooltip"]').tooltip();
-        
-        // Initialize showing count
-        updateShowingCount();
-    });
-</script>
 @endsection
 
 @section('styles')

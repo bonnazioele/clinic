@@ -82,6 +82,14 @@ class ClinicController extends Controller
     }
 
     /**
+     * Display a specific clinic.
+     */
+    public function show(Clinic $clinic)
+    {
+        return view('admin.clinics.show', compact('clinic'));
+    }
+
+    /**
      * Show the form to edit an existing clinic.
      */
     public function edit(Clinic $clinic)
@@ -134,7 +142,7 @@ class ClinicController extends Controller
         // Sync services pivot
         $clinic->services()->sync($data['service_ids'] ?? []);
 
-        return back()->with('status','Clinic updated successfully.');
+        return redirect()->route('admin.clinics.index')->with('status', 'Clinic updated successfully.');
     }
 
     /**
