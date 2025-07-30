@@ -1,5 +1,3 @@
-// Admin logout route
-Route::post('logout', [DashboardController::class, 'logout'])->name('logout');
 <?php
 
 use Illuminate\Support\Facades\Route;
