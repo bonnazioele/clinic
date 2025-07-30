@@ -91,8 +91,8 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         $data = $request->validate([
-            'name'        => 'required|string|unique:services,name,'.$service->id,
-            'description' => 'nullable|string',
+            'service_name' => 'required|string|unique:services,service_name,'.$service->id,
+            'description'  => 'nullable|string',
         ]);
 
         $service->update($data);

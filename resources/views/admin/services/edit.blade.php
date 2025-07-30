@@ -10,14 +10,14 @@
     @method('PATCH')
 
     <div class="mb-3">
-      <label for="name" class="form-label">Service Name</label>
+      <label for="service_name" class="form-label">Service Name</label>
       <input type="text"
-             id="name"
-             name="name"
-             class="form-control @error('name') is-invalid @enderror"
-             value="{{ old('name', $service->name) }}"
+             id="service_name"
+             name="service_name"
+             class="form-control @error('service_name') is-invalid @enderror"
+             value="{{ old('service_name', $service->service_name) }}"
              required>
-      @error('name')
+      @error('service_name')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
     </div>

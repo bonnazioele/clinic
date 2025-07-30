@@ -15,6 +15,7 @@ class Clinic extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'user_id',
         'name',
         'type_id',
         'branch_code',
@@ -64,6 +65,14 @@ class Clinic extends Model
     public function type(): BelongsTo
     {
         return $this->belongsTo(ClinicType::class, 'type_id');
+    }
+
+    /**
+     * Get the user who submitted this clinic.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**

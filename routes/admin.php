@@ -12,6 +12,11 @@ use App\Http\Controllers\Admin\DashboardController;
 // Admin dashboard route for system admin users
 Route::get('dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
+// Clinic approval/rejection routes
+Route::post('clinics/{id}/approve', [DashboardController::class, 'approveClinic'])->name('clinics.approve');
+Route::post('clinics/{id}/reject', [DashboardController::class, 'rejectClinic'])->name('clinics.reject');
+Route::post('add-admin', [DashboardController::class, 'addAdmin'])->name('add-admin');
+
 // Clinic management routes
 Route::resource('clinics', AdminClinicController::class);
 

@@ -51,7 +51,7 @@ class ClinicController extends Controller
             'contact_number' => 'required|string|max:20',
             'email'          => 'required|email|max:255|unique:clinics,email',
             'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'service_ids'    => 'array',
+            'service_ids'    => 'required|array',
             'service_ids.*'  => 'exists:services,id',
         ]);
 

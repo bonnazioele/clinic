@@ -49,14 +49,14 @@
         <a href="{{ route('admin.dashboard') }}" class="list-group-item list-group-item-action py-3 {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
           <i class="fas fa-tachometer-alt me-2"></i> Dashboard
         </a>
-        <a href="{{ route('admin.clinics.index') }}" class="list-group-item list-group-item-action py-3 {{ request()->routeIs('admin.clinics.*') ? 'active' : '' }}">
-          <i class="fas fa-hospital me-2"></i> Manage Clinics
+        <a href="{{ route('admin.clinics.index') }}" class="list-group-item list-group-item-action py-3 {{ request()->routeIs('admin.clinics.*') && !request()->routeIs('admin.clinics.create') ? 'active' : '' }}">
+          <i class="fas fa-hospital me-2"></i> Clinics
         </a>
         <a href="{{ route('admin.clinic-types.index') }}" class="list-group-item list-group-item-action py-3 {{ request()->routeIs('admin.clinic-types.*') ? 'active' : '' }}">
           <i class="fas fa-building me-2"></i> Clinic Types
         </a>
         <a href="{{ route('admin.services.index') }}" class="list-group-item list-group-item-action py-3 {{ request()->routeIs('admin.services.*') ? 'active' : '' }}">
-          <i class="fas fa-concierge-bell me-2"></i> Manage Services
+          <i class="fas fa-concierge-bell me-2"></i> Services
         </a>
         <a href="#" class="list-group-item list-group-item-action py-3">
           <i class="fas fa-users me-2"></i> Administrators

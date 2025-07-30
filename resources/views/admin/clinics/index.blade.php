@@ -7,14 +7,6 @@
       <i class="fas fa-plus me-1"></i> New Clinic
     </a>
   </div>
-
-  @if(session('status'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="fas fa-check-circle me-2"></i>{{ session('status') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  @endif
-
   <div class="card shadow-sm">
     <div class="card-body">
       <div class="table-responsive">

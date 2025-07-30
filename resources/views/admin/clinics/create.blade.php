@@ -96,59 +96,6 @@
       @error('type_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    <!-- Logo Upload -->
-    <div class="mb-3">
-      <label class="form-label">Clinic Logo <small class="text-muted">(optional)</small></label>
-      <input type="file"
-             name="logo"
-             class="form-control @error('logo') is-invalid @enderror"
-             accept="image/jpeg,image/png,image/jpg,image/gif"
-             id="logoInput">
-      @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
-      <div class="form-text">Accepted formats: JPEG, PNG, JPG, GIF. Maximum size: 2MB.</div>
-      
-      <!-- Logo Preview -->
-      <div id="logoPreview" class="mt-2" style="display: none;">
-        <img id="previewImage" src="" alt="Logo Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
-        <div class="mt-1">
-          <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLogo()">Remove</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Location Section -->
-    <div class="mb-3">
-      <label class="form-label">Location <span class="text-danger">*</span></label>
-      <div class="form-text mb-2">Click on the map or drag the marker to set the clinic location.</div>
-      <div id="mapPicker" class="map-picker"></div>
-    </div>
-
-    <!-- Latitude & Longitude -->
-    <div class="row">
-      <div class="col">
-        <label class="form-label">Latitude <span class="text-danger">*</span></label>
-        <input type="text"
-               id="lat"
-               name="latitude"
-               class="form-control @error('latitude') is-invalid @enderror"
-               value="{{ old('latitude') }}"
-               readonly
-               required>
-        @error('latitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
-      </div>
-      <div class="col">
-        <label class="form-label">Longitude <span class="text-danger">*</span></label>
-        <input type="text"
-               id="lng"
-               name="longitude"
-               class="form-control @error('longitude') is-invalid @enderror"
-               value="{{ old('longitude') }}"
-               readonly
-               required>
-        @error('longitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
-      </div>
-    </div>
-
     <!-- Services Offered -->
     <div class="mb-3">
       <label class="form-label">Services Offered <small class="text-muted">(optional)</small></label>
@@ -177,11 +124,62 @@
       <div id="selected-services" class="mt-2"></div>
     </div>
 
+    <!-- Logo Upload -->
+    <div class="mb-3">
+      <label class="form-label">Clinic Logo <small class="text-muted">(optional)</small></label>
+      <input type="file"
+             name="logo"
+             class="form-control @error('logo') is-invalid @enderror"
+             accept="image/jpeg,image/png,image/jpg,image/gif"
+             id="logoInput">
+      @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      <div class="form-text">Accepted formats: JPEG, PNG, JPG, GIF. Maximum size: 2MB.</div>
+      
+      <!-- Logo Preview -->
+      <div id="logoPreview" class="mt-2" style="display: none;">
+        <img id="previewImage" src="" alt="Logo Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+        <div class="mt-1">
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLogo()">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Location <span class="text-danger">*</span></label>
+      <div class="form-text mb-2">Click on the map or drag the marker to set the clinic location.</div>
+      <div id="mapPicker" class="map-picker"></div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <label class="form-label">Latitude <span class="text-danger">*</span></label>
+        <input type="text"
+               id="lat"
+               name="latitude"
+               class="form-control @error('latitude') is-invalid @enderror"
+               value="{{ old('latitude') }}"
+               readonly
+               required>
+        @error('latitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+      <div class="col">
+        <label class="form-label">Longitude <span class="text-danger">*</span></label>
+        <input type="text"
+               id="lng"
+               name="longitude"
+               class="form-control @error('longitude') is-invalid @enderror"
+               value="{{ old('longitude') }}"
+               readonly
+               required>
+        @error('longitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+    </div>
+
     <div class="d-flex gap-2 mt-4">
       <button type="submit" class="btn btn-primary">
         <i class="fas fa-save me-1"></i> Save Clinic
       </button>
-      <a href="{{ route('admin.clinics.index') }}" class="btn btn-outline-secondary">
+      <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary">
         <i class="fas fa-times me-1"></i> Cancel
       </a>
     </div>

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Clinic;
 use App\Models\ClinicType;
+use App\Models\Service;
+use App\Models\User;
 
 class DashboardController extends Controller
 {
@@ -22,6 +24,10 @@ class DashboardController extends Controller
         $pendingClinics = Clinic::status('Pending')->count();
         $rejectedClinics = Clinic::status('Rejected')->count();
 
+        $totalServices = Service::count();
+        $activeServices = Service::active()->count();
+        $totalClinicTypes = ClinicType::count();
+
         // Recent approvals and rejections (with relationships)
         $recentApprovals = Clinic::with(['approvedBy', 'type'])
             ->status('Approved')
@@ -35,10 +41,10 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // All clinics for the main table (with type relationship)
-        $clinics = Clinic::with('type')
+        // All clinics for the main table (with type relationship and user who submitted)
+        $clinics = Clinic::with(['type', 'user'])
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate(12);
 
         // Get clinic types for the add clinic modal
         $clinicTypes = ClinicType::all();
@@ -51,7 +57,10 @@ class DashboardController extends Controller
             'recentApprovals',
             'recentRejections',
             'clinics',
-            'clinicTypes'
+            'clinicTypes',
+            'totalServices',
+            'activeServices',
+            'totalClinicTypes'
         ));
     }
 
@@ -134,46 +143,6 @@ class DashboardController extends Controller
     }
 
     /**
-     * Register a new clinic
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function registerClinic(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type_id' => 'nullable|exists:clinic_types,type_id',
-            'branch_code' => 'required|string|max:50|unique:clinics,branch_code',
-            'address' => 'required|string',
-            'contact_number' => 'required|string|max:50',
-            'email' => 'required|email|max:100|unique:clinics,email',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'gps_latitude' => 'nullable|numeric|between:-90,90',
-            'gps_longitude' => 'nullable|numeric|between:-180,180',
-        ]);
-
-        // Handle logo upload
-        if ($request->hasFile('logo')) {
-            $path = $request->file('logo')->store('clinic_logos', 'public');
-            $validated['logo'] = $path;
-        }
-
-        // Create the clinic with approved status since it's created by admin
-        $clinic = Clinic::create(array_merge($validated, [
-            'status' => 'Approved',
-            'approved_at' => now(),
-            'approved_by' => auth()->id(),
-        ]));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Clinic registered successfully',
-            'clinic' => $clinic
-        ]);
-    }
-
-    /**
      * Add a new system admin
      *
      * @param  \Illuminate\Http\Request  $request
@@ -197,33 +166,6 @@ class DashboardController extends Controller
             'success' => true,
             'message' => 'Admin added successfully',
             'admin' => $admin
-        ]);
-    }
-
-    /**
-     * Add a new service
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function addService(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-        ]);
-
-        // Create the service
-        $service = Service::create(array_merge($validated, [
-            'is_active' => $request->boolean('is_active', true),
-        ]));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Service added successfully',
-            'service' => $service
         ]);
     }
 }
