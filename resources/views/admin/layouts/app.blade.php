@@ -19,6 +19,11 @@
     body { background:#f8f9fa; }
     .sidebar { width:200px; }
     .map-picker { height:250px; border:1px solid #ccc; margin-bottom:1rem; }
+
+    .dropdown-menu.show {
+      z-index: 1051; /* higher than Leaflet controls which default around 1000 */
+    }
+
   </style>
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -71,4 +76,7 @@
       @yield('scripts')
     </main>
   </div>
+  @stack('scripts')
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+

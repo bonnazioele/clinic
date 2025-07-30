@@ -29,22 +29,6 @@
       @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    <!-- Services Multi-Select -->
-    <div class="mb-3">
-      <label class="form-label">Services Offered</label>
-      <select name="service_ids[]"
-              id="services"
-              class="form-select @error('service_ids') is-invalid @enderror"
-              multiple>
-        @foreach($services as $svc)
-          <option value="{{ $svc->id }}"
-            @selected(in_array($svc->id, old('service_ids', [])))>
-            {{ $svc->name }}
-          </option>
-        @endforeach
-      </select>
-      @error('service_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    </div>
 
     <!-- Map Picker -->
     <div id="mapPicker" class="map-picker mb-3"></div>
@@ -73,12 +57,107 @@
       </div>
     </div>
 
+    <!-- Services Offered -->
+    <div class="mb-3">
+      <label class="form-label">Services Offered</label>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="servicesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          Select Services
+        </button>
+        <ul class="dropdown-menu w-100" aria-labelledby="servicesDropdown" style="max-height: 200px; overflow-y: auto;">
+          @foreach($services as $service)
+            <li>
+              <label class="dropdown-item">
+                <input type="checkbox" 
+                       class="form-check-input me-2 service-checkbox" 
+                       name="service_ids[]" 
+                       value="{{ $service->id }}"
+                       {{ in_array($service->id, old('service_ids', [])) ? 'checked' : '' }}>
+                {{ $service->service_name }}
+              </label>
+            </li>
+          @endforeach
+        </ul>
+      </div>
+      @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+      
+      <!-- Selected Services Display -->
+      <div id="selected-services" class="mt-2"></div>
+    </div>
+
     <button class="btn btn-primary mt-3">Save Clinic</button>
   </form>
 @endsection
 
 @section('scripts')
 <script>
+  // Wait for DOM to be fully loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // Services data injected from Laravel
+    const services = @json($services);
+    const selectedPanel = document.getElementById('selected-services');
+
+    // Function to update the selected services panel
+    function updatePanel() {
+      const checkboxes = document.querySelectorAll('.service-checkbox:checked');
+      const selectedServices = [];
+
+      checkboxes.forEach(checkbox => {
+        const serviceId = parseInt(checkbox.value);
+        const service = services.find(s => s.id === serviceId);
+        if (service) {
+          selectedServices.push(service);
+        }
+      });
+
+      // Clear and rebuild the panel
+      selectedPanel.innerHTML = '';
+
+      if (selectedServices.length > 0) {
+        selectedServices.forEach(service => {
+          const badge = document.createElement('span');
+          badge.className = 'badge bg-primary me-2 mb-2 d-inline-flex align-items-center';
+          badge.innerHTML = `
+            ${service.service_name}
+            <button type="button" 
+                    class="btn-close btn-close-white ms-2 remove-service" 
+                    aria-label="Remove" 
+                    data-id="${service.id}"
+                    style="font-size: 0.75em;"></button>
+          `;
+          selectedPanel.appendChild(badge);
+        });
+      } else {
+        selectedPanel.innerHTML = '<small class="text-muted">No services selected</small>';
+      }
+    }
+
+    // Event listener for checkbox changes using event delegation
+    document.addEventListener('change', function(e) {
+      if (e.target.classList.contains('service-checkbox')) {
+        updatePanel();
+      }
+    });
+
+    // Event listener for removing services
+    selectedPanel.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-service')) {
+        const serviceId = e.target.getAttribute('data-id');
+        const checkbox = document.querySelector(`.service-checkbox[value="${serviceId}"]`);
+        if (checkbox) {
+          checkbox.checked = false;
+          updatePanel();
+        }
+      }
+    });
+
+    // Make updatePanel globally available
+    window.updatePanel = updatePanel;
+
+    // Initialize the panel
+    updatePanel();
+  });
+
   // initialize map picker
   var map = L.map('mapPicker').setView([10.3157,123.8854],10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -100,3 +179,4 @@
   updateInputs();
 </script>
 @endsection
+

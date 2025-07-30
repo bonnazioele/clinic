@@ -48,10 +48,10 @@ class ClinicController extends Controller
         ]);
 
         $clinic = Clinic::create([
-            'name'      => $data['name'],
-            'address'   => $data['address'],
-            'latitude'  => $data['latitude'],
-            'longitude' => $data['longitude'],
+            'name'           => $data['name'],
+            'address'        => $data['address'],
+            'gps_latitude'   => $data['latitude'],
+            'gps_longitude'  => $data['longitude'],
         ]);
 
         // Attach selected services

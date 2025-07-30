@@ -67,9 +67,19 @@ class Clinic extends Model
     }
 
     /**
-     * Get all services associated with the clinic through appointments.
+     * Get all services offered by the clinic.
      */
     public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'clinic_service', 'clinic_id', 'service_id')
+                    ->withPivot(['duration_minutes'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get all services associated with the clinic through appointments.
+     */
+    public function servicesThoughAppointments(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'appointments');
     }
