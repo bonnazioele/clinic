@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Admin\ClinicTypeController as AdminClinicTypeController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Livewire\Admin\Services\Index as ServicesIndex;
 
 // All routes in this file are protected by 'auth' and 'can:access-admin-panel' via RouteServiceProvider
 
@@ -21,7 +22,8 @@ Route::post('add-admin', [DashboardController::class, 'addAdmin'])->name('add-ad
 Route::resource('clinics', AdminClinicController::class);
 
 // Service management routes
-Route::resource('services', AdminServiceController::class)->except('show');
+Route::get('services', ServicesIndex::class)->name('services.index');
+Route::resource('services', AdminServiceController::class)->except(['show', 'index']);
 
 // Clinic Type management routes
 Route::resource('clinic-types', AdminClinicTypeController::class);

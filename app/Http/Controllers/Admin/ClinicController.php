@@ -30,8 +30,8 @@ class ClinicController extends Controller
      */
     public function create()
     {
-        // Pass all services and clinic types into the view
-        $services = Service::all();
+        // Pass only active services and all clinic types into the view
+        $services = Service::active()->get();
         $clinicTypes = ClinicType::all();
         return view('admin.clinics.create', compact('services', 'clinicTypes'));
     }
@@ -52,7 +52,7 @@ class ClinicController extends Controller
             'email'          => 'required|email|max:255|unique:clinics,email',
             'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'service_ids'    => 'required|array',
-            'service_ids.*'  => 'exists:services,id',
+            'service_ids.*'  => 'exists:services,id,is_active,1',
         ]);
 
         // Handle logo upload
@@ -94,7 +94,7 @@ class ClinicController extends Controller
      */
     public function edit(Clinic $clinic)
     {
-        $services = Service::all();
+        $services = Service::active()->get();
         $clinicTypes = ClinicType::all();
         return view('admin.clinics.edit', compact('clinic','services','clinicTypes'));
     }
@@ -115,7 +115,7 @@ class ClinicController extends Controller
             'email'          => 'required|email|max:255|unique:clinics,email,' . $clinic->id,
             'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'service_ids'    => 'array',
-            'service_ids.*'  => 'exists:services,id',
+            'service_ids.*'  => 'exists:services,id,is_active,1',
         ]);
 
         // Handle logo upload

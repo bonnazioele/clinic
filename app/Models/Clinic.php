@@ -81,7 +81,7 @@ class Clinic extends Model
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'clinic_service', 'clinic_id', 'service_id')
-                    ->withPivot(['duration_minutes'])
+                    ->withPivot(['duration_minutes', 'is_active'])
                     ->withTimestamps();
     }
 

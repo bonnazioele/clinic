@@ -12,8 +12,6 @@ use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\NotificationsController;
 
-
-
 // Landing / welcome page
 Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);

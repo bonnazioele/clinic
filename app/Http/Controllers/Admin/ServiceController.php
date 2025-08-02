@@ -14,15 +14,6 @@ class ServiceController extends Controller
     }
 
     /**
-     * Show paginated services.
-     */
-    public function index()
-    {
-        $services = Service::latest()->paginate(10);
-        return view('admin.services.index', compact('services'));
-    }
-
-    /**
      * Form to create a new service.
      */
     public function create()
@@ -52,7 +43,7 @@ class ServiceController extends Controller
         }
 
         return redirect()
-            ->route('admin.dashboard')
+            ->route('admin.services.index')
             ->with('status', 'Service added successfully.');
     }
 
@@ -105,7 +96,13 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service)
     {
+        if ($service->is_active) {
+            return back()->withErrors(['error' => 'You must deactivate this service before deleting it.']);
+        }
+        if ($service->clinics()->count() > 0) {
+            return back()->withErrors(['error' => 'Cannot delete a service that is currently in use. Please remove it from all clinics first.']);
+        }
         $service->delete();
-        return back()->with('status','Service removed.');
+        return redirect()->route('admin.services.index')->with('status','Service removed.');
     }
 }

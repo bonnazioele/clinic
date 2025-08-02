@@ -28,6 +28,7 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  @livewireStyles
 </head>
 <body>
 
@@ -76,10 +77,14 @@
     <main class="flex-grow-1 p-4" style="min-width:0;">
       @include('partials.alerts')
       @yield('content')
+
+      {{ $slot ?? '' }}
+
       @yield('scripts')
     </main>
   </div>
   @stack('scripts')
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@livewireScripts
 </body>
 
