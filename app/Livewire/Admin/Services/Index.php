@@ -34,7 +34,6 @@ class Index extends Component
         }
 
         return view('livewire.admin.services.index', compact('services'))->layout('admin.layouts.app');
-
     }
 
     public function confirmToggle($serviceId)
@@ -51,44 +50,38 @@ class Index extends Component
 
     public function toggleStatus()
     {
-        if (!$this->serviceToToggle) {
-            return;
-        }
+        if (!$this->serviceToToggle) return;
 
         try {
             // Refresh the service from the database to get the latest state
-            $service = Service::findOrFail($this->serviceToToggle->id);
-            
-            // Check if trying to deactivate and service is used by clinics
+            $service = $this->serviceToToggle->refresh();
             $clinicsCount = $service->clinics()->count();
             
             if ($service->is_active && $clinicsCount > 0) {
                 session()->flash('error', "Cannot deactivate: Service is currently used by {$clinicsCount} clinic(s).");
-                $this->cancelToggle();
-                return;
+                return $this->cancelToggle();
             }
 
             // Toggle the status
             $service->is_active = !$service->is_active;
-            $saved = $service->save();
-            
-            if (!$saved) {
-                throw new \Exception('Failed to save service status');
-            }
+            $service->save();
 
-            $status = $service->is_active ? 'activated' : 'deactivated';
-            session()->flash('status', "Service successfully {$status}.");
+            $this->flashMessage('status', "Service successfully " . ($service->is_active ? 'activated' : 'deactivated'));
             
         } catch (\Exception $e) {
-            \Log::error('Service toggle status failed: ' . $e->getMessage(), [
-                'service_id' => $service->id ?? 'unknown',
-                'service_name' => $service->service_name ?? 'unknown',
-                'exception' => $e->getTraceAsString()
-            ]);
-            
-            session()->flash('error', 'An error occurred while updating the service status.');
+            $this->logError($e, 'ToggleStatus');
+            $this->flashMessage('error', 'An error occurred while updating the service.');
         }
-
         $this->cancelToggle();
+    }
+
+    protected function logError(\Throwable $e, string $context = 'Unknown')
+    {
+        \Log::error("[{$context}] " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+    }
+
+    protected function flashMessage(string $type, string $message)
+    {
+        session()->flash($type, $message);
     }
 }

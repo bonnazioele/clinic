@@ -136,11 +136,6 @@
       </div>
       <div class="modal-body">
         <p>Are you sure you want to {{ $serviceToToggle->is_active ? 'deactivate' : 'activate' }} the service "{{ $serviceToToggle->service_name }}"?</p>
-        @if($serviceToToggle->is_active && $serviceToToggle->clinics->count() > 0)
-          <div class="alert alert-warning">
-            <strong>Warning:</strong> This service is currently used by {{ $serviceToToggle->clinics->count() }} clinic(s).
-          </div>
-        @endif
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" wire:click="cancelToggle">Cancel</button>
