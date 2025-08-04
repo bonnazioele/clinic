@@ -6,15 +6,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Admin – @yield('title')</title>
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-        rel="stylesheet">
-
   <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
   <!-- Leaflet CSS (for the lat/lng picker) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  
+  <!-- Compiled SCSS styles (includes Bootstrap + our modal animations) -->
+  @vite(['resources/sass/app.scss', 'resources/js/app.js'])
   <style>
     body { background:#f8f9fa; }
     .sidebar { width:200px; }
@@ -84,7 +83,6 @@
     </main>
   </div>
   @stack('scripts')
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 @livewireScripts
 </body>
 

@@ -10,20 +10,6 @@
     </a>
   </div>
 
-  @if(session('status'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      {{ session('status') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
-
-  @if($errors->has('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      {{ $errors->first('error') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
-
   <div class="card">
     <div class="card-body">
       @if($clinicTypes->count() > 0)

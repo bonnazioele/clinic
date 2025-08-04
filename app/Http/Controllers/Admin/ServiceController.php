@@ -87,13 +87,8 @@ class ServiceController extends Controller
         ]);
 
         $service->update($data);
-
-        return back()->with('status','Service updated successfully.');
+        return redirect()->route('admin.services.index')->with('status', 'Service updated successfully.');
     }
-
-    /**
-     * Delete a service.
-     */
     public function destroy(Service $service)
     {
         if ($service->is_active) {

@@ -5,6 +5,13 @@
 @section('content')
   <h3 class="mb-4">Edit Service</h3>
 
+  <div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <div>
+      <strong>Warning:</strong> Changing the name will update it across all associated clinics. Make sure the new name still accurately represents the service or clinic type.
+    </div>
+  </div>
+
   <form method="POST" action="{{ route('admin.services.update', $service) }}">
     @csrf
     @method('PATCH')
@@ -24,10 +31,8 @@
 
     <div class="mb-3">
       <label for="description" class="form-label">Description <small class="text-muted">(optional)</small></label>
-      <textarea id="description"
-                name="description"
-                class="form-control @error('description') is-invalid @enderror"
-                rows="4">{{ old('description', $service->description) }}</textarea>
+      <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror"
+          rows="4">{{ old('description', $service->description) }}</textarea>
       @error('description')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror

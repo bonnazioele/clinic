@@ -14,8 +14,7 @@
              id="type_name"
              name="type_name"
              class="form-control @error('type_name') is-invalid @enderror"
-             value="{{ old('type_name') }}"
-             required maxlength="100">
+             value="{{ old('type_name') }}">
       @error('type_name')
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
