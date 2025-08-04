@@ -5,13 +5,6 @@
 @section('content')
   <h3 class="mb-4">Edit Service</h3>
 
-  <div class="alert alert-warning d-flex align-items-center" role="alert">
-    <i class="fas fa-exclamation-triangle me-2"></i>
-    <div>
-      <strong>Warning:</strong> Changing the name will update it across all associated clinics. Make sure the new name still accurately represents the service or clinic type.
-    </div>
-  </div>
-
   <form method="POST" action="{{ route('admin.services.update', $service) }}">
     @csrf
     @method('PATCH')
@@ -37,6 +30,15 @@
         <div class="invalid-feedback">{{ $message }}</div>
       @enderror
     </div>
+
+    @if ($service->clinics()->count() > 0)
+      <div class="mb-3">
+        <small class="text-muted">
+          <i class="fas fa-info-circle me-1"></i>
+          This service is currently used by <strong>{{ $service->clinics()->count() }}</strong> clinic(s). Changing the name will update it system-wide—ensure it remains accurate.
+        </small>
+      </div>
+    @endif
 
     <button type="submit" class="btn btn-primary">Update Service</button>
     <a href="{{ route('admin.services.index') }}" class="btn btn-link">Cancel</a>

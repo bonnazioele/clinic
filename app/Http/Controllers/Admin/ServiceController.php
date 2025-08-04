@@ -86,6 +86,10 @@ class ServiceController extends Controller
             'description'  => 'nullable|string',
         ]);
 
+        if ($service->service_name === $data['service_name'] && $service->description === ($data['description'] ?? null)) {
+            return redirect()->route('admin.services.index')->with('status', 'No changes made.');
+        }
+
         $service->update($data);
         return redirect()->route('admin.services.index')->with('status', 'Service updated successfully.');
     }

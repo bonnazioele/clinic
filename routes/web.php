@@ -61,37 +61,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
          ->name('notifications.markRead');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Admin (Authenticated + is_admin) Routes
-|--------------------------------------------------------------------------
-*/
-
-// Route::prefix('admin')
-//      ->middleware(['auth', AdminMiddleware::class])
-//      ->name('admin.')
-//      ->group(function () {
-//          // Manage clinics
-//          Route::resource('clinics', AdminClinicController::class);
-
-//          // Manage services (no show route needed)
-//          Route::resource('services', AdminServiceController::class)
-//               ->except('show');
-//      });
-
-
-
-Route::prefix('secretary')
-     ->middleware(['auth'])
-     ->name('secretary.')
-     ->group(function(){
-         // existing appointments…
-         Route::resource('appointments', SecAppt::class)
-              ->only(['index','edit','update','destroy']);
-
-         // ↓ new doctors resource ↓
-         Route::resource('doctors', SecDoctor::class)
-              ->except(['show']);
-     });
-
      

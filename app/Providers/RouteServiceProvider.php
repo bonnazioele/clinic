@@ -25,5 +25,11 @@ class RouteServiceProvider extends ServiceProvider
             ->prefix('admin')
             ->as('admin.')
             ->group(base_path('routes/admin.php'));
+
+        // Ensure secretary routes are protected by 'can:access-secretary-panel' middleware
+        Route::middleware(['web', 'auth', 'can:access-secretary-panel'])
+            ->prefix('secretary')
+            ->as('secretary.')
+            ->group(base_path('routes/secretary.php'));
     }
 }

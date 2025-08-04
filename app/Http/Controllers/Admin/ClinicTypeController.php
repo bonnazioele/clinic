@@ -54,8 +54,11 @@ class ClinicTypeController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
-        $clinicType->update($validated);
+        if ($clinicType->type_name === $validated['type_name'] && $clinicType->description === ($validated['description'] ?? null)) {
+            return redirect()->route('admin.clinic-types.index')->with('status', 'No changes made.');
+        }
 
+        $clinicType->update($validated);
         return redirect()->route('admin.clinic-types.index')->with('status','Clinic type updated successfully.');
     }
 

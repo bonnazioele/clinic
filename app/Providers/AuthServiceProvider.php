@@ -25,5 +25,9 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('access-admin-panel', function ($user) {
             return $user->is_system_admin; // boolean check from users table
         });
+
+        Gate::define('access-secretary-panel', function ($user) {
+            return $user->is_secretary; // boolean check from users table
+        });
     }
 }

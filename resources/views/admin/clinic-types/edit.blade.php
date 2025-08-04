@@ -33,12 +33,14 @@
       @enderror
     </div>
 
-    <div class="mb-3">
-      <small class="text-muted">
-        <i class="fas fa-info-circle me-1"></i>
-        This clinic type is currently used by <strong>{{ $clinicType->clinics()->count() }}</strong> clinic(s).
-      </small>
-    </div>
+    @if ($clinicType->clinics()->count() > 0)
+      <div class="mb-3">
+        <small class="text-muted">
+          <i class="fas fa-info-circle me-1"></i>
+          This service is currently used by <strong>{{ $clinicType->clinics()->count() }}</strong> clinic(s). Changing the name will update it system-wide—ensure it remains accurate.
+        </small>
+      </div>
+    @endif
 
     <button type="submit" class="btn btn-primary">Update Clinic Type</button>
     <a href="{{ route('admin.clinic-types.index') }}" class="btn btn-link">Cancel</a>

@@ -29,6 +29,8 @@ class User extends Authenticatable
         'phone',
         'is_active',
         'is_system_admin',
+        'is_secretary',
+        'is_doctor',
         'age',
         'birthdate',
         'address',
@@ -56,6 +58,8 @@ class User extends Authenticatable
             'last_login' => 'datetime',
             'is_active' => 'boolean',
             'is_system_admin' => 'boolean',
+            'is_secretary' => 'boolean',
+            'is_doctor' => 'boolean',
             'password' => 'hashed',
         ];
     }
