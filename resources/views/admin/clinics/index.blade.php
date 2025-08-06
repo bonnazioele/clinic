@@ -24,7 +24,6 @@
           </thead>
           <tbody>
             @forelse($clinics as $clinic)
-            @if($clinic->status == 'Approved')
             <tr>
               <td>
                 @if($clinic->logo)
@@ -104,8 +103,6 @@
                   </form>
                 </div>
               </td>
-            </tr>
-            @endif
             </tr>
             @empty
             <tr>

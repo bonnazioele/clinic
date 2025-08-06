@@ -45,12 +45,12 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // All clinics for the main table (with type relationship and user who submitted)
-        $clinics = Clinic::with(['type', 'user'])
+        // Only pending clinics for the main table (with type relationship and user who submitted)
+        $clinics = Clinic::with(['type'])
+            ->where('status', 'Pending')
             ->orderByDesc('created_at')
             ->paginate(12);
 
-        // Get clinic types for the add clinic modal
         $clinicTypes = ClinicType::all();
 
         return view('admin.dashboard', compact(

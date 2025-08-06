@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Clinic;
 use Illuminate\Http\Request;
+use App\Models\Service;
 
 class ClinicController extends Controller
 {
@@ -22,7 +23,7 @@ class ClinicController extends Controller
         $clinics = $query->paginate(10);
         
         // Load only active services for the filter dropdown
-        $services = \App\Models\Service::active()->orderBy('service_name')->get();
+        $services = Service::active()->orderBy('service_name')->get();
 
         return view('clinics.index', compact('clinics', 'services'));
     }

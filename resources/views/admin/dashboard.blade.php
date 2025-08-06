@@ -143,7 +143,6 @@
                     </thead>
                     <tbody>
                         @forelse($clinics as $clinic)
-                        @if($clinic->status == 'Pending')
                         <tr id="clinic-row-{{ $clinic->id }}">
                             <td>
                                 @if($clinic->logo)
@@ -198,7 +197,6 @@
                                 </button>
                             </td>
                         </tr>
-                        @endif
                         @empty
                         <tr>
                             <td colspan="7" class="text-center py-4">
