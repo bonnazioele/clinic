@@ -20,9 +20,9 @@
     <div class="col-md-4">
       <select name="service_id" class="form-select">
         <option value="">All Services</option>
-        @foreach(\App\Models\Service::all() as $s)
-          <option value="{{ $s->id }}"
-            @selected(request('service_id')==$s->id)>{{ $s->name }}</option>
+        @foreach($services as $service)
+          <option value="{{ $service->id }}"
+            @selected(request('service_id')==$service->id)>{{ $service->service_name }}</option>
         @endforeach
       </select>
     </div>
@@ -41,7 +41,7 @@
             <p class="text-muted small mb-2">{{ $clinic->address }}</p>
             <div class="mb-3">
               @foreach($clinic->services as $svc)
-                <span class="badge bg-info text-dark">{{ $svc->name }}</span>
+                <span class="badge bg-info text-dark">{{ $svc->service_name }}</span>
               @endforeach
             </div>
             <a href="{{ route('appointments.create',['clinic_id'=>$clinic->id]) }}"
@@ -74,8 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Add markers and build bounds
   var bounds = L.latLngBounds();
   @foreach($clinics as $c)
-    @if($c->latitude && $c->longitude)
-      var marker = L.marker([{{ $c->latitude }}, {{ $c->longitude }}])
+    @if($c->gps_latitude && $c->gps_longitude)
+      var marker = L.marker([{{ $c->gps_latitude }}, {{ $c->gps_longitude }}])
         .addTo(map)
         .bindPopup(
           `<strong>{{ addslashes($c->name) }}</strong><br>{{ addslashes($c->address) }}`
