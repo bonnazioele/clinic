@@ -11,34 +11,69 @@ use Illuminate\Support\Facades\Storage;
 
 class ClinicController extends Controller
 {
-    public function __construct()
-    {
-        // Authorization handled by route middleware ('auth', 'can:access-admin-panel')
-    }
-
-    /**
-     * Display clinics.
-     */
     public function index()
     {
-        $clinics = Clinic::with(['services', 'type'])->latest()->paginate(10);
+        // Only show approved clinics
+        $clinics = Clinic::with(['services', 'type'])->where('status', 'Approved')->latest()->paginate(10);
         return view('admin.clinics.index', compact('clinics'));
     }
 
-    /**
-     * Show the form to create a new clinic.
-     */
+    public function approve(Request $request, $id)
+    {
+        $clinic = Clinic::find($id);
+        
+        if (!$clinic) {
+            return response()->json(['success' => false, 'message' => 'Clinic not found.'], 404);
+        }
+        
+        if ($clinic->status !== 'Pending') {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Only pending clinics can be approved.'
+            ], 400);
+        }
+
+        $duplicate = Clinic::where(function($q) use ($clinic) {
+            $q->where('name', $clinic->name)
+              ->orWhere('branch_code', $clinic->branch_code);
+        })
+        ->where('status', 'Approved')
+        ->where('id', '!=', $clinic->id)
+        ->first();
+        
+        if ($duplicate) {
+            return response()->json(['success' => false, 
+            'message' => 'A clinic with the same name, branch code, or email is already approved.'], 400);
+        }
+        
+        $clinic->update([
+            'status' => 'Approved',
+            'approved_at' => now(),
+            'approved_by' => auth()->id(),
+            'rejected_at' => null,
+            'rejected_by' => null,
+            'rejection_reason' => null,
+        ]);
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Clinic "' . $clinic->name . '" has been approved successfully!',
+            'clinic' => [
+                'id' => $clinic->id,
+                'name' => $clinic->name,
+                'status' => $clinic->status,
+                'approved_at' => $clinic->approved_at->format('M d, Y h:i A')
+            ]
+        ]);
+    }
+
     public function create()
     {
-        // Pass only active services and all clinic types into the view
         $services = Service::active()->get();
         $clinicTypes = ClinicType::all();
         return view('admin.clinics.create', compact('services', 'clinicTypes'));
     }
 
-    /**
-     * Store a new clinic.
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -55,7 +90,6 @@ class ClinicController extends Controller
             'service_ids.*'  => 'exists:services,id,is_active,1',
         ]);
 
-        // Handle logo upload
         $logoPath = null;
         if ($request->hasFile('logo')) {
             $logoPath = $request->file('logo')->store('clinic-logos', 'public');
@@ -76,22 +110,14 @@ class ClinicController extends Controller
         // Attach selected services
         $clinic->services()->sync($data['service_ids'] ?? []);
 
-        return redirect()
-            ->route('admin.clinics.index')
-            ->with('status','Clinic added successfully.');
+        return redirect()->route('admin.dashboard')->with('status','Clinic added successfully.');
     }
 
-    /**
-     * Display a specific clinic.
-     */
     public function show(Clinic $clinic)
     {
         return view('admin.clinics.show', compact('clinic'));
     }
 
-    /**
-     * Show the form to edit an existing clinic.
-     */
     public function edit(Clinic $clinic)
     {
         $services = Service::active()->get();
@@ -99,9 +125,6 @@ class ClinicController extends Controller
         return view('admin.clinics.edit', compact('clinic','services','clinicTypes'));
     }
 
-    /**
-     * Update a clinic.
-     */
     public function update(Request $request, Clinic $clinic)
     {
         $data = $request->validate([
@@ -118,9 +141,7 @@ class ClinicController extends Controller
             'service_ids.*'  => 'exists:services,id,is_active,1',
         ]);
 
-        // Handle logo upload
         if ($request->hasFile('logo')) {
-            // Delete old logo if exists
             if ($clinic->logo && \Storage::disk('public')->exists($clinic->logo)) {
                 \Storage::disk('public')->delete($clinic->logo);
             }
@@ -145,9 +166,6 @@ class ClinicController extends Controller
         return redirect()->route('admin.clinics.index')->with('status', 'Clinic updated successfully.');
     }
 
-    /**
-     * Delete a clinic.
-     */
     public function destroy(Clinic $clinic)
     {
         $clinic->delete();

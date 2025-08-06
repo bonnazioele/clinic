@@ -143,7 +143,8 @@
                     </thead>
                     <tbody>
                         @forelse($clinics as $clinic)
-                        <tr data-status="{{ $clinic->status }}" data-type="{{ $clinic->type_id }}" data-search="{{ strtolower($clinic->name . ' ' . ($clinic->user ? $clinic->user->email : ($clinic->email ?? ''))) }}">
+                        @if($clinic->status == 'Pending')
+                        <tr id="clinic-row-{{ $clinic->id }}">
                             <td>
                                 @if($clinic->logo)
                                 <img src="{{ asset('storage/' . $clinic->logo) }}" 
@@ -185,52 +186,25 @@
                                 @endif
                             </td>
                             <td>
-                                @if($clinic->status == 'Approved')
-                                    <span class="badge bg-success">{{ $clinic->status }}</span>
-                                @elseif($clinic->status == 'Pending')
-                                    <span class="badge bg-warning">{{ $clinic->status }}</span>
-                                @elseif($clinic->status == 'Rejected')
-                                    <span class="badge bg-danger">{{ $clinic->status }}</span>
-                                @else
-                                    <span class="badge bg-secondary">{{ $clinic->status }}</span>
-                                @endif
-                                @if($clinic->status != 'Pending')
-                                <div class="small text-muted mt-1">
-                                    {{ $clinic->status == 'Approved' ? 'Approved ' . ($clinic->approved_at ? $clinic->approved_at->format('M d, Y') : '') : 'Rejected ' . ($clinic->rejected_at ? $clinic->rejected_at->format('M d, Y') : '') }}
-                                </div>
-                                @endif
+                                <span class="badge bg-warning">Pending</span>
                             </td>
                             <td class="small">
                                 <div>{{ $clinic->created_at->format('M d, Y') }}</div>
                                 <div class="text-muted">{{ $clinic->created_at->format('h:i A') }}</div>
                             </td>
                             <td>
-                                <div class="d-flex justify-content-between align-items-center gap-">
-                                    @if($clinic->status == 'Pending')
-                                    <button class="btn btn-sm btn-success approve-btn" 
-                                            data-id="{{ $clinic->id }}"
-                                            style="background-color: #28a745; border-color: #28a745;">
-                                        <i class="fas fa-check me-1"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger reject-btn" 
-                                            data-id="{{ $clinic->id }}"
-                                            style="background-color: #dc3545; border-color: #dc3545;">
-                                        <i class="fas fa-times me-1"></i> 
-                                    </button>
-                                    @endif
-                                    <button class="btn btn-sm btn-primary view-btn" 
-                                            data-id="{{ $clinic->id }}"
-                                            style="background-color: #0d6efd; border-color: #0d6efd;">
-                                        <i class="fas fa-eye me-1"></i>
-                                    </button>
+                                <button class="btn btn-sm btn-success approve-btn" data-id="{{ $clinic->id }}" data-name="{{ $clinic->name }}">
+                                    <i class="fas fa-check me-1"></i> Approve
+                                </button>
                             </td>
                         </tr>
+                        @endif
                         @empty
                         <tr>
                             <td colspan="7" class="text-center py-4">
                                 <i class="fas fa-hospital fa-3x text-muted mb-3"></i>
-                                <h5 class="text-muted">No clinic registrations found</h5>
-                                <p class="text-muted">There are currently no clinic registrations to display.</p>
+                                <h5 class="text-muted">No pending clinics found</h5>
+                                <p class="text-muted">There are currently no pending clinic registrations to display.</p>
                             </td>
                         </tr>
                         @endforelse
@@ -292,33 +266,27 @@
         </div>
     </div>
 </div>
+@endsection
 
-<!-- Rejection Reason Modal -->
-<div class="modal fade" id="rejectionModal" tabindex="-1" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="rejectionModalLabel">Reject Clinic Registration</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="approveModalLabel">Approve Clinic</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="rejectionForm">
-                    <input type="hidden" id="rejectClinicId">
-                    <div class="mb-3">
-                        <label for="rejectionReason" class="form-label">Reason for Rejection</label>
-                        <textarea class="form-control" id="rejectionReason" rows="4" required></textarea>
-                    </div>
-                </form>
+                <p>Are you sure you want to approve <strong id="approveClinicName"></strong>?</p>
+                <div id="approveError" class="alert alert-danger d-none"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmRejectBtn">Confirm Rejection</button>
+                <button type="button" class="btn btn-success" id="confirmApproveBtn">Approve</button>
             </div>
         </div>
     </div>
 </div>
-
-@endsection
 
 @section('styles')
 <style>
@@ -499,4 +467,8 @@
         font-size: 0.75rem;
     }
 </style>
+@endsection
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 @endsection

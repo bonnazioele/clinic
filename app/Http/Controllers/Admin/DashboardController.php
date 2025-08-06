@@ -28,15 +28,19 @@ class DashboardController extends Controller
         $activeServices = Service::active()->count();
         $totalClinicTypes = ClinicType::count();
 
-        // Recent approvals and rejections (with relationships)
-        $recentApprovals = Clinic::with(['approvedBy', 'type'])
-            ->status('Approved')
+        // Recent approvals and rejections (with relationships) - only get records that have approval/rejection data
+        $recentApprovals = Clinic::with(['approver', 'type'])
+            ->where('status', 'Approved')
+            ->whereNotNull('approved_at')
+            ->whereNotNull('approved_by')
             ->orderByDesc('approved_at')
             ->take(5)
             ->get();
 
-        $recentRejections = Clinic::with(['rejectedBy', 'type'])
-            ->status('Rejected')
+        $recentRejections = Clinic::with(['rejector', 'type'])
+            ->where('status', 'Rejected')
+            ->whereNotNull('rejected_at')
+            ->whereNotNull('rejected_by')
             ->orderByDesc('rejected_at')
             ->take(5)
             ->get();
@@ -62,41 +66,6 @@ class DashboardController extends Controller
             'activeServices',
             'totalClinicTypes'
         ));
-    }
-
-    /**
-     * Approve a clinic registration
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function approveClinic(Request $request, $id)
-    {
-        $clinic = Clinic::findOrFail($id);
-
-        // Validate the clinic is in pending status
-        if ($clinic->status !== 'Pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Clinic is not in pending status'
-            ], 400);
-        }
-
-        // Update clinic status
-        $clinic->update([
-            'status' => 'Approved',
-            'approved_at' => now(),
-            'approved_by' => auth()->id(),
-            'rejected_at' => null,
-            'rejected_by' => null,
-            'rejection_reason' => null,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Clinic approved successfully',
-        ]);
     }
 
     /**

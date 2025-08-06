@@ -49,19 +49,9 @@
                             class="btn btn-outline-primary">
                             <i class="fas fa-edit"></i>
                         </a>
-                        @if($clinicType->clinics()->count() > 0)
-                            <button type="button" class="btn btn-outline-danger" disabled title="Cannot delete clinic type that is being used by {{ $clinicType->clinics()->count() }} clinic(s)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        @else
-                            <button type="button" class="btn btn-outline-danger" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#deleteClinicTypeModal"
-                                data-clinic-type-id="{{ $clinicType->id }}"
-                                data-clinic-type-name="{{ $clinicType->type_name }}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        @endif
+                        <button type="button" class="btn btn-outline-danger" wire:click="confirmDelete({{ $clinicType->id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                   </td>
                 </tr>
@@ -86,41 +76,4 @@
       @endif
     </div>
   </div>
-
-  <!-- Delete Modal -->
-  <x-delete-modal 
-    id="deleteClinicTypeModal"
-    title="Delete Clinic Type"
-    route=""
-    itemName=""
-    deleteText="Delete Clinic Type"
-    cancelText="Cancel">
-    This action cannot be undone. Are you sure you want to delete this clinic type?
-  </x-delete-modal>
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteModal = document.getElementById('deleteClinicTypeModal');
-    const deleteForm = deleteModal.querySelector('form');
-    const modalTitle = deleteModal.querySelector('.modal-title');
-    const modalBody = deleteModal.querySelector('.modal-body');
-    
-    // Handle delete button clicks
-    document.querySelectorAll('[data-bs-target="#deleteClinicTypeModal"]').forEach(button => {
-        button.addEventListener('click', function() {
-            const clinicTypeId = this.getAttribute('data-clinic-type-id');
-            const clinicTypeName = this.getAttribute('data-clinic-type-name');
-            const deleteUrl = "{{ route('admin.clinic-types.destroy', ':id') }}".replace(':id', clinicTypeId);
-            
-            // Update form action
-            deleteForm.action = deleteUrl;
-            
-            // Update modal content
-            modalBody.innerHTML = `This action cannot be undone. Are you sure you want to delete <strong>${clinicTypeName}</strong>?`;
-        });
-    });
-});
-</script>
-@endpush
