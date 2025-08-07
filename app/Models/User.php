@@ -29,28 +29,16 @@ class User extends Authenticatable
         'phone',
         'is_active',
         'is_system_admin',
-        'is_secretary',
-        'is_doctor',
         'age',
         'birthdate',
         'address',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -58,8 +46,6 @@ class User extends Authenticatable
             'last_login' => 'datetime',
             'is_active' => 'boolean',
             'is_system_admin' => 'boolean',
-            'is_secretary' => 'boolean',
-            'is_doctor' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -98,5 +84,23 @@ public function appointments()
             'doctor_id',
             'service_id'
         );
+    }
+
+    public function hasClinicRole(string $roleName, $clinicId = null): bool
+    {
+        return $this->clinicUserRoles()
+            ->whereHas('role', function ($query) use ($roleName) {
+                $query->where('role_name', $roleName);
+            })
+            ->when($clinicId, function ($query) use ($clinicId) {
+                $query->where('clinic_id', $clinicId);
+            })
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function doctor()
+    {
+        return $this->hasOne(Doctor::class);
     }
 }

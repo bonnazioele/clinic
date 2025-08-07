@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use App\Models\User;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -27,7 +28,8 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         Gate::define('access-secretary-panel', function ($user) {
-            return $user->is_secretary; // boolean check from users table
+            return $user->hasClinicRole('secretary', session('clinic_id'));
         });
+
     }
 }

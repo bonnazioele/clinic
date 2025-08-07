@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         // Run specific seeders
         $this->call([
+            RoleSeeder::class,
             SecretarySeeder::class,
         ]);
 
