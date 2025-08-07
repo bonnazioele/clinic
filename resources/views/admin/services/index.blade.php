@@ -80,7 +80,14 @@
           {{ $services->links() }}
         </div>
       @else
-        <x-empty-state icon="fas fa-concierge-bell" title="No services found" subtitle="Start by adding your first service to get started." buttonLabel="Add First Service" :buttonRoute="route('admin.services.create')" buttonIcon="fas fa-plus"/>
+        <div class="text-center py-5">
+          <i class="fas fa-building fa-3x text-muted mb-3"></i>
+          <h5 class="text-muted">No services found</h5>
+          <p class="text-muted">Start by adding your first services.</p>
+          <a href="{{ route('admin.clinic-services.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Add First Clinic Type
+          </a>
+        </div>
       @endif
     </div>
   </div>
