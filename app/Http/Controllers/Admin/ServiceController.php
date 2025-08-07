@@ -8,22 +8,16 @@ use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    public function __construct()
+    public function index()
     {
-        // Authorization handled by route middleware ('auth', 'can:access-admin-panel')
+        $services = Service::orderBy('service_name')->paginate(10);
+        return view('admin.services.index', compact('services'));
     }
-
-    /**
-     * Form to create a new service.
-     */
     public function create()
     {
         return view('admin.services.create');
     }
 
-    /**
-     * Store a new service.
-     */
     public function store(Request $request)
     {
         $validated = $this->validator($request->all())->validate();
@@ -47,9 +41,6 @@ class ServiceController extends Controller
             ->with('status', 'Service added successfully.');
     }
 
-    /**
-     * Get a validator for an incoming service creation request.
-     */
     protected function validator(array $data)
     {
         return \Validator::make($data, [
@@ -68,17 +59,11 @@ class ServiceController extends Controller
         ]);
     }
 
-    /**
-     * Form to edit an existing service.
-     */
     public function edit(Service $service)
     {
         return view('admin.services.edit', compact('service'));
     }
 
-    /**
-     * Update a service.
-     */
     public function update(Request $request, Service $service)
     {
         $data = $request->validate([
@@ -93,6 +78,27 @@ class ServiceController extends Controller
         $service->update($data);
         return redirect()->route('admin.services.index')->with('status', 'Service updated successfully.');
     }
+
+    public function toggleStatus(Service $service)
+    {
+        try {
+            $clinicsCount = $service->clinics()->count();
+
+            if ($service->is_active && $clinicsCount > 0) {
+                return redirect()->back()->with('error', "Cannot deactivate: Service is currently used by {$clinicsCount} clinic(s).");
+            }
+
+            $service->is_active = !$service->is_active;
+            $service->save();
+
+            return redirect()->back()->with('success', 'Service successfully ' . ($service->is_active ? 'activated' : 'deactivated'));
+        } catch (\Exception $e) {
+            \Log::error("[ToggleStatus] " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'An error occurred while updating the service.');
+        }
+    }
+
+
     public function destroy(Service $service)
     {
         if ($service->is_active) {

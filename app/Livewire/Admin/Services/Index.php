@@ -30,18 +30,18 @@ class Index extends Component
     {
     }
 
-    public function render()
-    {
-        $services = collect();
+    // public function render()
+    // {
+    //     $services = collect();
 
-        try {
-            $services = Service::with('clinics')->latest()->paginate(10);
-            \Log::info('Loaded services: ' . $services->count());
-        } catch (\Exception $e) {
-            $this->logError($e, 'Render');
-        }
-        return view('livewire.admin.services.index', compact('services'))->layout('admin.layouts.app');
-    }
+    //     try {
+    //         $services = Service::with('clinics')->latest()->paginate(10);
+    //         \Log::info('Loaded services: ' . $services->count());
+    //     } catch (\Exception $e) {
+    //         $this->logError($e, 'Render');
+    //     }
+    //     return view('livewire.admin.services.index', compact('services'))->layout('admin.layouts.app');
+    // }
 
     public function confirmToggle($serviceId)
     {

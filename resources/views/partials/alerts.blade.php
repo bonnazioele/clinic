@@ -5,6 +5,20 @@
   </div>
 @endif
 
+@if (session('success'))
+  <div class="alert alert-success alert-dismissible fade show auto-dismiss" role="alert" data-auto-dismiss="5000">
+    {{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+@endif
+
+@if (session('error'))
+  <div class="alert alert-danger alert-dismissible fade show auto-dismiss" role="alert" data-auto-dismiss="5000">
+    {{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+@endif
+
 @if ($errors->any())
   <div class="alert alert-danger alert-dismissible fade show auto-dismiss" role="alert" data-auto-dismiss="5000">
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
