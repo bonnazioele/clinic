@@ -13,10 +13,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Run specific seeders
+        // Run comprehensive seeder that creates all required data
         $this->call([
-            RoleSeeder::class,
-            SecretarySeeder::class,
+            ComprehensiveSeeder::class,
         ]);
 
         $this->command->info('Database seeding completed!');

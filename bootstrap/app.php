@@ -11,7 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Register clinic context middleware for authenticated routes
+        $middleware->alias([
+            'clinic.context' => \App\Http\Middleware\SetClinicContext::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

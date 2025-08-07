@@ -27,7 +27,8 @@ class RouteServiceProvider extends ServiceProvider
             ->group(base_path('routes/admin.php'));
 
         // Ensure secretary routes are protected by 'can:access-secretary-panel' middleware
-        Route::middleware(['web', 'auth', 'can:access-secretary-panel'])
+        // Note: clinic.context middleware is applied first to set session before gate check
+        Route::middleware(['web', 'auth', 'clinic.context', 'can:access-secretary-panel'])
             ->prefix('secretary')
             ->as('secretary.')
             ->group(base_path('routes/secretary.php'));

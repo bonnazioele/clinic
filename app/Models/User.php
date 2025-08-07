@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\Service;
+use App\Models\ClinicUserRole;
 
 
 class User extends Authenticatable
@@ -80,10 +81,53 @@ public function appointments()
     {
         return $this->belongsToMany(
             Service::class,
-            'doctor_service',
+            'clinic_doctor_services',  // Updated table name
             'doctor_id',
             'service_id'
-        );
+        )->withPivot('clinic_id', 'duration', 'is_active')
+         ->withTimestamps();
+    }
+
+    /**
+     * Get services for a specific clinic
+     */
+    public function servicesForClinic($clinicId)
+    {
+        return $this->services()->wherePivot('clinic_id', $clinicId);
+    }
+
+    /**
+     * Get all clinics where this user is assigned (any role)
+     */
+    public function assignedClinics()
+    {
+        return $this->belongsToMany(
+            Clinic::class,
+            'clinic_user_roles',
+            'user_id',
+            'clinic_id'
+        )->withPivot('role_id', 'is_active')
+         ->wherePivot('is_active', true)
+         ->with('type');
+    }
+
+    /**
+     * Get clinics where this user is a secretary
+     */
+    public function secretaryClinics()
+    {
+        return $this->belongsToMany(
+            Clinic::class,
+            'clinic_user_roles',
+            'user_id',
+            'clinic_id'
+        )->withPivot('role_id', 'is_active')
+         ->wherePivot('is_active', true)
+         ->whereHas('pivotParent', function($q) {
+             $q->whereHas('role', function($roleQ) {
+                 $roleQ->where('role_name', 'secretary');
+             });
+         });
     }
 
     public function hasClinicRole(string $roleName, $clinicId = null): bool
@@ -97,6 +141,77 @@ public function appointments()
             })
             ->where('is_active', true)
             ->exists();
+    }
+
+    /**
+     * Get all clinic-user-role relationships for this user.
+     */
+    public function clinicUserRoles()
+    {
+        return $this->hasMany(ClinicUserRole::class, 'user_id');
+    }
+
+    /**
+     * Check if user is secretary at any clinic or specific clinic.
+     */
+    public function isSecretaryAt($clinicId): bool
+    {
+        return $this->clinicUserRoles()
+            ->where('clinic_id', $clinicId)
+            ->whereHas('role', fn($q) => $q->where('role_name', 'secretary'))
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    /**
+     * Check if user is secretary at any clinic.
+     */
+    public function isSecretary(): bool
+    {
+        return $this->clinicUserRoles()
+            ->whereHas('role', fn($q) => $q->where('role_name', 'secretary'))
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    /**
+     * Check if user is staff at any clinic or specific clinic.
+     */
+    public function isStaffAt($clinicId = null): bool
+    {
+        return $this->hasClinicRole('staff', $clinicId);
+    }
+
+    /**
+     * Check if user is doctor at any clinic or specific clinic.
+     */
+    public function isDoctorAt($clinicId = null): bool
+    {
+        return $this->hasClinicRole('doctor', $clinicId);
+    }
+
+    /**
+     * Scope to get users who are doctors at any clinic.
+     */
+    public function scopeDoctors($query)
+    {
+        return $query->whereHas('clinicUserRoles', function($q) {
+            $q->whereHas('role', function($roleQuery) {
+                $roleQuery->where('role_name', 'doctor');
+            })->where('is_active', true);
+        });
+    }
+
+    /**
+     * Scope to get users who are secretaries at any clinic.
+     */
+    public function scopeSecretaries($query)
+    {
+        return $query->whereHas('clinicUserRoles', function($q) {
+            $q->whereHas('role', function($roleQuery) {
+                $roleQuery->where('role_name', 'secretary');
+            })->where('is_active', true);
+        });
     }
 
     public function doctor()

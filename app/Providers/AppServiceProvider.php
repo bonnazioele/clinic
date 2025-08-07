@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View;
+use App\Http\View\Composers\ClinicContextComposer;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register view composer for clinic context
+        View::composer([
+            'layouts.app',
+            'secretary.*',
+            'staff.*'
+        ], ClinicContextComposer::class);
     }
 }

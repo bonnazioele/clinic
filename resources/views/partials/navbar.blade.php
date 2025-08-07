@@ -3,10 +3,10 @@
     {{-- Brand --}}
     <a class="navbar-brand"
        href="{{ auth()->check()
-           ? (auth()->user()->is_admin
+           ? (auth()->user()->is_system_admin
               ? route('admin.clinics.index')
-              : (auth()->user()->is_secretary
-                 ? route('secretary.appointments.index')
+              : (auth()->user()->isSecretary()
+                 ? route('secretary.dashboard')
                  : route('dashboard')))
            : route('welcome') }}">
       CliniQ
@@ -33,7 +33,7 @@
             </a>
           </li>
         @else
-          @if(auth()->user()->is_admin)
+          @if(auth()->user()->is_system_admin)
             {{-- Admin sees Manage Clinics + Services --}}
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('admin.clinics.*')) active @endif"
@@ -48,7 +48,7 @@
               </a>
             </li>
 
-          @elseif(auth()->user()->is_secretary)
+          @elseif(auth()->user()->isSecretary())
             {{-- Secretary sees Manage Appointments + Doctors --}}
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('secretary.appointments.*')) active @endif"
