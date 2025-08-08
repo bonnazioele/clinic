@@ -38,52 +38,92 @@ class ServiceController extends Controller
     }
 
     /**
-     * Show the form for creating a new service.
+     * Show available services to add to clinic.
      */
     public function create()
     {
         $clinicId = $this->getCurrentClinicId();
         
         if (!$clinicId) {
-            return redirect()->route('secretary.dashboard')->with('error', 'No clinic context available.');
+            return response()->json(['error' => 'No clinic context available.'], 400);
         }
 
-        return view('secretary.services.create');
+        // Get all active services not assigned to current clinic
+        $assignedServiceIds = Service::whereHas('clinics', function($query) use ($clinicId) {
+            $query->where('clinic_id', $clinicId);
+        })->pluck('id')->toArray();
+
+        $availableServices = Service::where('is_active', true)
+            ->whereNotIn('id', $assignedServiceIds)
+            ->orderBy('service_name', 'asc')
+            ->get(['id', 'service_name', 'description']);
+
+        return response()->json([
+            'services' => $availableServices,
+            'assigned_count' => count($assignedServiceIds)
+        ]);
     }
 
     /**
-     * Store a newly created service in storage.
+     * Store selected services to clinic.
      */
     public function store(Request $request)
     {
         $clinicId = $this->getCurrentClinicId();
         
         if (!$clinicId) {
-            return redirect()->route('secretary.dashboard')->with('error', 'No clinic context available.');
+            return response()->json(['error' => 'No clinic context available.'], 400);
         }
 
         $validated = $request->validate([
-            'service_name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'service_ids' => 'required|array|min:1',
+            'service_ids.*' => 'required|integer|exists:services,id',
             'duration_minutes' => 'required|integer|min:5|max:480',
-            'is_active' => 'boolean',
         ]);
 
-        // Create the service
-        $service = Service::create([
-            'service_name' => $validated['service_name'],
-            'description' => $validated['description'],
-            'is_active' => true,
-        ]);
+        $addedServices = [];
+        $errors = [];
 
-        // Attach to current clinic with duration and active status
-        $service->clinics()->attach($clinicId, [
-            'duration_minutes' => $validated['duration_minutes'],
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        foreach ($validated['service_ids'] as $serviceId) {
+            $service = Service::find($serviceId);
+            
+            if (!$service || !$service->is_active) {
+                $errors[] = "Service ID {$serviceId} is not available.";
+                continue;
+            }
 
-        return redirect()->route('secretary.services.index')
-            ->with('success', 'Service created successfully.');
+            // Check if already assigned
+            if ($service->clinics()->where('clinic_id', $clinicId)->exists()) {
+                $errors[] = "Service '{$service->service_name}' is already assigned to this clinic.";
+                continue;
+            }
+
+            // Attach to current clinic
+            $service->clinics()->attach($clinicId, [
+                'duration_minutes' => $validated['duration_minutes'],
+                'is_active' => true,
+            ]);
+
+            $addedServices[] = $service->service_name;
+        }
+
+        $response = [];
+        
+        if (count($addedServices) > 0) {
+            $response['success'] = count($addedServices) === 1 
+                ? "Service '{$addedServices[0]}' added successfully."
+                : count($addedServices) . " services added successfully: " . implode(', ', $addedServices);
+        }
+
+        if (count($errors) > 0) {
+            $response['errors'] = $errors;
+        }
+
+        if (empty($addedServices)) {
+            return response()->json(['error' => 'No services were added.'], 400);
+        }
+
+        return response()->json($response);
     }
 
     /**

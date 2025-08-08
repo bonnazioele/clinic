@@ -22,3 +22,7 @@ Route::resource('doctors', SecDoctor::class)
 // Secretary services management  
 Route::resource('services', SecService::class)
      ->only(['index', 'create', 'store', 'destroy']);
+
+// AJAX routes for services
+Route::get('services/available', [SecService::class, 'create'])->name('services.available');
+Route::post('services/add-to-clinic', [SecService::class, 'store'])->name('services.add-to-clinic');
