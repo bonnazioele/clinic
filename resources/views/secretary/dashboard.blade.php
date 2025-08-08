@@ -6,7 +6,9 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1">Welcome, {{ auth()->user()->name }}</h2>
+            <h2 class="clinic-name">
+                {{ session('current_clinic_name', 'Clinic Name') }}
+</h2>
         </div>
         
         <div class="d-flex align-items-center gap-3">
