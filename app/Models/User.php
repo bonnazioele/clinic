@@ -93,7 +93,9 @@ public function appointments()
      */
     public function servicesForClinic($clinicId)
     {
-        return $this->services()->wherePivot('clinic_id', $clinicId);
+        return $this->services()
+            ->wherePivot('clinic_id', $clinicId)
+            ->select('services.*'); // Explicitly select from services table to avoid ambiguous 'id'
     }
 
     /**

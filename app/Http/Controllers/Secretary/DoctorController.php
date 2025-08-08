@@ -40,7 +40,12 @@ class DoctorController extends Controller
         // Get current clinic for context
         $clinic = Clinic::findOrFail($clinicId);
 
-        return view('secretary.doctors.index', compact('doctors', 'clinic'));
+        // Get available services for the clinic (for filter dropdown)
+        $availableServices = Service::whereHas('clinics', function($query) use ($clinicId) {
+            $query->where('clinic_id', $clinicId);
+        })->orderBy('service_name')->get();
+
+        return view('secretary.doctors.index', compact('doctors', 'clinic', 'availableServices'));
     }
 
     /** GET /secretary/doctors/create */
