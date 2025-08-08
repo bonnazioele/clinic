@@ -52,8 +52,7 @@ class ComprehensiveSeeder extends Seeder
         // 3. Create 3 roles (secretary, staff, and doctor)
         $roles = [
             ['role_name' => 'secretary', 'description' => 'Administrative staff responsible for clinic management and patient coordination'],
-            ['role_name' => 'staff', 'description' => 'General clinic staff providing support services'],
-            ['role_name' => 'doctor', 'description' => 'Medical professional providing healthcare services']
+            ['role_name' => 'staff', 'description' => 'General clinic staff providing support services']
         ];
 
         foreach ($roles as $role) {
