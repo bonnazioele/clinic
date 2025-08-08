@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DoctorSchedule extends Model
 {
+    protected $table = 'doctors_schedules';
+
     protected $fillable = [
         'doctor_id',
         'clinic_id',
@@ -14,6 +16,12 @@ class DoctorSchedule extends Model
         'end_time',
         'max_patients',
         'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
     ];
 
     public function doctor()

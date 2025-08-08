@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Secretary;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Doctor;
+use App\Models\DoctorSchedule;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
@@ -13,6 +16,7 @@ use App\Models\Clinic;
 use App\Models\Service;
 use App\Models\Role;
 use App\Models\ClinicUserRole;
+use Illuminate\Validation\Rule;
 
 class DoctorController extends Controller
 {
@@ -85,65 +89,211 @@ class DoctorController extends Controller
             abort(403, 'Unauthorized to manage doctors for this clinic.');
         }
 
+        // Comprehensive validation
         $validated = $request->validate([
+            // Personal Information
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'gender' => ['nullable', Rule::in(['male', 'female', 'other'])],
             'phone' => 'nullable|string|max:20',
             'age' => 'nullable|integer|min:18|max:100',
-            'birthdate' => 'nullable|date',
+            'birthdate' => 'nullable|date|before:today',
             'address' => 'nullable|string|max:500',
-            'services' => 'array',
-            'services.*' => 'exists:services,id',
-        ]);
-
-        // Create the user
-        $doctor = User::create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'phone' => $validated['phone'] ?? null,
-            'age' => $validated['age'] ?? null,
-            'birthdate' => $validated['birthdate'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'is_active' => true,
-            'is_system_admin' => false,
-        ]);
-
-        // Assign doctor role to current clinic only
-        $doctorRole = Role::where('role_name', 'doctor')->first();
-        
-        ClinicUserRole::create([
-            'user_id' => $doctor->id,
-            'clinic_id' => $clinicId, // Enforce current clinic
-            'role_id' => $doctorRole->id,
-            'is_active' => true,
-            'assigned_by' => auth()->id(),
-        ]);
-
-        // Assign services to doctor for current clinic only
-        if (!empty($validated['services'])) {
-            // Verify all services belong to current clinic
-            $clinic = Clinic::findOrFail($clinicId);
-            $validServices = $clinic->services()->whereIn('id', $validated['services'])->pluck('id');
             
-            foreach ($validServices as $serviceId) {
-                DB::table('clinic_doctor_services')->insert([
-                    'doctor_id' => $doctor->id,
-                    'clinic_id' => $clinicId, // Enforce current clinic
-                    'service_id' => $serviceId,
-                    'duration' => 30, // Default duration
-                    'is_active' => true,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            // Account Credentials
+            'password' => 'required|string|min:8|confirmed',
+            
+            // Professional Information
+            'years_of_experience' => 'nullable|integer|min:0|max:50',
+            'biography' => 'nullable|string|max:1000',
+            
+            // Services Assignment
+            'services' => 'nullable|array',
+            'services.*' => 'exists:services,id',
+            
+            // Schedule Information
+            'schedules' => 'nullable|array',
+            'schedules.*.day_of_week' => ['required_with:schedules', Rule::in(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])],
+            'schedules.*.start_time' => 'required_with:schedules|date_format:H:i',
+            'schedules.*.end_time' => 'required_with:schedules|date_format:H:i|after:schedules.*.start_time',
+            'schedules.*.max_patients' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        // Additional custom validation for schedules
+        if (!empty($validated['schedules'])) {
+            $daySchedules = [];
+            foreach ($validated['schedules'] as $index => $schedule) {
+                $day = $schedule['day_of_week'];
+                
+                // Check for duplicate days
+                if (in_array($day, $daySchedules)) {
+                    return back()->withErrors(['schedules' => "Duplicate schedule for {$day}. Each day can only have one schedule."])
+                               ->withInput();
+                }
+                $daySchedules[] = $day;
+                
+                // Validate time logic
+                if ($schedule['start_time'] >= $schedule['end_time']) {
+                    return back()->withErrors(['schedules' => "End time must be after start time for {$day}."])
+                               ->withInput();
+                }
             }
         }
 
-        return redirect()->route('secretary.doctors.index')
-            ->with('success', 'Doctor created successfully and assigned to your clinic.');
+        DB::beginTransaction();
+
+        try {
+            // 1. Create the user
+            $user = User::create([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['phone'] ?? null,
+                'age' => $validated['age'] ?? null,
+                'birthdate' => $validated['birthdate'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'gender' => $validated['gender'] ?? null,
+                'is_active' => true,
+                'is_system_admin' => false,
+            ]);
+
+            // 2. Create doctor profile
+            $doctorProfile = Doctor::create([
+                'user_id' => $user->id,
+                'years_of_experience' => $validated['years_of_experience'] ?? 0,
+                'biography' => $validated['biography'] ?? null,
+            ]);
+
+            // 3. Assign doctor role to current clinic
+            $doctorRole = Role::where('role_name', 'doctor')->first();
+            
+            if (!$doctorRole) {
+                throw new \Exception('Doctor role not found in the system.');
+            }
+            
+            ClinicUserRole::create([
+                'user_id' => $user->id,
+                'clinic_id' => $clinicId,
+                'role_id' => $doctorRole->id,
+                'is_active' => true,
+                'assigned_by' => auth()->id(),
+            ]);
+
+            // 4. Assign services to doctor for current clinic
+            if (!empty($validated['services'])) {
+                $clinic = Clinic::findOrFail($clinicId);
+                $validServices = $clinic->services()->whereIn('services.id', $validated['services'])->pluck('services.id');
+                
+                foreach ($validServices as $serviceId) {
+                    DB::table('clinic_doctor_services')->insert([
+                        'doctor_id' => $doctorProfile->id,
+                        'clinic_id' => $clinicId,
+                        'service_id' => $serviceId,
+                        'duration' => 30, // Default 30 minutes
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            // 5. Create doctor schedules
+            if (!empty($validated['schedules'])) {
+                foreach ($validated['schedules'] as $scheduleData) {
+                    DoctorSchedule::create([
+                        'doctor_id' => $doctorProfile->id,
+                        'clinic_id' => $clinicId,
+                        'day_of_week' => $scheduleData['day_of_week'],
+                        'start_time' => $scheduleData['start_time'],
+                        'end_time' => $scheduleData['end_time'],
+                        'max_patients' => $scheduleData['max_patients'] ?? 10,
+                        'is_active' => true,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $successMessage = 'Doctor created successfully and assigned to your clinic.';
+            if (!empty($validated['services'])) {
+                $successMessage .= ' Services have been assigned.';
+            }
+            if (!empty($validated['schedules'])) {
+                $successMessage .= ' Schedule has been configured.';
+            }
+
+            return redirect()->route('secretary.doctors.index')
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return back()->withErrors(['error' => 'Failed to create doctor: ' . $e->getMessage()])
+                         ->withInput();
+        }
+    }
+
+    /** GET /secretary/doctors/{doctor} */
+    public function show(User $doctor)
+    {
+        // Get current clinic context
+        $clinicId = Session::get('current_clinic_id');
+        
+        if (!$clinicId) {
+            return redirect()->route('dashboard')->with('error', 'No clinic context found. Please contact administrator.');
+        }
+
+        // Ensure user can manage doctors for this clinic
+        if (!Gate::allows('manage-clinic-doctors', $clinicId)) {
+            abort(403, 'Unauthorized to manage doctors for this clinic.');
+        }
+
+        // Ensure doctor belongs to current clinic
+        $doctorBelongsToClinic = $doctor->clinicUserRoles()
+            ->where('clinic_id', $clinicId)
+            ->whereHas('role', function($q) {
+                $q->where('role_name', 'doctor');
+            })
+            ->where('is_active', true)
+            ->exists();
+
+        if (!$doctorBelongsToClinic) {
+            abort(403, 'You can only view doctors assigned to your clinic.');
+        }
+
+        // Get doctor profile
+        $doctorProfile = $doctor->doctor;
+        
+        // Get current clinic for context
+        $clinic = Clinic::findOrFail($clinicId);
+
+        // Get doctor's services for this clinic
+        $doctorServices = $doctor->servicesForClinic($clinicId)->get();
+
+        // Get doctor's schedules for this clinic
+        $doctorSchedules = $doctorProfile ? $doctorProfile->schedules()
+            ->where('clinic_id', $clinicId)
+            ->where('is_active', true)
+            ->orderByRaw("FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
+            ->get() : collect();
+
+        // Get today's appointments count
+        $todayAppointments = $doctorProfile ? $doctorProfile->appointments()
+            ->where('clinic_id', $clinicId)
+            ->whereDate('appointment_date', today())
+            ->whereIn('status', ['scheduled', 'confirmed', 'in_progress'])
+            ->count() : 0;
+
+        return view('secretary.doctors.show', compact(
+            'doctor', 
+            'doctorProfile', 
+            'clinic', 
+            'doctorServices', 
+            'doctorSchedules', 
+            'todayAppointments'
+        ));
     }
 
     /** GET /secretary/doctors/{doctor}/edit */
@@ -257,7 +407,7 @@ class DoctorController extends Controller
 
             // Verify all services belong to current clinic
             $clinic = Clinic::findOrFail($clinicId);
-            $validServices = $clinic->services()->whereIn('id', $validated['services'])->pluck('id');
+            $validServices = $clinic->services()->whereIn('services.id', $validated['services'])->pluck('services.id');
 
             // Add new services for current clinic
             foreach ($validServices as $serviceId) {

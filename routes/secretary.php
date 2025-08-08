@@ -16,8 +16,7 @@ Route::resource('appointments', SecAppt::class)
      ->only(['index','edit','update','destroy']);
 
 // Secretary doctors management  
-Route::resource('doctors', SecDoctor::class)
-     ->except(['show']);
+Route::resource('doctors', SecDoctor::class);
 
 // Secretary services management  
 Route::resource('services', SecService::class)

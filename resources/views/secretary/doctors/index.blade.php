@@ -41,25 +41,24 @@
   </div>
 
   @if($doctors->isEmpty())
-    <div class="card border-0 shadow-sm">
-      <div class="card-body text-center py-5">
-        <i class="bi bi-people display-1 text-muted mb-3"></i>
-        <h5 class="text-muted">No Doctors Found</h5>
-        @if(request('search') || request('service'))
-          <p class="text-muted mb-3">No doctors match your current search criteria.</p>
-          <a href="{{ route('secretary.doctors.index') }}" class="btn btn-outline-secondary me-2">
-            <i class="bi bi-arrow-clockwise me-2"></i>
-            Clear Filters
-          </a>
-        @else
-          <p class="text-muted mb-3">Start by adding your first doctor to the clinic.</p>
-        @endif
-        <a href="{{ route('secretary.doctors.create') }}" class="btn btn-primary">
-          <i class="bi bi-person-plus me-2"></i>
-          Add First Doctor
-        </a>
-      </div>
-    </div>
+    @if(request('search') || request('service'))
+      <x-empty-state 
+        icon="bi-search"
+        title="No Doctors Found" 
+        message="No doctors match your current search criteria."
+        :action-text="'Add First Doctor'"
+        :action-url="route('secretary.doctors.create')"
+        :secondary-action-text="'Clear Filters'"
+        :secondary-action-url="route('secretary.doctors.index')"
+        :show-secondary-action="true" />
+    @else
+      <x-empty-state 
+        icon="bi-people"
+        title="No Doctors Found" 
+        message="Start by adding your first doctor to the clinic."
+        :action-text="'Add First Doctor'"
+        :action-url="route('secretary.doctors.create')" />
+    @endif
   @else
     <!-- Doctors Grid (2 Columns) -->
     <div class="row g-3" id="doctorsGrid">
@@ -92,7 +91,7 @@
               </div>
               
               <!-- Profile Button (Far Right) -->
-              <a href="{{ route('secretary.doctors.edit', $doctor) }}" class="btn btn-primary btn-sm ms-3">
+              <a href="{{ route('secretary.doctors.show', $doctor) }}" class="btn btn-primary btn-sm ms-3">
                 <i class="bi bi-person me-1"></i>
                 Profile
               </a>
@@ -103,16 +102,11 @@
     </div>
 
     <!-- No Results Message (Hidden by default, shown by JavaScript) -->
-    <div id="noResultsMessage" class="card border-0 shadow-sm" style="display: none;">
-      <div class="card-body text-center py-5">
-        <i class="bi bi-search display-1 text-muted mb-3"></i>
-        <h5 class="text-muted">No doctors match your search criteria</h5>
-        <p class="text-muted mb-3">Try adjusting your search terms or clearing the filters.</p>
-        <button type="button" class="btn btn-outline-secondary" id="clearFiltersBtn">
-          <i class="bi bi-arrow-clockwise me-2"></i>
-          Clear Filters
-        </button>
-      </div>
+    <div id="noResultsMessage" style="display: none;">
+      <x-empty-state 
+        icon="bi-search"
+        title="No doctors match your search criteria" 
+        message="Try adjusting your search terms or clearing the filters." />
     </div>
 
     <!-- Pagination -->
@@ -161,6 +155,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (visibleCount === 0 && (searchTerm || selectedService)) {
             doctorsGrid.style.display = 'none';
             noResultsMessage.style.display = 'block';
+            
+            // Add clear filters functionality to the component
+            const clearBtn = noResultsMessage.querySelector('.btn-outline-secondary');
+            if (clearBtn && !clearBtn.hasAttribute('data-listener-added')) {
+                clearBtn.addEventListener('click', clearFilters);
+                clearBtn.setAttribute('data-listener-added', 'true');
+            }
         } else {
             doctorsGrid.style.display = 'flex';
             noResultsMessage.style.display = 'none';
@@ -192,7 +193,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners
     searchInput.addEventListener('input', filterDoctors);
     serviceFilter.addEventListener('change', filterDoctors);
-    clearFiltersBtn.addEventListener('click', clearFilters);
     
     // Clear search on Escape key
     searchInput.addEventListener('keydown', function(e) {
