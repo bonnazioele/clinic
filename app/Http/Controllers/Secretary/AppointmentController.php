@@ -18,9 +18,18 @@ class AppointmentController extends Controller
 
     public function create()
     {
-        // Get current clinic context from session
+        // Get current clinic context
         $clinicId = Session::get('current_clinic_id');
         
+        if (!$clinicId) {
+            return redirect()->route('dashboard')->with('error', 'No clinic context found. Please contact administrator.');
+        }
+
+        // Ensure user can access this clinic's data
+        if (!Gate::allows('access-clinic-data', $clinicId)) {
+            abort(403, 'Unauthorized access to clinic data.');
+        }
+
         // Load only the current clinic's services and doctors
         $clinic = Clinic::with(['services'])->findOrFail($clinicId);
         
@@ -39,9 +48,18 @@ class AppointmentController extends Controller
     /** List & manage all appointments */
     public function index()
     {
-        // Get current clinic context from session
+        // Get current clinic context
         $clinicId = Session::get('current_clinic_id');
         
+        if (!$clinicId) {
+            return redirect()->route('dashboard')->with('error', 'No clinic context found. Please contact administrator.');
+        }
+
+        // Ensure user can manage appointments for this clinic
+        if (!Gate::allows('manage-clinic-appointments', $clinicId)) {
+            abort(403, 'Unauthorized to manage appointments for this clinic.');
+        }
+
         // Get appointments only for the current clinic
         $appointments = Appointment::with('user','clinic','service','doctor')
             ->where('clinic_id', $clinicId)
@@ -64,12 +82,21 @@ class AppointmentController extends Controller
     /** Show edit form */
     public function edit(Appointment $appointment)
     {
-        // Get current clinic context from session
+        // Get current clinic context
         $clinicId = Session::get('current_clinic_id');
         
+        if (!$clinicId) {
+            return redirect()->route('dashboard')->with('error', 'No clinic context found. Please contact administrator.');
+        }
+
         // Ensure appointment belongs to current clinic
         if ($appointment->clinic_id !== $clinicId) {
             abort(403, 'You can only edit appointments for your assigned clinic.');
+        }
+
+        // Ensure user can manage appointments for this clinic
+        if (!Gate::allows('manage-clinic-appointments', $clinicId)) {
+            abort(403, 'Unauthorized to manage appointments for this clinic.');
         }
 
         $clinic = Clinic::findOrFail($clinicId);
@@ -89,12 +116,21 @@ class AppointmentController extends Controller
     /** Persist changes */
     public function update(Request $req, Appointment $appointment)
     {
-        // Get current clinic context from session
+        // Get current clinic context
         $clinicId = Session::get('current_clinic_id');
         
+        if (!$clinicId) {
+            return redirect()->route('dashboard')->with('error', 'No clinic context found. Please contact administrator.');
+        }
+
         // Ensure appointment belongs to current clinic
         if ($appointment->clinic_id !== $clinicId) {
             abort(403, 'You can only edit appointments for your assigned clinic.');
+        }
+
+        // Ensure user can manage appointments for this clinic
+        if (!Gate::allows('manage-clinic-appointments', $clinicId)) {
+            abort(403, 'Unauthorized to manage appointments for this clinic.');
         }
 
         $data = $req->validate([
@@ -136,12 +172,21 @@ class AppointmentController extends Controller
     /** Delete if needed */
     public function destroy(Appointment $appointment)
     {
-        // Get current clinic context from session
+        // Get current clinic context
         $clinicId = Session::get('current_clinic_id');
         
+        if (!$clinicId) {
+            return redirect()->route('dashboard')->with('error', 'No clinic context found. Please contact administrator.');
+        }
+
         // Ensure appointment belongs to current clinic
         if ($appointment->clinic_id !== $clinicId) {
             abort(403, 'You can only delete appointments for your assigned clinic.');
+        }
+
+        // Ensure user can manage appointments for this clinic
+        if (!Gate::allows('manage-clinic-appointments', $clinicId)) {
+            abort(403, 'Unauthorized to manage appointments for this clinic.');
         }
 
         $appointment->delete();
