@@ -166,12 +166,18 @@
                                 <div class="col-12">
                                     <div class="d-flex align-items-center p-2 bg-light rounded">
                                         <i class="bi bi-check-circle text-success me-2"></i>
-                                        <div>
+                                        <div class="flex-grow-1">
                                             <strong>{{ $service->service_name }}</strong>
                                             @if($service->description)
                                                 <br><small class="text-muted">{{ $service->description }}</small>
                                             @endif
+                                            @if($service->pivot && $service->pivot->duration)
+                                                <br><small class="text-info">Duration: {{ $service->pivot->duration }} minutes</small>
+                                            @endif
                                         </div>
+                                        <span class="badge bg-{{ $service->pivot && $service->pivot->is_active ? 'success' : 'secondary' }}">
+                                            {{ $service->pivot && $service->pivot->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
                                     </div>
                                 </div>
                             @endforeach

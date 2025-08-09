@@ -272,40 +272,6 @@ class ComprehensiveSeeder extends Seeder
                 ]);
             }
 
-            // Create 1 doctor for each clinic
-            $doctorRole = Role::where('role_name', 'doctor')->first();
-            $doctorData = [
-                ['first_name' => 'Dr. Michael', 'last_name' => 'Thompson'],
-                ['first_name' => 'Dr. Sarah', 'last_name' => 'Chen'],
-                ['first_name' => 'Dr. Robert', 'last_name' => 'Williams'],
-                ['first_name' => 'Dr. Emily', 'last_name' => 'Rodriguez'],
-                ['first_name' => 'Dr. David', 'last_name' => 'Park']
-            ];
-
-            $doctor = User::firstOrCreate([
-                'email' => strtolower(str_replace([' ', '.'], '', $doctorData[$clinicIndex]['first_name']) . '.' . $doctorData[$clinicIndex]['last_name'] . '@' . str_replace(' ', '', strtolower($clinic->name)) . '.com')
-            ], [
-                'first_name' => $doctorData[$clinicIndex]['first_name'],
-                'last_name' => $doctorData[$clinicIndex]['last_name'],
-                'password' => Hash::make('password123'),
-                'phone' => '+1777' . str_pad($clinicIndex + 1, 3, '0', STR_PAD_LEFT) . '001',
-                'is_active' => true,
-                'is_system_admin' => false,
-                'age' => rand(30, 55),
-                'birthdate' => now()->subYears(rand(30, 55))->format('Y-m-d'),
-                'address' => 'Doctor Address, ' . $clinic->name
-            ]);
-
-            // Assign doctor role to clinic
-            ClinicUserRole::firstOrCreate([
-                'user_id' => $doctor->id,
-                'clinic_id' => $clinic->id,
-                'role_id' => $doctorRole->id
-            ], [
-                'is_active' => true,
-                'assigned_by' => $adminUsers->first()->id
-            ]);
-
             $clinicIndex++;
         }
 

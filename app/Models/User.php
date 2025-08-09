@@ -80,13 +80,12 @@ public function appointments()
 
     public function services()
     {
-        return $this->belongsToMany(
-            Service::class,
-            'clinic_doctor_services',  // Updated table name
-            'doctor_id',
-            'service_id'
-        )->withPivot('clinic_id', 'duration', 'is_active')
-         ->withTimestamps();
+        // Services are accessed through the doctor profile, not directly from user
+        if (!$this->doctor) {
+            return collect();
+        }
+        
+        return $this->doctor->services();
     }
 
     /**
@@ -94,8 +93,14 @@ public function appointments()
      */
     public function servicesForClinic($clinicId)
     {
-        return $this->services()
+        // If user doesn't have a doctor profile, return empty collection
+        if (!$this->doctor) {
+            return collect();
+        }
+        
+        return $this->doctor->services()
             ->wherePivot('clinic_id', $clinicId)
+            ->wherePivot('is_active', true)
             ->select('services.*'); // Explicitly select from services table to avoid ambiguous 'id'
     }
 
