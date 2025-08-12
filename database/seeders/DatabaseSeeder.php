@@ -13,11 +13,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Run specific seeders
-        $this->call([
-            SecretarySeeder::class,
-        ]);
+        // User::factory(10)->create();
 
-        $this->command->info('Database seeding completed!');
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
     }
 }

@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
@@ -24,46 +23,31 @@ class RegisterController extends Controller
     protected function validator(array $data)
     {
         return Validator::make($data, [
-            'first_name'        => ['required', 'string', 'max:50'],
-            'last_name'         => ['required', 'string', 'max:50'],
-            'email'             => ['required', 'string', 'email:rfc,dns', 'max:100', 'unique:users,email'],
-            'phone'             => ['required', 'string', 'max:11', 'regex:/^([0-9]{10,11})$/'],
+            'name'              => ['required', 'string', 'max:255'],
+            'email'             => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'phone'             => ['nullable', 'string', 'max:20'],
             'address'           => ['nullable', 'string'],
-            'age'               => ['nullable', 'integer', 'min:0', 'max:120'],
-            'birthdate'         => ['required', 'date'],
+            'medical_document'  => ['nullable', 'file', 'mimes:pdf,doc,docx'],
             'password'          => ['required', 'string', 'min:8', 'confirmed'],
-        ], [
-            'phone.regex' => 'Please enter a valid phone number (10-11 digits, numbers only).',
-            'phone.max' => 'Phone number must not exceed 11 digits.',
-            'email.email' => 'Please provide a valid email address.',
-            'email.max' => 'Email address cannot exceed 100 characters.',
-            'email.unique' => 'This email address is already registered.',
-            'password.confirmed' => 'Passwords do not match.',
         ]);
     }
 
     protected function create(array $data)
     {
-        try {
-            $user = User::create([
-                'first_name'        => $data['first_name'],
-                'last_name'         => $data['last_name'],
-                'email'             => $data['email'],
-                'phone'             => $data['phone'] ?? null,
-                'address'           => $data['address'] ?? null,
-                'age'               => $data['age'] ?? null,
-                'birthdate'         => $data['birthdate'] ?? null,
-                'is_active'         => true,
-                'is_admin'   => false,
-                'password'          => Hash::make($data['password']),
-            ]);
-            return $user;
-        } catch (\Exception $e) {
-            \Log::error('Registration error: '.$e->getMessage());
-            throw ValidationException::withMessages([
-                'general' => 'Could not complete registration. Please try again.'
-            ]);
+        // handle file upload if present
+        if (isset($data['medical_document'])) {
+            $path = request()->file('medical_document')->store('docs','public');
+            $data['medical_document'] = $path;
         }
+
+        return User::create([
+            'name'              => $data['name'],
+            'email'             => $data['email'],
+            'phone'             => $data['phone'] ?? null,
+            'address'           => $data['address'] ?? null,
+            'medical_document'  => $data['medical_document'] ?? null,
+            'password'          => Hash::make($data['password']),
+        ]);
     }
 
     protected function registered(Request $request, $user)
@@ -73,7 +57,8 @@ class RegisterController extends Controller
         }
 
          if ($user->is_secretary) {
-            return redirect()->route('secretary.appointments.index');
-        }
-        return redirect($this->redirectTo)->with('success', 'Account created successfully.');
+        return redirect()->route('secretary.appointments.index');
+    }
+        return redirect($this->redirectTo);
+    }
 }

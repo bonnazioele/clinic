@@ -10,12 +10,24 @@ class ServiceController extends Controller
 {
     public function __construct()
     {
+        // require login…
         $this->middleware('auth');
-        $this->middleware(fn($req, $next) =>
-            $req->user()?->is_admin
-                ? $next($req)
-                : abort(403)
-        );
+        // …and require admin flag
+        $this->middleware(function($request, $next) {
+            if (! $request->user()?->is_admin) {
+                abort(403, 'Forbidden');
+            }
+            return $next($request);
+        });
+    }
+
+    /**
+     * Show paginated services.
+     */
+    public function index()
+    {
+        $services = Service::latest()->paginate(10);
+        return view('admin.services.index', compact('services'));
     }
 
     /**
@@ -31,46 +43,16 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $this->validator($request->all())->validate();
-        $validated['is_active'] = $request->boolean('is_active', true);
+        $data = $request->validate([
+            'name'        => 'required|string|unique:services,name',
+            'description' => 'nullable|string',
+        ]);
 
-        try {
-            $service = Service::create([
-                'service_name' => $validated['service_name'],
-                'description'  => $validated['description'] ?? null,
-                'is_active'    => $validated['is_active'],
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Service creation failed: ' . $e->getMessage());
-            return back()->withErrors([
-                'service_name' => 'Could not add service. Please try again.'
-            ])->withInput();
-        }
+        Service::create($data);
 
         return redirect()
             ->route('admin.services.index')
-            ->with('status', 'Service added successfully.');
-    }
-
-    /**
-     * Get a validator for an incoming service creation request.
-     */
-    protected function validator(array $data)
-    {
-        return \Validator::make($data, [
-            'service_name' => [
-                'required',
-                'string',
-                'max:100',
-                'unique:services,service_name',
-            ],
-            'description' => ['nullable', 'string'],
-            'is_active' => ['nullable', 'boolean'],
-        ], [
-            'service_name.required' => 'Service name is required.',
-            'service_name.unique' => 'This service already exists. Please modify the name.',
-            'service_name.max' => 'Service name must not exceed 100 characters.',
-        ]);
+            ->with('status','Service added successfully.');
     }
 
     /**
@@ -87,26 +69,21 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         $data = $request->validate([
-            'service_name' => 'required|string|unique:services,service_name,'.$service->id,
-            'description'  => 'nullable|string',
+            'name'        => 'required|string|unique:services,name,'.$service->id,
+            'description' => 'nullable|string',
         ]);
 
-        if ($service->service_name === $data['service_name'] && $service->description === ($data['description'] ?? null)) {
-            return redirect()->route('admin.services.index')->with('status', 'No changes made.');
-        }
-
         $service->update($data);
-        return redirect()->route('admin.services.index')->with('status', 'Service updated successfully.');
+
+        return back()->with('status','Service updated successfully.');
     }
+
+    /**
+     * Delete a service.
+     */
     public function destroy(Service $service)
     {
-        if ($service->is_active) {
-            return back()->withErrors(['error' => 'You must deactivate this service before deleting it.']);
-        }
-        if ($service->clinics()->count() > 0) {
-            return back()->withErrors(['error' => 'Cannot delete a service that is currently in use. Please remove it from all clinics first.']);
-        }
         $service->delete();
-        return redirect()->route('admin.services.index')->with('status','Service removed.');
+        return back()->with('status','Service removed.');
     }
 }

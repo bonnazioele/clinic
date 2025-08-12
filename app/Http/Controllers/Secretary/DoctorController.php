@@ -11,7 +11,18 @@ use App\Models\Service;
 
 class DoctorController extends Controller
 {
-    // Note: Authorization is handled by RouteServiceProvider using 'can:access-secretary-panel' gate
+    public function __construct()
+    {
+        $this->middleware('auth');
+
+        // ensure only secretaries hit these routes:
+        $this->middleware(function($req, $next) {
+            if (! $req->user()?->is_secretary) {
+                abort(403,'Forbidden');
+            }
+            return $next($req);
+        });
+    }
 
     /** GET /secretary/doctors */
     public function index()

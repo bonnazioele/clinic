@@ -1,50 +1,47 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-5">
-  <div class="row justify-content-center align-items-center min-vh-100">
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">{{ __('Reset Password') }}</div>
 
-    <div class="col-md-8">
-      <div class="card shadow-sm border-0 rounded-4">
-        <div class="card-body p-5">
+                <div class="card-body">
+                    @if (session('status'))
+                        <div class="alert alert-success" role="alert">
+                            {{ session('status') }}
+                        </div>
+                    @endif
 
-          <h4 class="fw-bold text-primary mb-3">
-            <i class="bi bi-lock-fill me-2"></i>Forgot Your Password?
-          </h4>
+                    <form method="POST" action="{{ route('password.email') }}">
+                        @csrf
 
-          @if (session('status'))
-            <div class="alert alert-success rounded-3">
-              {{ session('status') }}
+                        <div class="row mb-3">
+                            <label for="email" class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
+
+                            <div class="col-md-6">
+                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus>
+
+                                @error('email')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="row mb-0">
+                            <div class="col-md-6 offset-md-4">
+                                <button type="submit" class="btn btn-primary">
+                                    {{ __('Send Password Reset Link') }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
-          @endif
-
-          <p class="text-muted mb-4">
-            Enter your email address below and we'll send you a link to reset your password.
-          </p>
-
-          <form method="POST" action="{{ route('password.email') }}">
-            @csrf
-
-            {{-- Email --}}
-            <div class="mb-4">
-              <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
-              <input id="email" type="email"
-                     class="form-control @error('email') is-invalid @enderror"
-                     name="email" value="{{ old('email') }}" required autofocus>
-              @error('email')
-                <div class="invalid-feedback">{{ $message }}</div>
-              @enderror
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 rounded-pill py-2">
-              Send Reset Link
-            </button>
-          </form>
-
         </div>
-      </div>
     </div>
-
-  </div>
 </div>
 @endsection
