@@ -12,19 +12,7 @@ use App\Notifications\AppointmentStatusChanged;
 
 class AppointmentController extends Controller
 {
-    public function __construct()
-    {
-        // 1) Must be logged in
-        $this->middleware('auth');
-
-        // 2) Must be a secretary
-        $this->middleware(function($req, $next) {
-            if (! Auth::user()?->is_secretary) {
-                abort(403, 'Forbidden');
-            }
-            return $next($req);
-        });
-    }
+    // Note: Authorization is handled by RouteServiceProvider using 'can:access-secretary-panel' gate
 
     public function create()
 {

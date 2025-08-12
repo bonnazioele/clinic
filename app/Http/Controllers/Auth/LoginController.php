@@ -27,12 +27,12 @@ class LoginController extends Controller
     protected function authenticated(Request $request, $user)
     {
         if ($user->is_admin) {
-            return redirect()->route('admin.clinics.index');
+            return redirect()->route('admin.dashboard');
         }
-
-          if ($user->is_secretary) {
+        if ($user->is_secretary) {
             return redirect()->route('secretary.appointments.index');
         }
+
         // fallback to the normal post-login page
         return redirect($this->redirectTo);
     }

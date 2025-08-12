@@ -12,11 +12,18 @@ class DashboardController extends Controller
         $this->middleware('auth');
     }
 
+    /**
+     * Show the welcome page.
+     */
+    public function welcome()
+    {
+        return view('welcome');
+    }
     public function index()
     {
         $user = Auth::user();
 
-        if ($user->is_admin) {
+        if ($user->is_system_admin) {
             // send admins straight to their panel
             return redirect()->route('admin.clinics.index');
         }

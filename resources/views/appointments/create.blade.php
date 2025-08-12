@@ -1,56 +1,81 @@
 @extends('layouts.app')
-@section('title','Book Appointment')
+
+@section('title', 'Book Appointment')
 
 @section('content')
-<div class="container py-4">
-  <form method="POST" action="{{ route('appointments.store') }}">
-    @csrf
+<div class="container py-5">
+  <div class="card shadow-sm rounded-4 p-4">
+    <h2 class="mb-4 text-primary fw-bold">
+      <i class="bi bi-calendar-plus me-2"></i>Book Appointment
+    </h2>
 
-    {{-- Clinic --}}
-    <div class="mb-3">
-      <label class="form-label">Clinic</label>
-      <select id="clinic" name="clinic_id" class="form-select" required>
-        <option value="">Select a clinic</option>
-        @foreach($clinics as $c)
-          <option value="{{ $c->id }}" {{ old('clinic_id')==$c->id?'selected':'' }}>
-            {{ $c->name }}
-          </option>
-        @endforeach
-      </select>
-    </div>
+    {{-- Optional Toast --}}
+    <x-alerts.toast />
 
-    {{-- Service --}}
-    <div class="mb-3">
-      <label class="form-label">Service</label>
-      <select id="service" name="service_id" class="form-select" required>
-        <option value="">First select a clinic</option>
-      </select>
-    </div>
+    <form method="POST" action="{{ route('appointments.store') }}">
+      @csrf
 
-    {{-- Doctor --}}
-    <div class="mb-3">
-      <label class="form-label">Doctor</label>
-      <select id="doctor" name="doctor_id" class="form-select" required>
-        <option value="">First select a clinic</option>
-      </select>
-    </div>
-
-    {{-- Date & Time --}}
-    <div class="row g-3 mb-3">
-      <div class="col">
-        <label class="form-label">Date</label>
-        <input type="date" name="appointment_date"
-               class="form-control" value="{{ old('appointment_date') }}" required>
+      {{-- Clinic --}}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Clinic <span class="text-danger">*</span></label>
+        <select id="clinic" name="clinic_id" class="form-select @error('clinic_id') is-invalid @enderror" required>
+          <option value="">Select a clinic</option>
+          @foreach($clinics as $c)
+            <option value="{{ $c->id }}" {{ old('clinic_id') == $c->id ? 'selected' : '' }}>
+              {{ $c->name }}
+            </option>
+          @endforeach
+        </select>
+        @error('clinic_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
       </div>
-      <div class="col">
-        <label class="form-label">Time</label>
-        <input type="time" name="appointment_time"
-               class="form-control" value="{{ old('appointment_time') }}" required>
-      </div>
-    </div>
 
-    <button class="btn btn-primary">Book Now</button>
-  </form>
+      {{-- Service --}}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Service <span class="text-danger">*</span></label>
+        <select id="service" name="service_id" class="form-select @error('service_id') is-invalid @enderror" required>
+          <option value="">First select a clinic</option>
+        </select>
+        @error('service_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+      </div>
+
+      {{-- Doctor --}}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Doctor <span class="text-danger">*</span></label>
+        <select id="doctor" name="doctor_id" class="form-select @error('doctor_id') is-invalid @enderror" required>
+          <option value="">First select a service</option>
+        </select>
+        @error('doctor_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+      </div>
+
+      {{-- Date & Time --}}
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+          <input type="date"
+                 name="appointment_date"
+                 class="form-control @error('appointment_date') is-invalid @enderror"
+                 value="{{ old('appointment_date') }}"
+                 required>
+          @error('appointment_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Time <span class="text-danger">*</span></label>
+          <input type="time"
+                 name="appointment_time"
+                 class="form-control @error('appointment_time') is-invalid @enderror"
+                 value="{{ old('appointment_time') }}"
+                 required>
+          @error('appointment_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+      </div>
+
+      <div class="text-end">
+        <button class="btn btn-primary rounded-pill px-4">
+          <i class="bi bi-calendar-check-fill me-2"></i>Book Now
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 @endsection
 
@@ -61,14 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const serviceSelect = document.getElementById('service');
   const doctorSelect  = document.getElementById('doctor');
 
-  // Build a map: clinicId -> { services: [...], doctors: [{id,name,services:[ids]}] }
   const clinicMap = {};
   @foreach($clinics as $c)
     clinicMap[{{ $c->id }}] = {
-      services: @json($c->services->map(fn($s)=>['id'=>$s->id,'name'=>$s->name])),
+      services: @json($c->services->map(fn($s)=>['id'=>$s->id,'name'=>$s->service_name])),
       doctors:  @json($c->doctors->map(fn($d)=>[
         'id'=>$d->id,
-        'name'=>$d->name,
+        'name'=>$d->first_name . ' ' . $d->last_name,
         'services'=> $d->services->pluck('id')->values()
       ]))
     };
@@ -78,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
     serviceSelect.innerHTML = '<option value="">Select a service</option>';
     const list = clinicMap[clinicId]?.services || [];
     list.forEach(s => serviceSelect.add(new Option(s.name, s.id)));
-    // clear doctor until service chosen
     doctorSelect.innerHTML = '<option value="">First select a service</option>';
   }
 
@@ -103,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
     populateDoctors(cid, sid);
   });
 
-  // repopulate on validation error
   @if(old('clinic_id'))
     populateServices({{ old('clinic_id') }});
     serviceSelect.value = "{{ old('service_id') }}";

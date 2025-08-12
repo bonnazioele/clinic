@@ -6,7 +6,7 @@ use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Services\QueueService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Iluminate\Support\Facades\Auth;
 
 class QueueController extends Controller
 {
