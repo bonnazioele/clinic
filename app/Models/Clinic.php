@@ -117,11 +117,13 @@ class Clinic extends Model
     }
 
     /**
-     * Get all doctors associated with the clinic through appointments.
+     * Get all doctors associated with the clinic through clinic_doctor pivot table.
      */
-    public function doctors(): HasManyThrough
+    public function doctors(): BelongsToMany
     {
-        return $this->hasManyThrough(Doctor::class, Appointment::class);
+        return $this->belongsToMany(Doctor::class, 'clinic_doctor')
+                    ->withPivot('is_active')
+                    ->withTimestamps();
     }
 
     /**

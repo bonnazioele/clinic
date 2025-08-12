@@ -40,4 +40,12 @@ class Doctor extends Model
     {
         return $this->hasMany(Appointment::class);
     }
+
+    public function isAssignedToClinic($clinicId)
+    {
+        return $this->clinics()
+            ->where('clinic_doctor.clinic_id', $clinicId)
+            ->where('clinic_doctor.is_active', true)
+            ->exists();
+    }
 }

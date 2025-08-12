@@ -90,13 +90,26 @@
   </div>
 
   <div class="sidebar-footer">
-    <div class="user-mini">
+    <div class="user-mini user-dropdown" id="desktopUserDropdown">
       <div class="avatar">
         {{ substr(auth()->user()->first_name, 0, 1) }}{{ substr(auth()->user()->last_name, 0, 1) }}
       </div>
       <div class="truncate">
         <div class="name">{{ auth()->user()->name }}</div>
         <div class="meta">Secretary</div>
+      </div>
+      
+      <!-- Dropdown Menu -->
+      <div class="user-dropdown-menu" id="desktopUserDropdownMenu">
+        <a href="{{ route('profile.show') }}" class="user-dropdown-item">
+          <i class="bi bi-person-circle"></i>
+          <span>My Profile</span>
+        </a>
+        <div class="user-dropdown-divider"></div>
+        <a href="#" class="user-dropdown-item" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+          <i class="bi bi-box-arrow-right"></i>
+          <span>Logout</span>
+        </a>
       </div>
     </div>
   </div>
@@ -156,7 +169,7 @@
 
         <!-- FOOTER / USER (Mobile) -->
         <div class="sidebar-footer">
-            <div class="user-mini text-white">
+            <div class="user-mini user-dropdown text-white" id="mobileUserDropdown">
                 <div class="avatar bg-light text-dark">
                     {{ substr(auth()->user()->first_name, 0, 1) }}{{ substr(auth()->user()->last_name, 0, 1) }}
                 </div>
@@ -164,11 +177,19 @@
                     <div class="name">{{ auth()->user()->name }}</div>
                     <div class="meta">Secretary</div>
                 </div>
-                <a class="btn btn-sm btn-outline-light rounded-pill px-3"
-                   href="#"
-                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                    Logout
-                </a>
+                
+                <!-- Mobile Dropdown Menu -->
+                <div class="user-dropdown-menu" id="mobileUserDropdownMenu">
+                    <a href="{{ route('profile.show') }}" class="user-dropdown-item">
+                        <i class="bi bi-person-circle"></i>
+                        <span>My Profile</span>
+                    </a>
+                    <div class="user-dropdown-divider"></div>
+                    <a href="#" class="user-dropdown-item" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
@@ -242,6 +263,70 @@
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && mobileSidebar.classList.contains('mobile-open')) {
                     closeMobileSidebarFn();
+                }
+            });
+
+            // User Dropdown Functionality
+            const desktopDropdown = document.getElementById('desktopUserDropdown');
+            const desktopDropdownMenu = document.getElementById('desktopUserDropdownMenu');
+            const mobileDropdown = document.getElementById('mobileUserDropdown');
+            const mobileDropdownMenu = document.getElementById('mobileUserDropdownMenu');
+            
+            // Toggle desktop dropdown
+            if (desktopDropdown && desktopDropdownMenu) {
+                desktopDropdown.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Close mobile dropdown if open
+                    if (mobileDropdown) {
+                        mobileDropdown.classList.remove('show');
+                    }
+                    
+                    // Toggle desktop dropdown - add 'show' class to parent element
+                    desktopDropdown.classList.toggle('show');
+                });
+            }
+            
+            // Toggle mobile dropdown
+            if (mobileDropdown && mobileDropdownMenu) {
+                mobileDropdown.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Close desktop dropdown if open
+                    if (desktopDropdown) {
+                        desktopDropdown.classList.remove('show');
+                    }
+                    
+                    // Toggle mobile dropdown - add 'show' class to parent element
+                    mobileDropdown.classList.toggle('show');
+                });
+            }
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (desktopDropdown && !desktopDropdown.contains(e.target)) {
+                    desktopDropdown.classList.remove('show');
+                }
+                
+                if (mobileDropdown && !mobileDropdown.contains(e.target)) {
+                    mobileDropdown.classList.remove('show');
+                }
+            });
+            
+            // Close dropdowns when pressing Escape key (enhanced for user dropdowns)
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (mobileSidebar.classList.contains('mobile-open')) {
+                        closeMobileSidebarFn();
+                    }
+                    if (desktopDropdown) {
+                        desktopDropdown.classList.remove('show');
+                    }
+                    if (mobileDropdown) {
+                        mobileDropdown.classList.remove('show');
+                    }
                 }
             });
         });

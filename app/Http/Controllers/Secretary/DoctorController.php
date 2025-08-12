@@ -28,15 +28,15 @@ class DoctorController extends Controller
         // Get current clinic context from session
         $clinicId = Session::get('current_clinic_id');
         
-        // Get doctors assigned to current clinic only
-        $doctors = User::whereHas('clinicUserRoles', function($query) use ($clinicId) {
-            $query->whereHas('role', function($roleQuery) {
-                $roleQuery->where('role_name', 'doctor');
-            })
-            ->where('clinic_id', $clinicId)
-            ->where('is_active', true);
+        // Get users who have doctor profiles and are associated with current clinic
+        $doctors = User::whereHas('doctor', function($query) use ($clinicId) {
+            $query->whereHas('clinics', function($clinicQuery) use ($clinicId) {
+                $clinicQuery->where('clinic_doctor.clinic_id', $clinicId)
+                           ->where('clinic_doctor.is_active', true);
+            });
         })
-        ->with(['clinicUserRoles.clinic', 'clinicUserRoles.role'])
+        ->with(['doctor.clinics', 'doctor.schedules', 'doctor.services'])
+        ->where('is_active', true)
         ->orderBy('first_name')
         ->orderBy('last_name')
         ->paginate(15);
@@ -166,19 +166,11 @@ class DoctorController extends Controller
                 'biography' => $validated['biography'] ?? null,
             ]);
 
-            // 3. Assign doctor role to current clinic
-            $doctorRole = Role::where('role_name', 'doctor')->first();
-            
-            if (!$doctorRole) {
-                throw new \Exception('Doctor role not found in the system.');
-            }
-            
-            ClinicUserRole::create([
-                'user_id' => $user->id,
-                'clinic_id' => $clinicId,
-                'role_id' => $doctorRole->id,
+            //3. Assign doctor to current clinic through clinic_doctor pivot table
+            $doctorProfile->clinics()->attach($clinicId, [
                 'is_active' => true,
-                'assigned_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // 4. Assign services to doctor for current clinic
@@ -264,14 +256,9 @@ class DoctorController extends Controller
             }
         ]);
 
-        // Ensure doctor belongs to current clinic using existing method
-        $doctorBelongsToClinic = $doctor->clinicUserRoles()
-            ->where('clinic_id', $clinicId)
-            ->whereHas('role', function($q) {
-                $q->where('role_name', 'doctor');
-            })
-            ->where('is_active', true)
-            ->exists();
+        // Ensure doctor belongs to current clinic using doctor profile relationship
+        $doctorBelongsToClinic = $doctor->doctor && 
+            $doctor->doctor->isAssignedToClinic($clinicId);
 
         if (!$doctorBelongsToClinic) {
             abort(403, 'You can only view doctors assigned to your clinic.');
@@ -309,14 +296,9 @@ class DoctorController extends Controller
             abort(403, 'Unauthorized to manage doctors for this clinic.');
         }
 
-        // Ensure doctor belongs to current clinic using existing method
-        $doctorBelongsToClinic = $doctor->clinicUserRoles()
-            ->where('clinic_id', $clinicId)
-            ->whereHas('role', function($q) {
-                $q->where('role_name', 'doctor');
-            })
-            ->where('is_active', true)
-            ->exists();
+        // Ensure doctor belongs to current clinic using doctor profile relationship
+        $doctorBelongsToClinic = $doctor->doctor && 
+            $doctor->doctor->isAssignedToClinic($clinicId);
 
         if (!$doctorBelongsToClinic) {
             abort(403, 'You can only edit doctors assigned to your clinic.');
@@ -357,13 +339,8 @@ class DoctorController extends Controller
         }
 
         // Ensure doctor belongs to current clinic
-        $doctorBelongsToClinic = $doctor->clinicUserRoles()
-            ->where('clinic_id', $clinicId)
-            ->whereHas('role', function($q) {
-                $q->where('role_name', 'doctor');
-            })
-            ->where('is_active', true)
-            ->exists();
+        $doctorBelongsToClinic = $doctor->doctor && 
+            $doctor->doctor->isAssignedToClinic($clinicId);
 
         if (!$doctorBelongsToClinic) {
             abort(403, 'You can only edit doctors assigned to your clinic.');
@@ -497,13 +474,8 @@ class DoctorController extends Controller
         }
 
         // Ensure doctor belongs to current clinic
-        $doctorBelongsToClinic = $doctor->clinicUserRoles()
-            ->where('clinic_id', $clinicId)
-            ->whereHas('role', function($q) {
-                $q->where('role_name', 'doctor');
-            })
-            ->where('is_active', true)
-            ->exists();
+        $doctorBelongsToClinic = $doctor->doctor && 
+            $doctor->doctor->isAssignedToClinic($clinicId);
 
         if (!$doctorBelongsToClinic) {
             abort(403, 'You can only remove doctors assigned to your clinic.');
@@ -520,13 +492,12 @@ class DoctorController extends Controller
                 ->with('error', 'Cannot remove doctor with scheduled appointments. Please reschedule or cancel appointments first.');
         }
 
-        // Deactivate doctor role for current clinic only (soft delete)
-        $doctor->clinicUserRoles()
-            ->where('clinic_id', $clinicId)
-            ->whereHas('role', function($q) {
-                $q->where('role_name', 'doctor');
-            })
-            ->update(['is_active' => false]);
+        // Deactivate doctor-clinic relationship (soft delete)
+        if ($doctor->doctor) {
+            $doctor->doctor->clinics()
+                ->where('clinic_id', $clinicId)
+                ->updateExistingPivot($clinicId, ['is_active' => false]);
+        }
 
         // Deactivate doctor services for current clinic
         if ($doctor->doctor) {
