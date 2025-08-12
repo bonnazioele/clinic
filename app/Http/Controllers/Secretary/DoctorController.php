@@ -250,7 +250,21 @@ class DoctorController extends Controller
             abort(403, 'Unauthorized to manage doctors for this clinic.');
         }
 
-        // Ensure doctor belongs to current clinic
+        // Load doctor with all necessary relationships in one query to avoid N+1
+        $doctor->load([
+            'doctor.schedules' => function($query) use ($clinicId) {
+                $query->where('clinic_id', $clinicId)
+                      ->where('is_active', true)
+                      ->orderByRaw("FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')");
+            },
+            'doctor.appointments' => function($query) use ($clinicId) {
+                $query->where('clinic_id', $clinicId)
+                      ->whereDate('appointment_date', today())
+                      ->whereIn('status', ['scheduled', 'confirmed', 'in_progress']);
+            }
+        ]);
+
+        // Ensure doctor belongs to current clinic using existing method
         $doctorBelongsToClinic = $doctor->clinicUserRoles()
             ->where('clinic_id', $clinicId)
             ->whereHas('role', function($q) {
@@ -263,28 +277,12 @@ class DoctorController extends Controller
             abort(403, 'You can only view doctors assigned to your clinic.');
         }
 
-        // Get doctor profile
+        // Get data using loaded relationships and existing methods
         $doctorProfile = $doctor->doctor;
-        
-        // Get current clinic for context
         $clinic = Clinic::findOrFail($clinicId);
-
-        // Get doctor's services for this clinic
         $doctorServices = $doctor->servicesForClinic($clinicId)->get();
-
-        // Get doctor's schedules for this clinic
-        $doctorSchedules = $doctorProfile ? $doctorProfile->schedules()
-            ->where('clinic_id', $clinicId)
-            ->where('is_active', true)
-            ->orderByRaw("FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
-            ->get() : collect();
-
-        // Get today's appointments count
-        $todayAppointments = $doctorProfile ? $doctorProfile->appointments()
-            ->where('clinic_id', $clinicId)
-            ->whereDate('appointment_date', today())
-            ->whereIn('status', ['scheduled', 'confirmed', 'in_progress'])
-            ->count() : 0;
+        $doctorSchedules = $doctorProfile ? $doctorProfile->schedules : collect();
+        $todayAppointments = $doctorProfile ? $doctorProfile->appointments->count() : 0;
 
         return view('secretary.doctors.show', compact(
             'doctor', 
@@ -311,7 +309,7 @@ class DoctorController extends Controller
             abort(403, 'Unauthorized to manage doctors for this clinic.');
         }
 
-        // Ensure doctor belongs to current clinic
+        // Ensure doctor belongs to current clinic using existing method
         $doctorBelongsToClinic = $doctor->clinicUserRoles()
             ->where('clinic_id', $clinicId)
             ->whereHas('role', function($q) {
@@ -324,11 +322,20 @@ class DoctorController extends Controller
             abort(403, 'You can only edit doctors assigned to your clinic.');
         }
 
+        // Load doctor with schedule relationships to avoid additional queries
+        $doctor->load([
+            'doctor.schedules' => function($query) use ($clinicId) {
+                $query->where('clinic_id', $clinicId)
+                      ->where('is_active', true)
+                      ->orderByRaw("FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')");
+            }
+        ]);
+
         // Get services available at current clinic
         $clinic = Clinic::with('services')->findOrFail($clinicId);
         $services = $clinic->services;
 
-        // Get doctor's current services for this clinic
+        // Get doctor's current services for this clinic using existing method
         $doctorServices = $doctor->servicesForClinic($clinicId)->pluck('id')->toArray();
 
         return view('secretary.doctors.edit', compact('doctor', 'services', 'clinic', 'doctorServices'));
@@ -366,12 +373,23 @@ class DoctorController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $doctor->id,
+            'gender' => ['nullable', Rule::in(['male', 'female', 'other'])],
             'phone' => 'nullable|string|max:20',
             'age' => 'nullable|integer|min:18|max:100',
             'birthdate' => 'nullable|date',
             'address' => 'nullable|string|max:500',
+            'years_of_experience' => 'nullable|integer|min:0|max:50',
+            'biography' => 'nullable|string|max:1000',
             'services' => 'array',
             'services.*' => 'exists:services,id',
+            
+            // Schedule validation rules
+            'schedules' => 'nullable|array',
+            'schedules.*.day_of_week' => ['required_with:schedules', Rule::in(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])],
+            'schedules.*.start_time' => 'required_with:schedules|date_format:H:i',
+            'schedules.*.end_time' => 'required_with:schedules|date_format:H:i|after:schedules.*.start_time',
+            'schedules.*.max_patients' => 'nullable|integer|min:1|max:50',
+            'schedules.*.id' => 'nullable|exists:doctors_schedules,id',
         ];
 
         if ($request->filled('password')) {
@@ -385,6 +403,7 @@ class DoctorController extends Controller
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
+            'gender' => $validated['gender'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'age' => $validated['age'] ?? null,
             'birthdate' => $validated['birthdate'] ?? null,
@@ -397,22 +416,35 @@ class DoctorController extends Controller
 
         $doctor->update($updateData);
 
+        // Update doctor professional information
+        if ($doctor->doctor) {
+            $doctor->doctor->update([
+                'years_of_experience' => $validated['years_of_experience'] ?? null,
+                'biography' => $validated['biography'] ?? null,
+            ]);
+        }
+
         // Update services for current clinic only
         if (isset($validated['services'])) {
+            // Ensure doctor has a profile before updating services
+            if (!$doctor->doctor) {
+                return redirect()->back()->withErrors(['error' => 'Doctor profile not found. Cannot update services.']);
+            }
+
             // Remove existing services for this clinic
             DB::table('clinic_doctor_services')
-                ->where('doctor_id', $doctor->id)
+                ->where('doctor_id', $doctor->doctor->id)  // Use doctor profile ID, not user ID
                 ->where('clinic_id', $clinicId)
                 ->delete();
 
-            // Verify all services belong to current clinic
-            $clinic = Clinic::findOrFail($clinicId);
+            // Get clinic with services in one query to verify all services belong to current clinic
+            $clinic = Clinic::with('services')->findOrFail($clinicId);
             $validServices = $clinic->services()->whereIn('services.id', $validated['services'])->pluck('services.id');
 
             // Add new services for current clinic
             foreach ($validServices as $serviceId) {
                 DB::table('clinic_doctor_services')->insert([
-                    'doctor_id' => $doctor->id,
+                    'doctor_id' => $doctor->doctor->id,  // Use doctor profile ID, not user ID
                     'clinic_id' => $clinicId, // Enforce current clinic
                     'service_id' => $serviceId,
                     'duration' => 30, // Default duration
@@ -423,7 +455,29 @@ class DoctorController extends Controller
             }
         }
 
-        return redirect()->route('secretary.doctors.index')
+        // Update schedules for current clinic only
+        if (isset($validated['schedules']) && $doctor->doctor) {
+            // Remove existing schedules for this clinic
+            $doctor->doctor->schedules()
+                ->where('clinic_id', $clinicId)
+                ->delete();
+
+            // Add/update schedules
+            foreach ($validated['schedules'] as $scheduleData) {
+                if (!empty($scheduleData['day_of_week']) && !empty($scheduleData['start_time']) && !empty($scheduleData['end_time'])) {
+                    $doctor->doctor->schedules()->create([
+                        'clinic_id' => $clinicId,
+                        'day_of_week' => $scheduleData['day_of_week'],
+                        'start_time' => $scheduleData['start_time'],
+                        'end_time' => $scheduleData['end_time'],
+                        'max_patients' => $scheduleData['max_patients'] ?? 10,
+                        'is_active' => true,
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->route('secretary.doctors.show', $doctor)
             ->with('success', 'Doctor updated successfully.');
     }
 
@@ -475,10 +529,12 @@ class DoctorController extends Controller
             ->update(['is_active' => false]);
 
         // Deactivate doctor services for current clinic
-        DB::table('clinic_doctor_services')
-            ->where('doctor_id', $doctor->id)
-            ->where('clinic_id', $clinicId)
-            ->update(['is_active' => false]);
+        if ($doctor->doctor) {
+            DB::table('clinic_doctor_services')
+                ->where('doctor_id', $doctor->doctor->id)  // Use doctor profile ID, not user ID
+                ->where('clinic_id', $clinicId)
+                ->update(['is_active' => false]);
+        }
 
         return redirect()->route('secretary.doctors.index')
             ->with('success', 'Doctor removed from your clinic successfully.');

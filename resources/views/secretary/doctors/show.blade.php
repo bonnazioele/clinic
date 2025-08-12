@@ -4,14 +4,14 @@
 @section('title', 'Doctor Profile - ' . $doctor->name)
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid page-container">
     @include('partials.alerts')
 
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Page Header with aligned content -->
+    <div class="page-header">
         <div>
-            <h3 class="mb-0">{{ $doctor->name }}</h3>
-            <small class="text-muted">Doctor Profile at {{ $clinic->name }}</small>
+            <h3 class="card-title">{{ $doctor->name }}</h3>
+            <small class="meta-label">Doctor Profile at {{ $clinic->name }}</small>
         </div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
@@ -63,7 +63,7 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
+                    <h5 class="section-title text-white">
                         <i class="bi bi-person me-2"></i>Personal Information
                     </h5>
                 </div>
@@ -103,6 +103,12 @@
                                 <p class="mb-0">{{ $doctor->age }} years old</p>
                             </div>
                         @endif
+                        @if($doctor->birthdate)
+                            <div class="col-sm-6">
+                                <label class="form-label fw-bold">Birth Date</label>
+                                <p class="mb-0">{{ $doctor->birthdate->format('F j, Y') }}</p>
+                            </div>
+                        @endif
                         @if($doctor->gender)
                             <div class="col-sm-6">
                                 <label class="form-label fw-bold">Gender</label>
@@ -124,7 +130,7 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
+                    <h5 class="section-title text-white">
                         <i class="bi bi-briefcase me-2"></i>Professional Information
                     </h5>
                 </div>
@@ -156,7 +162,7 @@
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">
+                        <h5 class="section-title text-dark">
                             <i class="bi bi-stethoscope me-2"></i>Services Offered
                         </h5>
                     </div>
@@ -192,7 +198,7 @@
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
+                        <h5 class="section-title text-white">
                             <i class="bi bi-calendar-alt me-2"></i>Weekly Schedule
                         </h5>
                     </div>
@@ -225,7 +231,7 @@
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">
+                        <h5 class="section-title text-dark">
                             <i class="bi bi-stethoscope me-2"></i>Services Offered
                         </h5>
                     </div>
@@ -244,7 +250,7 @@
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
+                        <h5 class="section-title text-white">
                             <i class="bi bi-calendar-alt me-2"></i>Weekly Schedule
                         </h5>
                     </div>

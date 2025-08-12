@@ -4,12 +4,14 @@
 @section('title','Add Doctor')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid page-container">
     @include('partials.alerts')
 
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">Add New Doctor</h3>
+    <!-- Page Header with aligned content -->
+    <div class="page-header">
+        <h3 class="card-title">
+            <i class="bi bi-person-plus me-2"></i>Add New Doctor
+        </h3>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="{{ route('secretary.dashboard') }}">Dashboard</a></li>
@@ -24,7 +26,7 @@
         @csrf
 
         <!-- Personal Information Section -->
-        <h5 class="mb-3 text-primary">
+        <h5 class="section-title content-spacing-md">
             <i class="bi bi-person me-2"></i>Personal Information
         </h5>
 

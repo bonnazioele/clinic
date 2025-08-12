@@ -2,42 +2,39 @@
 @section('title','Manage Doctors')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid page-container">
   @include('partials.alerts')
 
-  <!-- Page Header -->
-  <div class="mb-3">
-    <h3 class="card-title mb-0">
+  <!-- Page Header with aligned content -->
+  <div class="page-header">
+    <h3 class="card-title">
       <i class="bi bi-people me-2"></i>
       Doctors ({{ $doctors->total() }} total)
     </h3>
-  </div>
-
-  <!-- Controls Bar -->
-  <div class="d-flex flex-column flex-lg-row gap-3 mb-4">
-    <!-- Filter Dropdown (Far Left) -->
-    <select class="form-select" id="serviceFilter" style="min-width: 180px;">
-      <option value="">All Services</option>
-      @foreach($availableServices ?? [] as $service)
-        <option value="{{ $service->id }}" {{ request('service') == $service->id ? 'selected' : '' }}>
-          {{ $service->service_name }}
-        </option>
-      @endforeach
-    </select>
     
-    <!-- Search Bar (Middle) -->
-    <div class="input-group flex-grow-1" style="max-width: 350px;">
-      <span class="input-group-text">
-        <i class="bi bi-search"></i>
-      </span>
-      <input type="text" class="form-control" id="doctorSearch" placeholder="Search doctors..." value="{{ request('search') }}">
+    <div class="toolbar">
+      <!-- Search Bar (Left side of toolbar) -->
+      <div class="input-icon toolbar-search" style="max-width: 350px;">
+        <i class="bi bi-search icon"></i>
+        <input type="text" class="form-control" id="doctorSearch" placeholder="Search doctors..." value="{{ request('search') }}">
+      </div>
+      
+      <!-- Filter Dropdown -->
+      <select class="form-select" id="serviceFilter" style="min-width: 180px;">
+        <option value="">All Services</option>
+        @foreach($availableServices ?? [] as $service)
+          <option value="{{ $service->id }}" {{ request('service') == $service->id ? 'selected' : '' }}>
+            {{ $service->service_name }}
+          </option>
+        @endforeach
+      </select>
+      
+      <!-- Add Doctor Button (Far Right) -->
+      <a href="{{ route('secretary.doctors.create') }}" class="btn btn-add-functionality">
+        <i class="bi bi-person-plus me-2"></i>
+        Add Doctor
+      </a>
     </div>
-    
-    <!-- Add Doctor Button (Far Right) -->
-    <a href="{{ route('secretary.doctors.create') }}" class="btn btn-primary whitespace-nowrap">
-      <i class="bi bi-person-plus me-2"></i>
-      Add Doctor
-    </a>
   </div>
 
   @if($doctors->isEmpty())

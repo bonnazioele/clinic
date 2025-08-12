@@ -2,16 +2,16 @@
 @section('title','Clinic Services')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid page-container">
   @include('partials.alerts')
 
-  <!-- Page Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="card-title mb-0">
-      <i class="bi-clipboard2-pulse"></i> Services List ({{ $services->total() }} total)
+  <!-- Page Header with aligned content -->
+  <div class="page-header">
+    <h3 class="card-title">
+      <i class="bi-clipboard2-pulse me-2"></i> Services List ({{ $services->total() }} total)
     </h3>
-    <div>
-      <button type="button" class="btn btn-primary" id="addServiceBtn">
+    <div class="toolbar">
+      <button type="button" class="btn btn-add-functionality" id="addServiceBtn">
         <i class="bi bi-plus-circle me-2"></i>
         Add Service to Clinic
       </button>

@@ -46,6 +46,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login' => 'datetime',
+            'birthdate' => 'date',
             'is_active' => 'boolean',
             'is_system_admin' => 'boolean',
             'password' => 'hashed',
@@ -93,9 +94,10 @@ public function appointments()
      */
     public function servicesForClinic($clinicId)
     {
-        // If user doesn't have a doctor profile, return empty collection
+        // If user doesn't have a doctor profile, return an empty query builder
         if (!$this->doctor) {
-            return collect();
+            // Return an empty query builder that maintains consistency
+            return \App\Models\Service::whereRaw('1 = 0');
         }
         
         return $this->doctor->services()

@@ -2,16 +2,16 @@
 @section('title','Add New Service')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid page-container">
   @include('partials.alerts')
 
-  <!-- Page Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <!-- Page Header with aligned content -->
+  <div class="page-header">
     <div>
-      <h2 class="mb-1">Add New Service</h2>
-      <p class="text-muted mb-0">Create a new service for your clinic</p>
+      <h2 class="page-title">Add New Service</h2>
+      <p class="meta-label">Create a new service for your clinic</p>
     </div>
-    <div>
+    <div class="toolbar">
       <a href="{{ route('secretary.services.index') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-2"></i>
         Back to Services
@@ -21,9 +21,9 @@
 
   <div class="row">
     <div class="col-md-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom">
-          <h5 class="card-title mb-0">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="section-title">
             <i class="bi bi-plus-circle me-2"></i>
             Service Information
           </h5>
