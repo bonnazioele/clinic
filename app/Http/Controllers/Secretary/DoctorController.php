@@ -27,9 +27,10 @@ class DoctorController extends Controller
     /** GET /secretary/doctors */
     public function index()
     {
-        $doctors = User::where('is_doctor', true)
-                       ->orderBy('name')
-                       ->paginate(15);
+    $doctors = User::where('is_doctor', true)
+               ->with(['clinics:id,name', 'services:id,name'])
+               ->orderBy('name')
+               ->paginate(15);
 
         return view('secretary.doctors.index', compact('doctors'));
     }
@@ -114,7 +115,8 @@ class DoctorController extends Controller
     $doctor->clinics()->sync($data['clinic_ids'] ?? []);
     $doctor->services()->sync($data['service_ids'] ?? []);
 
-    return back()->with('status','Doctor updated.');
+    return redirect()->route('secretary.doctors.index')
+                     ->with('status','Doctor updated.');
 }
 
     /** DELETE /secretary/doctors/{doctor} */

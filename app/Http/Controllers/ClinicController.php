@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Clinic;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 
 class ClinicController extends Controller
@@ -20,7 +21,9 @@ class ClinicController extends Controller
 
         $clinics = $query->paginate(10);
 
-        return view('clinics.index', compact('clinics'));
+    $bookedAppointmentsCount = Appointment::where('status','scheduled')->count();
+
+    return view('clinics.index', compact('clinics','bookedAppointmentsCount'));
     }
 }
 

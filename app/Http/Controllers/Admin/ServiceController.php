@@ -46,13 +46,21 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|unique:services,name',
             'description' => 'nullable|string',
+            'clinic_ids'  => 'required|array|min:1',
+            'clinic_ids.*' => 'exists:clinics,id',
         ]);
 
-        Service::create($data);
+        $service = Service::create([
+            'name' => $data['name'],
+            'description' => $data['description'],
+        ]);
+
+        // Link the service to selected clinics
+        $service->clinics()->attach($data['clinic_ids']);
 
         return redirect()
             ->route('admin.services.index')
-            ->with('status','Service added successfully.');
+            ->with('status','Service added successfully and linked to selected clinics.');
     }
 
     /**
@@ -71,11 +79,19 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|unique:services,name,'.$service->id,
             'description' => 'nullable|string',
+            'clinic_ids'  => 'required|array|min:1',
+            'clinic_ids.*' => 'exists:clinics,id',
         ]);
 
-        $service->update($data);
+        $service->update([
+            'name' => $data['name'],
+            'description' => $data['description'],
+        ]);
 
-        return back()->with('status','Service updated successfully.');
+        // Update clinic associations
+        $service->clinics()->sync($data['clinic_ids']);
+
+        return back()->with('status','Service updated successfully and clinic associations updated.');
     }
 
     /**

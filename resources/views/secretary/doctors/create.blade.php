@@ -51,15 +51,25 @@
     <div class="row g-3 mb-3">
       <div class="col">
         <label class="form-label">Password</label>
-        <input type="password" name="password"
-               class="form-control @error('password') is-invalid @enderror"
-               required>
+        <div class="input-group">
+          <input type="password" id="doctor_password" name="password"
+                 class="form-control @error('password') is-invalid @enderror"
+                 required>
+          <button type="button" class="btn btn-outline-secondary password-toggle" data-target="#doctor_password" aria-label="Show password">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
         @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
       </div>
       <div class="col">
         <label class="form-label">Confirm Password</label>
-        <input type="password" name="password_confirmation"
-               class="form-control" required>
+        <div class="input-group">
+          <input type="password" id="doctor_password_confirmation" name="password_confirmation"
+                 class="form-control" required>
+          <button type="button" class="btn btn-outline-secondary password-toggle" data-target="#doctor_password_confirmation" aria-label="Show password">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -77,6 +87,7 @@
         @endforeach
       </select>
       @error('clinic_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+  <div class="form-text">Tip: Hold Ctrl (Cmd on Mac) to select multiple clinics.</div>
     </div>
 
     <!-- Services Multi-Select -->
@@ -93,10 +104,11 @@
         @endforeach
       </select>
       @error('service_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+  <div class="form-text">Tip: Hold Ctrl (Cmd on Mac) to select multiple services.</div>
     </div>
 
     <!-- Form Actions -->
-    <button class="btn btn-primary">Create Doctor</button>
+    <button class="btn btn-primary">Add Doctor</button>
     <a href="{{ route('secretary.doctors.index') }}" class="btn btn-link">Cancel</a>
   </form>
 </div>

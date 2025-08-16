@@ -33,6 +33,21 @@
       @enderror
     </div>
 
+    <div class="mb-3">
+      <label for="clinic_ids" class="form-label">Available at Clinics <span class="text-danger">*</span></label>
+      <div class="form-text mb-2">Select which clinics will offer this service</div>
+      <select name="clinic_ids[]" id="clinic_ids" class="form-select @error('clinic_ids') is-invalid @enderror" multiple required>
+        @foreach(\App\Models\Clinic::all() as $clinic)
+          <option value="{{ $clinic->id }}" {{ in_array($clinic->id, old('clinic_ids', $service->clinics->pluck('id')->toArray())) ? 'selected' : '' }}>
+            {{ $clinic->name }} - {{ $clinic->branch_code }}
+          </option>
+        @endforeach
+      </select>
+      @error('clinic_ids')
+        <div class="invalid-feedback">{{ $message }}</div>
+      @enderror
+    </div>
+
     <button type="submit" class="btn btn-primary">Update Service</button>
     <a href="{{ route('admin.services.index') }}" class="btn btn-link">Cancel</a>
   </form>

@@ -32,7 +32,10 @@ class AppointmentController extends Controller
                          ->get();
 
         $past = $user->appointments()
-                     ->where('appointment_date', '<', now()->toDateString())
+                     ->where(function($query) {
+                         $query->where('appointment_date', '<', now()->toDateString())
+                               ->orWhereIn('status', ['completed', 'cancelled']);
+                     })
                      ->orderBy('appointment_date', 'desc')
                      ->with('clinic', 'service', 'doctor')
                      ->get();
@@ -74,6 +77,18 @@ class AppointmentController extends Controller
                                'status'           => 'scheduled',
                            ]);
 
+        // Automatically add patient to the clinic's queue
+        $queueService = app(\App\Services\QueueService::class);
+        $queueNumber = $queueService->getNextNumber($data['clinic_id']);
+
+        \App\Models\QueueEntry::create([
+            'clinic_id'     => $data['clinic_id'],
+            'user_id'       => Auth::id(),
+            'appointment_id'=> $appointment->id,
+            'queue_number'  => $queueNumber,
+            'status'        => 'waiting',
+        ]);
+
         // Send in-app notification to the patient
         Auth::user()->notify(new AppointmentBooked($appointment));
 
@@ -92,8 +107,19 @@ class AppointmentController extends Controller
             abort(403, 'Forbidden');
         }
 
-        $appointment->delete();
+        // If already completed, do not allow cancel
+        if ($appointment->status === 'completed') {
+            return back()->with('error', 'Completed appointments cannot be cancelled.');
+        }
 
-        return back()->with('status', 'Appointment canceled.');
+        // Update queue entry (if any) to cancelled
+        \App\Models\QueueEntry::where('appointment_id', $appointment->id)
+            ->where('status', 'waiting')
+            ->update(['status' => 'cancelled']);
+
+        // Mark appointment as cancelled instead of deleting (so secretaries can see it)
+        $appointment->update(['status' => 'cancelled']);
+
+        return back()->with('status', 'Appointment cancelled.');
     }
 }

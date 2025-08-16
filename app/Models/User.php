@@ -22,7 +22,7 @@ class User extends Authenticatable
      * @var list<string>
      */
      protected $fillable = [
-        'name','email','password',
+        'name','first_name','last_name','email','password',
         'phone','address','medical_document',
         'is_admin',  'is_secretary', 'is_doctor',
     ];
@@ -61,6 +61,11 @@ public function appointments()
     return $this->hasMany(Appointment::class);
 }
 
+public function queueEntries()
+{
+    return $this->hasMany(\App\Models\QueueEntry::class);
+}
+
  public function clinics()
     {
         return $this->belongsToMany(
@@ -79,5 +84,91 @@ public function appointments()
             'doctor_id',
             'service_id'
         );
+    }
+
+    /**
+     * Get the user's full name.
+     */
+    public function getNameAttribute($value)
+    {
+        if ($value) {
+            return $value;
+        }
+
+        if ($this->first_name && $this->last_name) {
+            return $this->first_name . ' ' . $this->last_name;
+        }
+
+        return $this->first_name ?: $this->last_name ?: '';
+    }
+
+    /**
+     * Set the user's name and update first_name/last_name accordingly.
+     */
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = $value;
+
+        // If name is set, always update first_name and last_name
+        if ($value) {
+            $parts = explode(' ', trim($value), 2);
+            if (count($parts) >= 2) {
+                $this->attributes['first_name'] = $parts[0];
+                $this->attributes['last_name'] = $parts[1];
+            } else {
+                $this->attributes['first_name'] = $value;
+                $this->attributes['last_name'] = null;
+            }
+        }
+    }
+
+    /**
+     * Boot method to handle automatic name splitting
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            // Handle name splitting
+            if ($user->name && !$user->first_name && !$user->last_name) {
+                $parts = explode(' ', trim($user->name), 2);
+                if (count($parts) >= 2) {
+                    $user->first_name = $parts[0];
+                    $user->last_name = $parts[1];
+                } else {
+                    $user->first_name = $user->name;
+                    $user->last_name = null;
+                }
+            }
+
+            // Set default values for boolean fields
+            if (!isset($user->is_active)) {
+                $user->is_active = true;
+            }
+            if (!isset($user->is_admin)) {
+                $user->is_admin = false;
+            }
+            if (!isset($user->is_secretary)) {
+                $user->is_secretary = false;
+            }
+            if (!isset($user->is_doctor)) {
+                $user->is_doctor = false;
+            }
+        });
+
+        static::updating(function ($user) {
+            // Handle name splitting on updates
+            if ($user->isDirty('name') && !$user->isDirty('first_name') && !$user->isDirty('last_name')) {
+                $parts = explode(' ', trim($user->name), 2);
+                if (count($parts) >= 2) {
+                    $user->first_name = $parts[0];
+                    $user->last_name = $parts[1];
+                } else {
+                    $user->first_name = $user->name;
+                    $user->last_name = null;
+                }
+            }
+        });
     }
 }
