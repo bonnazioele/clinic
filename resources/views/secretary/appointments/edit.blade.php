@@ -6,7 +6,12 @@
 <div class="container py-4">
   @include('partials.alerts')
 
-  <h3>Manage Appointment #{{ $appointment->id }}</h3>
+  <div class="card medical-card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+      <i class="bi bi-calendar-check me-2"></i>
+      <h5 class="mb-0">Manage Appointment #{{ $appointment->id }}</h5>
+    </div>
+    <div class="card-body">
   <form method="POST"
         action="{{ route('secretary.appointments.update',$appointment) }}">
     @csrf @method('PATCH')
@@ -90,8 +95,12 @@
       @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    <button class="btn btn-primary">Save Changes</button>
-    <a href="{{ route('secretary.appointments.index') }}" class="btn btn-link">Back</a>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary"><i class="bi bi-save me-2"></i>Save Changes</button>
+      <a href="{{ route('secretary.appointments.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Back</a>
+    </div>
   </form>
+    </div>
+  </div>
 </div>
 @endsection

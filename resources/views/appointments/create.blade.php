@@ -3,11 +3,13 @@
 @section('title', 'Book Appointment')
 
 @section('content')
-<div class="container py-5">
-  <div class="card shadow-sm rounded-4 p-4">
-    <h2 class="mb-4 text-primary fw-bold">
-      <i class="bi bi-calendar-plus me-2"></i>Book Appointment
-    </h2>
+<div class="container py-4">
+  <div class="card medical-card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+      <i class="bi bi-calendar-plus me-2"></i>
+      <h5 class="mb-0">Book Appointment</h5>
+    </div>
+    <div class="card-body">
 
     @include('partials.alerts')
 
@@ -16,7 +18,9 @@
 
       {{-- Clinic --}}
       <div class="mb-3">
-        <label class="form-label fw-semibold">Clinic <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">
+          <i class="bi bi-building me-1"></i>Clinic <span class="text-danger">*</span>
+        </label>
         <select id="clinic" name="clinic_id" class="form-select @error('clinic_id') is-invalid @enderror" required>
           <option value="">Select a clinic</option>
           @foreach($clinics as $c)
@@ -31,7 +35,9 @@
 
       {{-- Service --}}
       <div class="mb-3">
-        <label class="form-label fw-semibold">Service <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">
+          <i class="bi bi-scissors me-1"></i>Service <span class="text-danger">*</span>
+        </label>
         <select id="service" name="service_id" class="form-select @error('service_id') is-invalid @enderror" required>
           <option value="">First select a clinic</option>
         </select>
@@ -40,7 +46,9 @@
 
       {{-- Doctor --}}
       <div class="mb-3">
-        <label class="form-label fw-semibold">Doctor <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">
+          <i class="bi bi-person-badge me-1"></i>Doctor <span class="text-danger">*</span>
+        </label>
         <select id="doctor" name="doctor_id" class="form-select @error('doctor_id') is-invalid @enderror" required>
           <option value="">First select a service</option>
         </select>
@@ -50,14 +58,18 @@
       {{-- Date & Time --}}
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold">
+            <i class="bi bi-calendar me-1"></i>Date <span class="text-danger">*</span>
+          </label>
           <input type="date" name="appointment_date"
                  class="form-control @error('appointment_date') is-invalid @enderror"
                  value="{{ old('appointment_date') }}" min="{{ date('Y-m-d') }}" required>
           @error('appointment_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
         <div class="col-md-6">
-          <label class="form-label fw-semibold">Time <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold">
+            <i class="bi bi-clock me-1"></i>Time <span class="text-danger">*</span>
+          </label>
           <input type="time" name="appointment_time"
                  class="form-control @error('appointment_time') is-invalid @enderror"
                  value="{{ old('appointment_time') }}" required>
@@ -65,12 +77,12 @@
         </div>
       </div>
 
-      <div class="text-end">
-        <button class="btn btn-primary rounded-pill px-4">
-          <i class="bi bi-calendar-check-fill me-2"></i>Book Now
-        </button>
+      <div class="d-flex gap-2 justify-content-end">
+        <button class="btn btn-primary"><i class="bi bi-calendar-check-fill me-2"></i>Book Now</button>
+        <a href="{{ url()->previous() }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-2"></i>Cancel</a>
       </div>
     </form>
+    </div>
   </div>
 </div>
 @endsection

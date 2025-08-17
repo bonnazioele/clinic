@@ -19,11 +19,12 @@ class ClinicController extends Controller
             $query->where('name','like','%'.$req->name.'%');
         }
 
-        $clinics = $query->paginate(10);
+    $clinics = $query->paginate(10);
 
-    $bookedAppointmentsCount = Appointment::where('status','scheduled')->count();
+    // Today's appointments across all clinics (based on appointment_date)
+    $todaysAppointmentsCount = Appointment::whereDate('appointment_date', now())->count();
 
-    return view('clinics.index', compact('clinics','bookedAppointmentsCount'));
+    return view('clinics.index', compact('clinics','todaysAppointmentsCount'));
     }
 }
 

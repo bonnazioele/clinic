@@ -23,6 +23,9 @@
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
 
+    <!-- Choices.js CSS (for enhanced multi-selects) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+
     <!-- Custom CSS -->
     <style>
         :root {
@@ -373,6 +376,24 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
+
+<!-- Choices.js (for enhanced multi-selects) -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+// Initialize Choices.js on any select with .enhanced-multiselect
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('select.enhanced-multiselect[multiple]')?.forEach((el) => {
+        try {
+            new Choices(el, {
+                removeItemButton: true,
+                shouldSort: false,
+                searchPlaceholderValue: 'Type to search…'
+            });
+        } catch (e) { /* noop */ }
+    });
+});
+</script>
 
 <!-- Enhanced UX scripts -->
 <script>

@@ -3,10 +3,6 @@
 @section('title','Add Clinic')
 
 @push('styles')
-  {{-- Leaflet CSS --}}
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <style>
     .map-picker { height: 400px; width: 100%; border: 2px solid #dee2e6; border-radius: .5rem; margin-bottom: 1rem; }
     .map-picker .leaflet-container { height: 100%; width: 100%; }
@@ -15,14 +11,20 @@
 
 @section('content')
 <div class="container py-4">
-  <h3 class="mb-4">Add Clinic</h3>
+  @include('partials.alerts')
 
+  <div class="card medical-card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+      <i class="bi bi-building-add me-2"></i>
+      <h5 class="mb-0">Add Clinic</h5>
+    </div>
+    <div class="card-body">
   <form method="POST" action="{{ route('admin.clinics.store') }}" enctype="multipart/form-data">
     @csrf
 
     {{-- Name --}}
     <div class="mb-3">
-      <label class="form-label">Clinic Name <span class="text-danger">*</span></label>
+      <label class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>
       <input type="text" name="name"
              class="form-control @error('name') is-invalid @enderror"
              value="{{ old('name') }}" required maxlength="255"
@@ -32,7 +34,7 @@
 
     {{-- Branch Code --}}
     <div class="mb-3">
-      <label class="form-label">Branch Code <span class="text-danger">*</span></label>
+      <label class="form-label"><i class="bi bi-tag me-1"></i>Branch Code <span class="text-danger">*</span></label>
       <input type="text" name="branch_code"
              class="form-control @error('branch_code') is-invalid @enderror"
              value="{{ old('branch_code') }}" required maxlength="50"
@@ -43,7 +45,7 @@
 
     {{-- Address --}}
     <div class="mb-3">
-      <label class="form-label">Address <span class="text-danger">*</span></label>
+      <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address <span class="text-danger">*</span></label>
       <textarea name="address"
                 class="form-control @error('address') is-invalid @enderror"
                 rows="3" required maxlength="1000"
@@ -55,7 +57,7 @@
     <div class="row">
       <div class="col-md-6">
         <div class="mb-3">
-          <label class="form-label">Contact Number <span class="text-danger">*</span></label>
+          <label class="form-label"><i class="bi bi-telephone me-1"></i>Contact Number <span class="text-danger">*</span></label>
           <input type="tel" name="contact_number"
                  class="form-control @error('contact_number') is-invalid @enderror"
                  value="{{ old('contact_number') }}" required maxlength="50"
@@ -65,7 +67,7 @@
       </div>
       <div class="col-md-6">
         <div class="mb-3">
-          <label class="form-label">Email Address <span class="text-danger">*</span></label>
+          <label class="form-label"><i class="bi bi-envelope me-1"></i>Email Address <span class="text-danger">*</span></label>
           <input type="email" name="email"
                  class="form-control @error('email') is-invalid @enderror"
                  value="{{ old('email') }}" required maxlength="100"
@@ -77,7 +79,7 @@
 
     {{-- Services Offered --}}
     <div class="mb-3">
-      <label class="form-label">Services Offered</label>
+      <label class="form-label"><i class="bi bi-gear me-1"></i>Services Offered</label>
       <div class="dropdown">
         <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start"
                 type="button" id="servicesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -103,7 +105,7 @@
 
     {{-- Logo Upload --}}
     <div class="mb-3">
-      <label class="form-label">Clinic Logo <small class="text-muted">(optional)</small></label>
+      <label class="form-label"><i class="bi bi-image me-1"></i>Clinic Logo <small class="text-muted">(optional)</small></label>
       <input type="file" name="logo" id="logoInput"
              class="form-control @error('logo') is-invalid @enderror"
              accept="image/jpeg,image/png,image/jpg,image/gif">
@@ -121,7 +123,7 @@
 
     {{-- Map --}}
     <div class="mb-3">
-      <label class="form-label">Location <span class="text-danger">*</span></label>
+      <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Location <span class="text-danger">*</span></label>
       <div class="form-text mb-2">Click on the map or drag the marker to set the clinic location.</div>
       <div id="mapPicker" class="map-picker"></div>
     </div>
@@ -129,14 +131,14 @@
     {{-- Lat/Lng --}}
     <div class="row">
       <div class="col">
-        <label class="form-label">Latitude <span class="text-danger">*</span></label>
+  <label class="form-label"><i class="bi bi-compass me-1"></i>Latitude <span class="text-danger">*</span></label>
         <input type="text" id="lat" name="latitude"
                class="form-control @error('latitude') is-invalid @enderror"
                value="{{ old('latitude') }}" readonly required>
         @error('latitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
       </div>
       <div class="col">
-        <label class="form-label">Longitude <span class="text-danger">*</span></label>
+  <label class="form-label"><i class="bi bi-compass me-1"></i>Longitude <span class="text-danger">*</span></label>
         <input type="text" id="lng" name="longitude"
                class="form-control @error('longitude') is-invalid @enderror"
                value="{{ old('longitude') }}" readonly required>
@@ -146,21 +148,19 @@
 
     <div class="d-flex gap-2 mt-4">
       <button type="submit" class="btn btn-primary">
-        <i class="fas fa-save me-1"></i> Save Clinic
+        <i class="bi bi-save me-2"></i>Save Clinic
       </button>
       <a href="{{ route('admin.clinics.index') }}" class="btn btn-outline-secondary">
-        <i class="fas fa-times me-1"></i> Cancel
+        <i class="bi bi-x-circle me-2"></i>Cancel
       </a>
     </div>
   </form>
+    </div>
+  </div>
 </div>
 @endsection
 
 @push('scripts')
-  {{-- Leaflet JS --}}
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
   <script>
   document.addEventListener('DOMContentLoaded', () => {
       // ---------- Services panel ----------
@@ -237,7 +237,7 @@
       updatePanel();
     });
 
-    function tryInitMap(attempt = 0) {
+  function tryInitMap(attempt = 0) {
       const el = document.getElementById('mapPicker');
       if (!el || typeof L === 'undefined') {
         if (attempt < 20) return setTimeout(() => tryInitMap(attempt + 1), 150);

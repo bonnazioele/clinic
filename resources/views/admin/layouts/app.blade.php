@@ -19,6 +19,12 @@
             Manage Services
           </a>
         </li>
+        <li class="nav-item mb-2">
+          <a class="nav-link @if(request()->routeIs('admin.secretaries.*')) active @endif"
+             href="{{ route('admin.secretaries.index') }}">
+            Manage Secretaries
+          </a>
+        </li>
         <li class="nav-item mt-4">
           <form method="POST" action="{{ route('logout') }}">
             @csrf

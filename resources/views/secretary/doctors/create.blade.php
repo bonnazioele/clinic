@@ -7,13 +7,18 @@
 <div class="container py-4">
   @include('partials.alerts')
 
-  <h3>Add New Doctor</h3>
+  <div class="card medical-card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+      <i class="bi bi-person-plus me-2"></i>
+      <h5 class="mb-0">Add New Doctor</h5>
+    </div>
+    <div class="card-body">
   <form method="POST" action="{{ route('secretary.doctors.store') }}">
     @csrf
 
     <!-- Name -->
     <div class="mb-3">
-      <label class="form-label">Name</label>
+      <label class="form-label"><i class="bi bi-person me-1"></i>Name</label>
       <input type="text" name="name"
              class="form-control @error('name') is-invalid @enderror"
              value="{{ old('name') }}" required>
@@ -22,7 +27,7 @@
 
     <!-- Email -->
     <div class="mb-3">
-      <label class="form-label">Email</label>
+      <label class="form-label"><i class="bi bi-envelope me-1"></i>Email</label>
       <input type="email" name="email"
              class="form-control @error('email') is-invalid @enderror"
              value="{{ old('email') }}" required>
@@ -31,7 +36,7 @@
 
     <!-- Phone -->
     <div class="mb-3">
-      <label class="form-label">Phone</label>
+      <label class="form-label"><i class="bi bi-telephone me-1"></i>Phone</label>
       <input type="text" name="phone"
              class="form-control @error('phone') is-invalid @enderror"
              value="{{ old('phone') }}">
@@ -40,7 +45,7 @@
 
     <!-- Address -->
     <div class="mb-3">
-      <label class="form-label">Address</label>
+      <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address</label>
       <textarea name="address"
                 class="form-control @error('address') is-invalid @enderror"
                 rows="2">{{ old('address') }}</textarea>
@@ -50,7 +55,7 @@
     <!-- Password & Confirmation -->
     <div class="row g-3 mb-3">
       <div class="col">
-        <label class="form-label">Password</label>
+  <label class="form-label"><i class="bi bi-key me-1"></i>Password</label>
         <div class="input-group">
           <input type="password" id="doctor_password" name="password"
                  class="form-control @error('password') is-invalid @enderror"
@@ -62,7 +67,7 @@
         @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
       </div>
       <div class="col">
-        <label class="form-label">Confirm Password</label>
+  <label class="form-label"><i class="bi bi-key-fill me-1"></i>Confirm Password</label>
         <div class="input-group">
           <input type="password" id="doctor_password_confirmation" name="password_confirmation"
                  class="form-control" required>
@@ -75,9 +80,9 @@
 
     <!-- Clinics Multi-Select -->
     <div class="mb-3">
-      <label class="form-label">Assign to Clinics</label>
-      <select name="clinic_ids[]"
-              class="form-select @error('clinic_ids') is-invalid @enderror"
+  <label class="form-label"><i class="bi bi-building me-1"></i>Assign to Clinics</label>
+  <select name="clinic_ids[]"
+      class="form-select enhanced-multiselect @error('clinic_ids') is-invalid @enderror"
               multiple>
         @foreach($clinics as $clinic)
           <option value="{{ $clinic->id }}"
@@ -92,9 +97,9 @@
 
     <!-- Services Multi-Select -->
     <div class="mb-3">
-      <label class="form-label">Assign to Services</label>
-      <select name="service_ids[]"
-              class="form-select @error('service_ids') is-invalid @enderror"
+  <label class="form-label"><i class="bi bi-scissors me-1"></i>Assign to Services</label>
+  <select name="service_ids[]"
+      class="form-select enhanced-multiselect @error('service_ids') is-invalid @enderror"
               multiple>
         @foreach($services as $service)
           <option value="{{ $service->id }}"
@@ -108,8 +113,12 @@
     </div>
 
     <!-- Form Actions -->
-    <button class="btn btn-primary">Add Doctor</button>
-    <a href="{{ route('secretary.doctors.index') }}" class="btn btn-link">Cancel</a>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary"><i class="bi bi-save me-2"></i>Add Doctor</button>
+      <a href="{{ route('secretary.doctors.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-2"></i>Cancel</a>
+    </div>
   </form>
+    </div>
+  </div>
 </div>
 @endsection

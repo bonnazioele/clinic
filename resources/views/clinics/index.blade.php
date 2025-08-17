@@ -11,7 +11,8 @@
 
 @section('content')
 <div class="container py-4">
-  @include('partials.alerts')
+  <!-- Alerts: upper-right, below the header (floating) -->
+  @include('partials.alerts', ['toastOffsetTop' => '7rem'])
 
   <!-- Page Header -->
   <div class="row mb-4">
@@ -47,8 +48,8 @@
           </div>
           <div class="col-md-3">
             <div class="text-center">
-              <div class="dashboard-stat">{{ $bookedAppointmentsCount ?? 0 }}</div>
-              <small class="text-muted">Appointments Booked</small>
+                <div class="dashboard-stat text-primary">{{ $todaysAppointmentsCount ?? 0 }}</div>
+              <small class="text-muted">Today's Appointments</small>
             </div>
           </div>
         </div>

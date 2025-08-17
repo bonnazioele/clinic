@@ -2,10 +2,6 @@
 @section('title','Clinics')
 
 @push('styles')
-  {{-- Leaflet CSS --}}
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 @endpush
 
 @section('content')
@@ -67,13 +63,13 @@
     </h4>
     <form class="row g-4" method="GET" action="{{ route('admin.clinics.index') }}">
       <div class="col-lg-4">
-        <label class="form-label fw-semibold">Clinic Name</label>
+        <label class="form-label fw-semibold"><i class="bi bi-building me-1"></i>Clinic Name</label>
         <input type="text" name="name" class="form-control form-control-lg"
                placeholder="Search by clinic name..."
                value="{{ request('name') }}">
       </div>
       <div class="col-lg-3">
-        <label class="form-label fw-semibold">Status</label>
+        <label class="form-label fw-semibold"><i class="bi bi-flag me-1"></i>Status</label>
         <select name="status" class="form-select form-select-lg">
           <option value="">All Status</option>
           <option value="active" @selected(request('status') == 'active')>Active</option>
@@ -253,10 +249,6 @@
 @endsection
 
 @push('scripts')
-  {{-- Leaflet JS --}}
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
   <script>
   let map, markers = [];
 

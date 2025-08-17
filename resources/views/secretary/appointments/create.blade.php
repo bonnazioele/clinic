@@ -3,7 +3,7 @@
 @section('title', 'Create Appointment')
 
 @section('content')
-<div class="container">
+<div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card medical-card">
@@ -149,6 +149,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const clinicSelect = document.getElementById('clinic_id');
@@ -203,4 +204,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+@endpush
 @endsection

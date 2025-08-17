@@ -6,9 +6,9 @@
   <div class="row justify-content-center">
     <div class="col-lg-8">
       <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
+    <div class="card-header bg-primary text-white">
           <h5 class="card-title mb-0">
-            <i class="fas fa-edit me-2"></i>Edit Clinic
+      <i class="bi bi-pencil-square me-2"></i>Edit Clinic
           </h5>
         </div>
         <div class="card-body">
@@ -171,19 +171,25 @@
 
             <div class="d-flex gap-2 mt-4">
               <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-1"></i> Update Clinic
+                <i class="bi bi-save me-1"></i> Update Clinic
               </button>
               <a href="{{ route('admin.clinics.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-times me-1"></i> Cancel
+                <i class="bi bi-x-circle me-1"></i> Cancel
               </a>
             </div>
           </form>
         </div>
       </div>
-@section('scripts')
+@endsection
+
+@push('scripts')
 <script>
   // Wait for DOM to be fully loaded
   document.addEventListener('DOMContentLoaded', function() {
+    if (!window.L) {
+      console.error('Leaflet library not loaded.');
+      return;
+    }
     // Services data injected from Laravel
     const services = @json($services);
     const selectedPanel = document.getElementById('selected-services');
@@ -275,8 +281,8 @@
     updatePanel();
 
     // Initialize map with existing coordinates
-    var initialLat = {{ $clinic->gps_latitude ?: '10.3157' }};
-    var initialLng = {{ $clinic->gps_longitude ?: '123.8854' }};
+  var initialLat = {{ $clinic->gps_latitude ?: '10.3157' }};
+  var initialLng = {{ $clinic->gps_longitude ?: '123.8854' }};
 
     var map = L.map('mapPicker').setView([initialLat, initialLng], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -301,4 +307,4 @@
     updateInputs();
   });
 </script>
-@endsection
+@endpush

@@ -19,7 +19,7 @@
 
         {{-- Name --}}
         <div class="mb-3">
-          <label for="name" class="form-label">Full Name</label>
+          <label for="name" class="form-label"><i class="bi bi-person me-1"></i>Full Name</label>
           <input
             id="name"
             type="text"
@@ -35,7 +35,7 @@
 
         {{-- Phone --}}
         <div class="mb-3">
-          <label for="phone" class="form-label">Phone</label>
+          <label for="phone" class="form-label"><i class="bi bi-telephone me-1"></i>Phone</label>
           <input
             id="phone"
             type="text"
@@ -50,7 +50,7 @@
 
         {{-- Address --}}
         <div class="mb-3">
-          <label for="address" class="form-label">Address</label>
+          <label for="address" class="form-label"><i class="bi bi-geo-alt me-1"></i>Address</label>
           <textarea
             id="address"
             name="address"
@@ -65,7 +65,7 @@
         {{-- Medical Document --}}
         <div class="mb-3">
           <label for="medical_document" class="form-label">
-            Medical Document (PDF, DOC)
+            <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (PDF, DOC)
           </label>
           @if($user->medical_document)
             <p class="small">
