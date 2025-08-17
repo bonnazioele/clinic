@@ -42,6 +42,12 @@
                 <i class="bi bi-gear-wide-connected me-1"></i>Manage Services
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('admin.secretaries.*')) active @endif"
+                 href="{{ route('admin.secretaries.index') }}">
+                <i class="bi bi-person-badge me-1"></i>Manage Secretaries
+              </a>
+            </li>
 
 
           @elseif(auth()->user()->is_secretary)

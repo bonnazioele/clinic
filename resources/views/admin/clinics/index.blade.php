@@ -156,9 +156,7 @@
                 $doctors = \App\Models\User::where('is_doctor', true)
                     ->whereHas('clinics', fn($q) => $q->where('clinic_id', $clinic->id))
                     ->count();
-                $secretaries = \App\Models\User::where('is_secretary', true)
-                    ->whereHas('clinics', fn($q) => $q->where('clinic_id', $clinic->id))
-                    ->count();
+                $secretaries = $clinic->secretaries()->count();
               @endphp
               <div class="small">
                 <div class="d-flex align-items-center mb-2">

@@ -76,6 +76,17 @@ public function queueEntries()
         );
     }
 
+    // Clinics this user serves as a secretary
+    public function secretaryClinics()
+    {
+        return $this->belongsToMany(
+            Clinic::class,
+            'clinic_secretary',
+            'secretary_id',
+            'clinic_id'
+        );
+    }
+
     public function services()
     {
         return $this->belongsToMany(

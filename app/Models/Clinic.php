@@ -76,6 +76,16 @@ class Clinic extends Model
                     ->withTimestamps();
     }
 
+    /**
+     * Get all secretaries associated with the clinic.
+     */
+    public function secretaries(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'clinic_secretary', 'clinic_id', 'secretary_id')
+                    ->where('is_secretary', true)
+                    ->withTimestamps();
+    }
+
     public function scopeStatus($query, string $status)
     {
         //usage: Clinic::status('approved')->get();

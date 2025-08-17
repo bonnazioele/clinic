@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\NotificationsController;
+use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 
 
 /*
@@ -101,6 +102,10 @@ Route::prefix('admin')
 
          // Manage services (no show route needed)
          Route::resource('services', AdminServiceController::class)
+              ->except('show');
+
+         // Manage secretaries
+         Route::resource('secretaries', AdminSecretaryController::class)
               ->except('show');
      });
 
