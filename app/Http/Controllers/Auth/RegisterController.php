@@ -23,29 +23,24 @@ class RegisterController extends Controller
     protected function validator(array $data)
     {
         return Validator::make($data, [
-            'name'              => ['required', 'string', 'max:255'],
+            'first_name'        => ['required', 'string', 'max:255'],
+            'last_name'         => ['required', 'string', 'max:255'],
             'email'             => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'phone'             => ['nullable', 'string', 'max:20'],
+            'phone'             => ['required', 'string', 'max:20'],
             'address'           => ['nullable', 'string'],
-            'medical_document'  => ['nullable', 'file', 'mimes:pdf,doc,docx'],
             'password'          => ['required', 'string', 'min:8', 'confirmed'],
         ]);
     }
 
     protected function create(array $data)
     {
-        // handle file upload if present
-        if (isset($data['medical_document'])) {
-            $path = request()->file('medical_document')->store('docs','public');
-            $data['medical_document'] = $path;
-        }
+        $fullName = trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? ''));
 
         return User::create([
-            'name'              => $data['name'],
+            'name'              => $fullName,
             'email'             => $data['email'],
             'phone'             => $data['phone'] ?? null,
             'address'           => $data['address'] ?? null,
-            'medical_document'  => $data['medical_document'] ?? null,
             'password'          => Hash::make($data['password']),
         ]);
     }

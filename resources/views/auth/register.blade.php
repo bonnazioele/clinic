@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="container py-5">
-  @include('partials.alerts')
+  @include('partials.alerts', ['toastOffsetTop' => '6rem', 'toastOffsetRight' => '1.25rem'])
   <div class="row justify-content-center align-items-center min-vh-100">
 
     {{-- Left: Welcome Text --}}

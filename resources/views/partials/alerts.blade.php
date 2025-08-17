@@ -21,8 +21,11 @@
 @endphp
 
 @if(!empty($toasts))
-  @php $toastOffsetTop = $toastOffsetTop ?? '5rem'; @endphp
-  <div class="position-fixed end-0 p-3" style="z-index: 2000; top: {{ $toastOffsetTop }};">
+  @php
+    $toastOffsetTop = $toastOffsetTop ?? '5rem';
+    $toastOffsetRight = $toastOffsetRight ?? '1rem';
+  @endphp
+  <div class="position-fixed" style="z-index: 2000; top: {{ $toastOffsetTop }}; right: {{ $toastOffsetRight }}; max-width: 360px;">
     <div class="toast-container" id="app-toast-container">
       @foreach($toasts as $i => $t)
         @php
