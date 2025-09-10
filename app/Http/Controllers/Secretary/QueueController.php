@@ -92,6 +92,14 @@ class QueueController extends Controller
                 }
             }
         });
+    // Notify next patient they are now next
+    $next = \App\Models\QueueEntry::where('clinic_id',$entry->clinic_id)
+        ->where('status','waiting')
+        ->orderBy('queue_number')
+        ->first();
+    if ($next && $next->user) {
+        $next->user->notify(new \App\Notifications\QueueNextUp($next));
+    }
 
     event(new QueueUpdated($entry->fresh(),'served'));
 

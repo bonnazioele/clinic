@@ -65,6 +65,9 @@ class QueueController extends Controller
                     $sec->notify(new \App\Notifications\DoctorServedQueue($fresh, $next));
                 }
             }
+            if ($next && $next->user) {
+                $next->user->notify(new \App\Notifications\QueueNextUp($next));
+            }
             event(new QueueUpdated($fresh->fresh(),'served'));
         });
 
