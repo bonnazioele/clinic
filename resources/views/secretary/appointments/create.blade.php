@@ -155,6 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const clinicSelect = document.getElementById('clinic_id');
     const serviceSelect = document.getElementById('service_id');
     const doctorSelect = document.getElementById('doctor_id');
+    // Only secretary-assigned clinics supplied from controller
     const clinics = @json($clinics);
 
     // Update services when clinic changes

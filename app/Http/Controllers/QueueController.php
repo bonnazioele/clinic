@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Services\QueueService;
+use App\Events\QueueUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,13 +46,15 @@ class QueueController extends Controller
 
         $number = $this->queue->getNextNumber($clinic->id);
 
-        $entry = QueueEntry::create([
+    $entry = QueueEntry::create([
             'clinic_id'     => $clinic->id,
             'user_id'       => Auth::id(),
             'appointment_id'=> $appointment ? $appointment->id : null,
             'queue_number'  => $number,
             'status'        => 'waiting',
         ]);
+
+    event(new QueueUpdated($entry,'created'));
 
         return redirect()
             ->route('queue.status.entry', $entry)
@@ -105,7 +108,8 @@ class QueueController extends Controller
         }
 
         $clinicName = $entry->clinic->name;
-        $entry->update(['status' => 'cancelled']);
+    $entry->update(['status' => 'cancelled']);
+    event(new QueueUpdated($entry->fresh(),'cancelled'));
 
         return redirect()
             ->route('queue.status')

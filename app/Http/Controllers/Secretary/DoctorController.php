@@ -27,10 +27,14 @@ class DoctorController extends Controller
     /** GET /secretary/doctors */
     public function index()
     {
-    $doctors = User::where('is_doctor', true)
-               ->with(['clinics:id,name', 'services:id,name'])
-               ->orderBy('name')
-               ->paginate(15);
+        $clinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id');
+        $doctors = User::where('is_doctor', true)
+            ->whereHas('clinics', function($q) use ($clinicIds){
+                $q->whereIn('clinics.id', $clinicIds);
+            })
+            ->with(['clinics:id,name', 'services:id,name'])
+            ->orderBy('name')
+            ->paginate(15);
 
         return view('secretary.doctors.index', compact('doctors'));
     }
@@ -38,7 +42,7 @@ class DoctorController extends Controller
     /** GET /secretary/doctors/create */
     public function create()
 {
-    $clinics  = Clinic::all();
+    $clinics  = auth()->user()->secretaryClinics()->get();
     $services = Service::all();
     return view('secretary.doctors.create', compact('clinics','services'));
 }
@@ -80,8 +84,12 @@ class DoctorController extends Controller
     public function edit(User $doctor)
 {
     abort_unless($doctor->is_doctor,404);
-    $clinics  = Clinic::all();
+    $clinics  = auth()->user()->secretaryClinics()->get();
     $services = Service::all();
+    // Ensure doctor is within secretary clinics
+    if (! $doctor->clinics()->whereIn('clinics.id', $clinics->pluck('id'))->exists()) {
+        abort(403,'Doctor not in your assigned clinics.');
+    }
     return view('secretary.doctors.edit', compact('doctor','clinics','services'));
 }
 
@@ -125,5 +133,19 @@ class DoctorController extends Controller
         abort_unless($doctor->is_doctor, 404);
         $doctor->delete();
         return back()->with('status','Doctor removed.');
+    }
+
+    /** SHOW detailed doctor profile */
+    public function show(User $doctor)
+    {
+        abort_unless($doctor->is_doctor,404);
+        $doctor->load(['clinics:id,name','services:id,name','doctorSchedules.clinic:id,name']);
+
+        // Group schedules by day
+        $scheduleByDay = $doctor->doctorSchedules
+            ->sortBy(fn($s)=>[$s->day_of_week,$s->start_time])
+            ->groupBy('day_of_week');
+
+        return view('secretary.doctors.show', compact('doctor','scheduleByDay'));
     }
 }

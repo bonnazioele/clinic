@@ -7,6 +7,7 @@ use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Notifications\AppointmentStatusChanged;
 use Illuminate\Support\Facades\DB;
+use App\Events\QueueUpdated;
 
 class QueueController extends Controller
 {
@@ -15,7 +16,11 @@ class QueueController extends Controller
      */
     public function overview()
     {
-        $clinics = \App\Models\Clinic::with([
+        $user = auth()->user();
+        $clinicIds = $user->secretaryClinics()->pluck('clinics.id');
+
+        $clinics = \App\Models\Clinic::whereIn('id', $clinicIds)
+            ->with([
                 'queueEntries' => function($q){
                     $q->where('status','waiting')->orderBy('queue_number');
                 }
@@ -27,8 +32,9 @@ class QueueController extends Controller
             ])
             ->get();
 
-        $totalWaiting = \App\Models\QueueEntry::where('status','waiting')->count();
-        $totalServedToday = \App\Models\QueueEntry::where('status','served')
+        $totalWaiting = \App\Models\QueueEntry::whereIn('clinic_id', $clinicIds)->where('status','waiting')->count();
+        $totalServedToday = \App\Models\QueueEntry::whereIn('clinic_id', $clinicIds)
+            ->where('status','served')
             ->whereDate('served_at', today())
             ->count();
 
@@ -39,6 +45,10 @@ class QueueController extends Controller
      */
     public function queue(Clinic $clinic)
     {
+        // Authorization: ensure clinic is assigned to this secretary
+        if (! auth()->user()->secretaryClinics()->where('clinics.id',$clinic->id)->exists()) {
+            abort(403,'Not assigned to this clinic');
+        }
         $waiting = QueueEntry::with(['user','appointment.service'])
             ->where('clinic_id', $clinic->id)
             ->where('status', 'waiting')
@@ -53,6 +63,9 @@ class QueueController extends Controller
      */
     public function serve(Clinic $clinic, QueueEntry $entry)
     {
+        if (! auth()->user()->secretaryClinics()->where('clinics.id',$clinic->id)->exists()) {
+            abort(403,'Not assigned to this clinic');
+        }
         if ($entry->clinic_id !== $clinic->id) {
             abort(403, 'Queue entry does not belong to this clinic.');
         }
@@ -61,7 +74,7 @@ class QueueController extends Controller
             return back()->with('error','Only waiting entries can be served.');
         }
 
-        DB::transaction(function() use ($entry) {
+    DB::transaction(function() use ($entry) {
             // Mark queue entry as served
             $entry->update([
                 'status' => 'served',
@@ -80,7 +93,11 @@ class QueueController extends Controller
             }
         });
 
-        return back()->with('status', "Served queue #{$entry->queue_number} and marked appointment as completed.");
+    event(new QueueUpdated($entry->fresh(),'served'));
+
+    // Potential future: dispatch event for real-time updates (e.g., broadcast to secretaries)
+
+    return back()->with('status', "Served queue #{$entry->queue_number} and marked appointment as completed.");
     }
 
     /**
@@ -96,7 +113,7 @@ class QueueController extends Controller
             return back()->with('error','Only waiting entries can be cancelled.');
         }
 
-        DB::transaction(function() use ($entry) {
+    DB::transaction(function() use ($entry) {
             $entry->update(['status' => 'cancelled']);
             if ($entry->appointment) {
                 $appointment = $entry->appointment;
@@ -108,7 +125,8 @@ class QueueController extends Controller
                     }
                 }
             }
-        });
+    });
+    event(new QueueUpdated($entry->fresh(),'cancelled'));
 
         return back()->with('status', "Cancelled queue #{$entry->queue_number}.");
     }

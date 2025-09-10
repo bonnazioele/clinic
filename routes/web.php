@@ -138,7 +138,34 @@ Route::prefix('secretary')
          Route::post('/clinics/{clinic}/queue/{entry}/cancel', [\App\Http\Controllers\Secretary\QueueController::class,'cancel'])->name('queue.cancel');
 
          // ↓ new doctors resource ↓
-         Route::resource('doctors', SecDoctor::class)
-              ->except(['show']);
+         Route::resource('doctors', SecDoctor::class); // include show for detailed doctor profile
+
+         // Secretary clinic-service management (attach/detach existing master services)
+         Route::get('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'index'])->name('services.index');
+         Route::get('services/create', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'create'])->name('services.create');
+         Route::post('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'store'])->name('services.store');
+         Route::post('clinics/{clinic}/services/attach', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'attach'])->name('services.attach');
+         Route::delete('clinics/{clinic}/services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'detach'])->name('services.detach');
+         Route::delete('services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'destroy'])->name('services.destroy');
      });
+
+/*
+|--------------------------------------------------------------------------
+| Doctor Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('doctor')
+      ->middleware(['auth', \App\Http\Middleware\DoctorMiddleware::class])
+      ->name('doctor.')
+      ->group(function(){
+           Route::get('/dashboard', [\App\Http\Controllers\Doctor\DashboardController::class,'index'])->name('dashboard');
+           Route::get('/queue', [\App\Http\Controllers\Doctor\QueueController::class,'index'])->name('queue.index');
+           Route::post('/queue/{entry}/serve', [\App\Http\Controllers\Doctor\QueueController::class,'serve'])->name('queue.serve');
+
+           // Schedules
+           Route::get('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'index'])->name('schedules.index');
+           Route::post('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'store'])->name('schedules.store');
+           Route::put('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'update'])->name('schedules.update');
+           Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'destroy'])->name('schedules.destroy');
+      });
 

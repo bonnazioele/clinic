@@ -126,9 +126,6 @@
                   <small class="text-muted d-block mb-1">
                     <i class="bi bi-tag me-1"></i>{{ $clinic->branch_code }}
                   </small>
-                  <small class="text-muted">
-                    <i class="bi bi-geo-alt me-1"></i>{{ Str::limit($clinic->address, 40) }}
-                  </small>
                 </div>
               </div>
             </td>
@@ -183,14 +180,10 @@
               </div>
             </td>
             <td class="px-4 py-4">
-              <div class="small">
-                <div class="d-flex align-items-center mb-2">
-                  <i class="bi bi-geo-alt text-primary me-2"></i>
-                  <span class="fw-semibold">{{ $clinic->gps_latitude ?? $clinic->latitude }}</span>
-                </div>
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-geo-alt text-primary me-2"></i>
-                  <span class="fw-semibold">{{ $clinic->gps_longitude ?? $clinic->longitude }}</span>
+              <div class="d-flex align-items-start">
+                <i class="bi bi-geo-alt text-primary me-2"></i>
+                <div class="small fw-semibold">
+                  {{ Str::limit($clinic->address, 70) }}
                 </div>
               </div>
             </td>

@@ -6,8 +6,9 @@ use App\Models\Appointment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\DatabaseMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
-class AppointmentStatusChanged extends Notification
+class AppointmentStatusChanged extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
@@ -26,7 +27,12 @@ class AppointmentStatusChanged extends Notification
      */
     public function via($notifiable): array
     {
-        return ['database'];
+        return ['database','broadcast'];
+    }
+
+    public function broadcastOn(): array
+    {
+        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->appointment->user_id)];
     }
 
     /**

@@ -6,7 +6,9 @@ use App\Models\Clinic;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Notifications\AppointmentBooked;
+use App\Notifications\PatientAppointmentBooked;
+use App\Notifications\SecretaryAppointmentBooked;
+use App\Notifications\DoctorAppointmentBooked;
 
 class AppointmentController extends Controller
 {
@@ -65,6 +67,48 @@ class AppointmentController extends Controller
             'appointment_time' => 'required',
         ]);
 
+        // Enforce doctor schedule availability & no double booking
+        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek; // 0-6
+        $time = $data['appointment_time'];
+
+        // Ensure doctor has an active schedule covering this time at this clinic
+        $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
+            ->where('clinic_id', $data['clinic_id'])
+            ->where('day_of_week', $day)
+            ->where('is_active', true)
+            ->where('start_time', '<=', $time)
+            ->where('end_time', '>', $time)
+            ->exists();
+        if (! $hasSchedule) {
+            return back()->withInput()->withErrors([
+                'appointment_time' => 'Selected doctor is not available at that time for this clinic.'
+            ]);
+        }
+
+        // Prevent doctor double-booking same timeslot
+        $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where('appointment_time', $time)
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+        if ($doctorBusy) {
+            return back()->withInput()->withErrors([
+                'appointment_time' => 'Doctor is already booked for that timeslot.'
+            ]);
+        }
+
+        // Enforce one patient per timeslot (across all clinics/doctors)
+        $patientConflict = Appointment::where('user_id', Auth::id())
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where('appointment_time', $time)
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+        if ($patientConflict) {
+            return back()->withInput()->withErrors([
+                'appointment_time' => 'You already have an appointment at this timeslot.'
+            ]);
+        }
+
         // Create the appointment
         $appointment = Auth::user()
                            ->appointments()
@@ -89,8 +133,19 @@ class AppointmentController extends Controller
             'status'        => 'waiting',
         ]);
 
-        // Send in-app notification to the patient
-        Auth::user()->notify(new AppointmentBooked($appointment));
+    // Patient notification
+    Auth::user()->notify(new PatientAppointmentBooked($appointment));
+
+        // Notify only secretaries of the booked clinic
+        if ($appointment->clinic) {
+            $appointment->clinic->secretaries()->each(function($sec) use ($appointment) {
+                $sec->notify(new SecretaryAppointmentBooked($appointment));
+            });
+        }
+
+        if ($appointment->doctor) {
+            $appointment->doctor->notify(new DoctorAppointmentBooked($appointment));
+        }
 
         return redirect()
             ->route('appointments.index')

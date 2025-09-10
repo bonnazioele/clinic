@@ -13,40 +13,43 @@
   </div>
 
   <div class="row g-4 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-6">
       <div class="p-4 border rounded bg-warning text-dark">
         <h4 class="fw-semibold">{{ $totalWaiting }}</h4>
         <small>Total Waiting</small>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
       <div class="p-4 border rounded bg-success text-white">
         <h4 class="fw-semibold">{{ $totalServedToday }}</h4>
         <small>Served Today</small>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="p-4 border rounded bg-info text-white">
-        <h4 class="fw-semibold">{{ $clinics->count() }}</h4>
-        <small>Clinics</small>
-      </div>
-    </div>
   </div>
 
   <div class="medical-card p-4">
-    <h5 class="mb-4"><i class="bi bi-building me-2"></i>Clinic Queues</h5>
+  <h5 class="mb-4"><i class="bi bi-building me-2"></i>Queue</h5>
   @php $activeClinics = $clinics->filter(fn($c) => $c->waiting_count > 0); @endphp
   @if($activeClinics->count() > 0)
       <div class="row g-4">
+    <div class="mb-3">
+      @php $recent = auth()->user()->notifications()->where('type',\App\Notifications\DoctorServedQueue::class)->latest()->take(3)->get(); @endphp
+      @if($recent->count())
+        <div class="alert alert-info">
+          <strong><i class="bi bi-bell me-1"></i>Recent Activity:</strong>
+          <ul class="small mb-0">
+            @foreach($recent as $n)
+              <li>{{ $n->data['message'] }} <span class="text-muted">{{ $n->created_at->diffForHumans() }}</span></li>
+            @endforeach
+          </ul>
+        </div>
+      @endif
+    </div>
     @foreach($activeClinics as $clinic)
             <div class="col-md-6 col-lg-4">
               <div class="clinic-card h-100 p-4">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-          <h6 class="fw-bold text-primary mb-0">{{ $clinic->name }}</h6>
-          <span class="badge bg-warning text-dark">{{ $clinic->waiting_count }} waiting</span>
-                </div>
-                <div class="mb-2">
-                  <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ $clinic->address }}</small>
+                <div class="d-flex justify-content-end mb-3">
+                  <span class="badge bg-warning text-dark">{{ $clinic->waiting_count }} waiting</span>
                 </div>
 
                 <div class="mb-3">
@@ -84,7 +87,7 @@
       <div class="text-center py-5">
         <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
         <h5 class="text-success mt-3">No Active Queues</h5>
-        <p class="text-muted mb-0">All clinics are currently queue-free.</p>
+  <p class="text-muted mb-0">No active queue entries.</p>
       </div>
     @endif
   </div>

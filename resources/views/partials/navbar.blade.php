@@ -65,12 +65,38 @@
               </a>
             </li>
             <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('secretary.services.*')) active @endif"
+                 href="{{ route('secretary.services.index') }}">
+                <i class="bi bi-gear-wide-connected me-1"></i>Services
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('secretary.queue.*')) active @endif"
                  href="{{ route('secretary.queue.overview') }}">
                 <i class="bi bi-people me-1"></i>Queue
               </a>
             </li>
 
+          @elseif(auth()->user()->is_doctor)
+            {{-- Doctor sees their dashboard, queue, schedule --}}
+            <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('doctor.dashboard')) active @endif"
+                 href="{{ route('doctor.dashboard') }}">
+                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('doctor.queue.*')) active @endif"
+                 href="{{ route('doctor.queue.index') }}">
+                <i class="bi bi-list-ol me-1"></i>Queue
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('doctor.schedules.*')) active @endif"
+                 href="{{ route('doctor.schedules.index') }}">
+                <i class="bi bi-calendar-range me-1"></i>Schedule
+              </a>
+            </li>
           @else
             {{-- Patient sees Find Clinics + My Appointments --}}
             <li class="nav-item">
@@ -109,10 +135,13 @@
             </a>
           </li>
         @else
-          {{-- Dashboard Link for all users --}}
+          {{-- Dashboard Link (role-aware for doctor) --}}
           <li class="nav-item me-2">
-            <a class="nav-link @if(request()->routeIs('dashboard')) active @endif"
-               href="{{ route('dashboard') }}" title="Dashboard">
+            @php
+              $dashRoute = (auth()->user()->is_doctor ?? false) ? 'doctor.dashboard' : 'dashboard';
+            @endphp
+            <a class="nav-link @if(request()->routeIs($dashRoute)) active @endif"
+               href="{{ route($dashRoute) }}" title="Dashboard">
               <i class="bi bi-speedometer2"></i>
             </a>
           </li>
@@ -199,6 +228,8 @@
                         <i class="bi bi-shield-check me-1"></i>Administrator
                       @elseif(Auth::user()->is_secretary)
                         <i class="bi bi-person-badge me-1"></i>Secretary
+                      @elseif(Auth::user()->is_doctor)
+                        <i class="bi bi-stethoscope me-1"></i>Doctor
                       @else
                         <i class="bi bi-person me-1"></i>Patient
                       @endif

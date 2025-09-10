@@ -7,8 +7,9 @@ use App\Models\Appointment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\DatabaseMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
-class AppointmentBooked extends Notification
+class AppointmentBooked extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
@@ -21,7 +22,12 @@ class AppointmentBooked extends Notification
 
     public function via($notifiable)
     {
-        return ['database'];
+        return ['database','broadcast'];
+    }
+
+    public function broadcastOn(): array
+    {
+        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->appt->user_id)];
     }
 
     public function toDatabase($notifiable): array

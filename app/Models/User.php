@@ -87,6 +87,12 @@ public function queueEntries()
         );
     }
 
+    // Doctor availability schedules
+    public function doctorSchedules()
+    {
+        return $this->hasMany(\App\Models\DoctorSchedule::class, 'doctor_id');
+    }
+
     public function services()
     {
         return $this->belongsToMany(

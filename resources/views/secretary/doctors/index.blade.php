@@ -26,7 +26,6 @@
           <th><i class="bi bi-person me-1"></i>Name</th>
           <th><i class="bi bi-envelope me-1"></i>Email</th>
           <th><i class="bi bi-telephone me-1"></i>Phone</th>
-          <th><i class="bi bi-building me-1"></i>Clinics</th>
           <th><i class="bi bi-scissors me-1"></i>Services</th>
           <th class="text-end">Actions</th>
         </tr>
@@ -38,15 +37,6 @@
           <td>{{ $d->email }}</td>
           <td>{{ $d->phone }}</td>
           <td>
-            @if($d->clinics && $d->clinics->count())
-              <div class="small text-muted">
-                {{ $d->clinics->pluck('name')->join(', ') }}
-              </div>
-            @else
-              <span class="text-muted">—</span>
-            @endif
-          </td>
-          <td>
             @if($d->services && $d->services->count())
               <div class="small text-muted">
                 {{ $d->services->pluck('name')->join(', ') }}
@@ -56,6 +46,10 @@
             @endif
           </td>
           <td class="text-end">
+            <a href="{{ route('secretary.doctors.show',$d) }}"
+               class="btn btn-sm btn-outline-info rounded-pill me-1">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
             <a href="{{ route('secretary.doctors.edit',$d) }}"
                class="btn btn-sm btn-outline-primary rounded-pill me-1">
               <i class="bi bi-pencil me-1"></i>Edit

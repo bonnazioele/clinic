@@ -8,9 +8,12 @@
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <h2 class="fw-bold text-primary mb-1">
-          <i class="bi bi-calendar-check medical-icon me-2"></i>Manage Appointments
-        </h2>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+          <h2 class="fw-bold text-primary mb-0 d-flex align-items-center">
+            <i class="bi bi-calendar-check medical-icon me-2"></i>Manage Appointments
+          </h2>
+          {{-- Removed list of all assigned clinics to avoid referencing other clinics --}}
+        </div>
         <p class="text-muted mb-0">Schedule and manage patient appointments efficiently</p>
       </div>
       <div class="d-flex gap-2">
@@ -78,18 +81,7 @@
         <input type="date" name="date" class="form-control"
                value="{{ request('date') }}">
       </div>
-      <div class="col-lg-2">
-        <label class="form-label fw-semibold">Clinic</label>
-        <select name="clinic_id" class="form-select">
-          <option value="">All Clinics</option>
-          @foreach(\App\Models\Clinic::all() as $clinic)
-            <option value="{{ $clinic->id }}" @selected(request('clinic_id') == $clinic->id)>
-              {{ $clinic->name }}
-            </option>
-          @endforeach
-        </select>
-      </div>
-      <div class="col-lg-3 d-flex align-items-end">
+  <div class="col-lg-4 d-flex align-items-end">
         <div class="d-grid w-100">
           <button type="submit" class="btn btn-primary">
             <i class="bi bi-funnel me-2"></i>Filter
@@ -157,9 +149,6 @@
                 <i class="bi bi-person me-1"></i>Patient
               </th>
               <th class="border-0 px-4 py-3">
-                <i class="bi bi-building me-1"></i>Clinic
-              </th>
-              <th class="border-0 px-4 py-3">
                 <i class="bi bi-gear me-1"></i>Service
               </th>
               <th class="border-0 px-4 py-3">
@@ -195,12 +184,6 @@
                       @endif
                     </div>
                   </div>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="fw-semibold">{{ $appointment->clinic->name }}</div>
-                  <small class="text-muted">
-                    <i class="bi bi-geo-alt me-1"></i>{{ Str::limit($appointment->clinic->address, 30) }}
-                  </small>
                 </td>
                 <td class="px-4 py-3">
                   <span class="badge bg-info text-dark">{{ $appointment->service->name }}</span>
@@ -265,7 +248,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="7" class="text-center py-5">
+                <td colspan="6" class="text-center py-5">
                   <div class="text-muted">
                     <i class="bi bi-calendar-x display-4 mb-3"></i>
                     <h5 class="fw-semibold mb-2">No appointments found</h5>

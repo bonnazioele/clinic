@@ -1,0 +1,110 @@
+@extends('layouts.app')
+@section('title','Clinic Services')
+@section('content')
+<div class="container py-4">
+  @include('partials.alerts')
+  <div class="medical-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="fw-bold text-primary mb-0 d-flex align-items-center"><i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services</h2>
+      <div class="d-flex gap-2">
+        <a href="{{ route('secretary.services.create',['clinic_id'=>$clinic?->id]) }}" class="btn btn-success">
+          <i class="bi bi-plus-circle me-2"></i>New Service
+        </a>
+      </div>
+    </div>
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-sm-4 col-md-3">
+        <label class="form-label fw-semibold">Clinic</label>
+        <select name="clinic_id" class="form-select" onchange="this.form.submit()">
+          @foreach($assignedClinics as $c)
+            <option value="{{ $c->id }}" @if($clinic && $clinic->id===$c->id) selected @endif>{{ $c->name }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-sm-4 col-md-3 d-flex align-items-end">
+        @if($clinic)
+          <span class="badge bg-info text-dark"><i class="bi bi-list-check me-1"></i>{{ $services->count() }} services</span>
+        @endif
+      </div>
+    </form>
+  </div>
+
+  @if(!$clinic)
+    <div class="alert alert-warning">You are not assigned to any clinics.</div>
+  @else
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="medical-card p-4 h-100">
+          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center"><i class="bi bi-link-45deg medical-icon me-2"></i>Attached Services <span class="badge bg-secondary ms-2">{{ $services->count() }}</span></h5>
+          @if($services->isEmpty())
+            <div class="text-muted">No services attached to this clinic yet.</div>
+          @else
+            <table class="table align-middle">
+              <thead>
+                <tr>
+                  <th class="px-4 py-3">Name</th>
+                  <th class="px-4 py-3">Description</th>
+                  <th class="px-4 py-3">Duration</th>
+                  <th class="px-4 py-3 text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($services as $s)
+                <tr>
+                  <td class="fw-semibold px-4 py-3">{{ $s->name }}</td>
+                  <td class="small text-muted px-4 py-3" style="max-width:240px">{{ Str::limit($s->description,80) }}</td>
+                  <td class="px-4 py-3"><span class="badge bg-secondary">{{ $s->pivot->duration_minutes }}m</span></td>
+                  <td class="text-end">
+                    <div class="d-inline-flex gap-1">
+                      <form method="POST" action="{{ route('secretary.services.detach',[$clinic,$s]) }}" onsubmit="return confirm('Detach this service from clinic?');">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-sm btn-outline-warning"><i class="bi bi-link-45deg me-1"></i>Detach</button>
+                      </form>
+                      <form method="POST" action="{{ route('secretary.services.destroy',$s) }}" onsubmit="return confirm('Delete this service entirely? This cannot be undone.');">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                @endforeach
+              </tbody>
+            </table>
+          @endif
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="medical-card p-4 h-100">
+          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center"><i class="bi bi-plus-circle medical-icon me-2"></i>Attach from Master List</h5>
+          @if($availableServices->isEmpty())
+            <div class="text-muted">All services already attached.</div>
+          @else
+            <form method="POST" action="{{ route('secretary.services.attach',$clinic) }}">
+              @csrf
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Select Services</label>
+                <select name="service_ids[]" class="form-select @error('service_ids') is-invalid @enderror" multiple required size="8">
+                  @foreach($availableServices as $svc)
+                    <option value="{{ $svc->id }}">{{ $svc->name }}</option>
+                  @endforeach
+                </select>
+                <div class="form-text">Hold CTRL to multi-select.</div>
+                @error('service_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Default Duration (minutes)</label>
+                <input type="number" name="duration_minutes" value="30" min="5" max="480" class="form-control @error('duration_minutes') is-invalid @enderror">
+                @error('duration_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Attach Selected</button>
+              </div>
+            </form>
+          @endif
+          <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Removal blocked if service already used in appointments.</p>
+        </div>
+      </div>
+    </div>
+  @endif
+</div>
+@endsection
