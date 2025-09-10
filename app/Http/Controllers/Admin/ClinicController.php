@@ -18,11 +18,31 @@ class ClinicController extends Controller
     /**
      * Display clinics.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $clinics = Clinic::with(['services'])->latest()->paginate(10);
-        // Separate collection for map markers (independent of pagination)
-        $clinicsWithCoords = Clinic::query()
+        // Build main list query with optional filters
+        $query = Clinic::with(['services']);
+
+        if ($request->filled('name')) {
+            $name = trim((string) $request->input('name'));
+            $query->where('name', 'like', "%{$name}%");
+        }
+        if ($request->filled('status')) {
+            $query->where('status', (string) $request->input('status'));
+        }
+
+        $clinics = $query->latest()->paginate(10)->withQueryString();
+
+        // Separate collection for map markers (apply same filters, no pagination)
+        $mapQuery = Clinic::query();
+        if ($request->filled('name')) {
+            $name = trim((string) $request->input('name'));
+            $mapQuery->where('name', 'like', "%{$name}%");
+        }
+        if ($request->filled('status')) {
+            $mapQuery->where('status', (string) $request->input('status'));
+        }
+        $clinicsWithCoords = $mapQuery
             ->whereNotNull('gps_latitude')
             ->whereNotNull('gps_longitude')
             ->get(['id','name','address','gps_latitude','gps_longitude']);

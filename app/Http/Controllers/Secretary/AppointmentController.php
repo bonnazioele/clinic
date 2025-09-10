@@ -36,12 +36,33 @@ class AppointmentController extends Controller
     }
 
     /** List & manage all appointments */
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with('user','clinic','service','doctor')
+        $query = Appointment::with('user','clinic','service','doctor');
+
+        // Filters
+        if ($request->filled('patient')) {
+            $term = trim((string) $request->input('patient'));
+            $query->whereHas('user', function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%");
+            });
+        }
+        if ($request->filled('status')) {
+            $query->where('status', (string) $request->input('status'));
+        }
+        if ($request->filled('date')) {
+            // exact date match
+            $query->whereDate('appointment_date', (string) $request->input('date'));
+        }
+        if ($request->filled('clinic_id')) {
+            $query->where('clinic_id', (int) $request->input('clinic_id'));
+        }
+
+        $appointments = $query
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         $doctors = User::where('is_doctor', true)->get();
 

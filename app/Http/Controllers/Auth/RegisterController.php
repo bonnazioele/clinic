@@ -47,13 +47,12 @@ class RegisterController extends Controller
 
     protected function registered(Request $request, $user)
     {
-        if ($user->is_admin) {
-            return redirect()->route('admin.clinics.index');
-        }
+        // After successful registration, do not keep the user logged in.
+        $this->guard()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-         if ($user->is_secretary) {
-        return redirect()->route('secretary.appointments.index');
-    }
-        return redirect($this->redirectTo);
+        return redirect()->route('login')
+            ->with('success', 'Account created successfully. Please sign in to continue.');
     }
 }

@@ -15,6 +15,7 @@ use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
+use App\Http\Controllers\Auth\SecretaryRegisterController;
 
 
 /*
@@ -107,6 +108,12 @@ Route::prefix('admin')
          // Manage secretaries
          Route::resource('secretaries', AdminSecretaryController::class)
               ->except('show');
+
+         // Admin-only Secretary Registration
+         Route::get('secretaries/register', [SecretaryRegisterController::class, 'showRegistrationForm'])
+              ->name('secretaries.register.create');
+         Route::post('secretaries/register', [SecretaryRegisterController::class, 'register'])
+              ->name('secretaries.register.store');
      });
 
 
