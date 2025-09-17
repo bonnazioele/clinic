@@ -26,13 +26,18 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         if ($user->is_admin) {
-            // send admins straight to their panel
-            return redirect()->route('admin.clinics.index');
+            // Admin role dashboard
+            return redirect()->route('admin.dashboard');
+        }
+
+        if ($user->is_doctor) {
+            // Doctor role dashboard
+            return redirect()->route('doctor.dashboard');
         }
 
         if ($user->is_secretary) {
-            // send secretaries to their manage-appointments
-            return redirect()->route('secretary.appointments.index');
+            // Secretary role dashboard
+            return redirect()->route('secretary.dashboard');
         }
 
         // patient: load the patient dashboard
@@ -85,6 +90,6 @@ class DashboardController extends Controller
             })->toArray()
         ]);
 
-        return view('dashboard.index', compact('upcoming','past'));
+    return view('dashboard.index', compact('upcoming','past'));
     }
 }

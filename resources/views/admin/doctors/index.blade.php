@@ -8,9 +8,9 @@
     <div class="d-flex justify-content-between align-items-center">
       <div>
         <h2 class="fw-bold text-primary mb-1">
-          <i class="bi bi-people medical-icon me-2"></i>Secretaries Overview
+          <i class="bi bi-person-badge medical-icon me-2"></i>Doctors Overview
         </h2>
-        <p class="text-muted mb-0">Read-only overview of all secretaries and their assigned clinics</p>
+        <p class="text-muted mb-0">List of all doctors and their assigned clinics</p>
       </div>
     </div>
   </div>
@@ -19,13 +19,13 @@
     <form method="GET" class="row g-3">
       <div class="col-md-6">
         <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i>Search by name or email</label>
-        <input type="text" name="q" value="{{ request('q') }}" class="form-control" placeholder="e.g. Jane Doe or jane@clinic.com">
+        <input type="text" name="q" value="{{ request('q') }}" class="form-control" placeholder="e.g. Dr. Cruz or dr@clinic.com">
       </div>
       <div class="col-md-4">
         <label class="form-label fw-semibold"><i class="bi bi-building me-1"></i>Filter by clinic</label>
         <select name="clinic_id" class="form-select">
           <option value="">All clinics</option>
-          @foreach(\App\Models\Clinic::orderBy('name')->get(['id','name']) as $c)
+          @foreach($clinics as $c)
             <option value="{{ $c->id }}" @selected((string)request('clinic_id') === (string)$c->id)>{{ $c->name }}</option>
           @endforeach
         </select>
@@ -45,36 +45,38 @@
           <tr>
             <th><i class="bi bi-person me-1"></i>Name</th>
             <th><i class="bi bi-envelope me-1"></i>Email</th>
-            <th><i class="bi bi-building me-1"></i>Clinics</th>
             <th><i class="bi bi-telephone me-1"></i>Phone</th>
+            <th><i class="bi bi-building me-1"></i>Clinics</th>
           </tr>
         </thead>
         <tbody>
-          @forelse($secretaries as $s)
+          @forelse($doctors as $d)
             <tr>
-              <td class="py-3">{{ $s->name }}</td>
-              <td class="py-3">{{ $s->email }}</td>
               <td class="py-3">
-                @if($s->secretaryClinics->isEmpty())
+                <a href="{{ route('admin.doctors.show', $d) }}" class="text-decoration-none">{{ $d->name }}</a>
+              </td>
+              <td class="py-3">{{ $d->email }}</td>
+              <td class="py-3">{{ $d->phone }}</td>
+              <td class="py-3">
+                @if($d->clinics->isEmpty())
                   <span class="badge bg-secondary">None</span>
                 @else
                   <div class="d-flex flex-wrap gap-2">
-                    @foreach($s->secretaryClinics as $c)
-                      <span class="badge bg-info text-dark">{{ $c->name }}</span>
+                    @foreach($d->clinics as $c)
+                      <a href="{{ route('admin.clinics.show', $c) }}" class="badge bg-info text-dark text-decoration-none">{{ $c->name }}</a>
                     @endforeach
                   </div>
                 @endif
               </td>
-              <td class="py-3">{{ $s->phone }}</td>
             </tr>
           @empty
-            <tr><td colspan="5" class="text-center py-4 text-muted">No secretaries yet.</td></tr>
+            <tr><td colspan="4" class="text-center py-4 text-muted">No doctors found.</td></tr>
           @endforelse
         </tbody>
       </table>
     </div>
   </div>
 
-  <div class="mt-3">{{ $secretaries->links() }}</div>
+  <div class="mt-3">{{ $doctors->links() }}</div>
 </div>
 @endsection

@@ -10,7 +10,10 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QueueController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
+use App\Http\Controllers\Admin\DoctorController as AdminDoctorController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\NotificationsController;
@@ -94,34 +97,35 @@ Route::prefix('admin')
      ->name('admin.')
      ->group(function () {
          // Admin dashboard
-         Route::get('/', [AdminClinicController::class, 'index'])->name('dashboard');
+         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
          // Manage clinics
          Route::resource('clinics', AdminClinicController::class);
-
-         // (Removed) Queue monitoring for admins
+         Route::post('clinics/{clinic}/approve', [AdminClinicController::class, 'approve'])->name('clinics.approve');
+         Route::post('clinics/{clinic}/decline', [AdminClinicController::class, 'decline'])->name('clinics.decline');
 
          // Manage services (no show route needed)
          Route::resource('services', AdminServiceController::class)
               ->except('show');
 
-         // Manage secretaries
-         Route::resource('secretaries', AdminSecretaryController::class)
-              ->except('show');
+         // Secretaries overview (read-only)
+         Route::get('secretaries', [AdminSecretaryController::class, 'index'])->name('secretaries.index');
 
-         // Admin-only Secretary Registration
-         Route::get('secretaries/register', [SecretaryRegisterController::class, 'showRegistrationForm'])
-              ->name('secretaries.register.create');
-         Route::post('secretaries/register', [SecretaryRegisterController::class, 'register'])
-              ->name('secretaries.register.store');
+         // Doctors overview (read-only) + profile
+         Route::get('doctors', [AdminDoctorController::class, 'index'])->name('doctors.index');
+         Route::get('doctors/{doctor}', [AdminDoctorController::class, 'show'])->name('doctors.show');
+
+         // Users overview (read-only)
+         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+
      });
-
-
 
 Route::prefix('secretary')
      ->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class])
      ->name('secretary.')
      ->group(function(){
+         // Secretary dashboard
+         Route::get('/dashboard', [\App\Http\Controllers\Secretary\DashboardController::class,'index'])->name('dashboard');
          // Queue overview
          Route::get('/queues', [\App\Http\Controllers\Secretary\QueueController::class,'overview'])->name('queue.overview');
          // existing appointments…
@@ -147,6 +151,10 @@ Route::prefix('secretary')
          Route::post('clinics/{clinic}/services/attach', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'attach'])->name('services.attach');
          Route::delete('clinics/{clinic}/services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'detach'])->name('services.detach');
          Route::delete('services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'destroy'])->name('services.destroy');
+
+         // Secretary clinic profile (edit assigned clinics)
+         Route::get('clinics/{clinic}/edit', [\App\Http\Controllers\Secretary\ClinicProfileController::class,'edit'])->name('clinic.edit');
+         Route::put('clinics/{clinic}', [\App\Http\Controllers\Secretary\ClinicProfileController::class,'update'])->name('clinic.update');
      });
 
 /*

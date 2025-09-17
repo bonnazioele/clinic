@@ -112,7 +112,24 @@ class ClinicController extends Controller
      */
     public function show(Clinic $clinic)
     {
-        return view('admin.clinics.show', compact('clinic'));
+        $clinic->load(['services', 'secretaries:id,name,email,phone', 'doctors:id,name,email,phone']);
+
+        // Simple aggregates
+        $todayAppointments = $clinic->appointments()
+            ->whereDate('appointment_date', today())
+            ->count();
+        $totalAppointments = $clinic->appointments()->count();
+        $waitingCount = $clinic->queueEntries()->where('status','waiting')->count();
+        $servedToday = $clinic->queueEntries()->where('status','served')
+            ->whereDate('served_at', today())->count();
+
+        return view('admin.clinics.show', [
+            'clinic' => $clinic,
+            'todayAppointments' => $todayAppointments,
+            'totalAppointments' => $totalAppointments,
+            'waitingCount' => $waitingCount,
+            'servedToday' => $servedToday,
+        ]);
     }
 
     /**
@@ -178,5 +195,23 @@ class ClinicController extends Controller
     }
 
     // Admin queue-related features removed per request
+
+    /**
+     * Approve a pending clinic applicant.
+     */
+    public function approve(Clinic $clinic)
+    {
+        $clinic->update(['status' => 'approved']);
+        return back()->with('status', 'Clinic approved.');
+    }
+
+    /**
+     * Decline a pending clinic applicant.
+     */
+    public function decline(Clinic $clinic)
+    {
+        $clinic->update(['status' => 'declined']);
+        return back()->with('status', 'Clinic declined.');
+    }
 
 }

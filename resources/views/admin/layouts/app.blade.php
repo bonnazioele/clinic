@@ -20,9 +20,21 @@
           </a>
         </li>
         <li class="nav-item mb-2">
+          <a class="nav-link @if(request()->routeIs('admin.users.*')) active @endif"
+             href="{{ route('admin.users.index') }}">
+            Patients
+          </a>
+        </li>
+        <li class="nav-item mb-2">
+          <a class="nav-link @if(request()->routeIs('admin.doctors.*')) active @endif"
+             href="{{ route('admin.doctors.index') }}">
+            Doctors
+          </a>
+        </li>
+        <li class="nav-item mb-2">
           <a class="nav-link @if(request()->routeIs('admin.secretaries.*')) active @endif"
              href="{{ route('admin.secretaries.index') }}">
-            Manage Secretaries
+            Secretaries
           </a>
         </li>
         <li class="nav-item mt-4">

@@ -1,3 +1,24 @@
+    public function toBroadcast($notifiable)
+    {
+        $clinic = $this->entry->clinic?->name;
+        return new \Illuminate\Notifications\Messages\BroadcastMessage([
+            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
+            'queue_entry_id' => $this->entry->id,
+            'clinic_id' => $this->entry->clinic_id,
+            'type' => 'queue_next_up'
+        ]);
+    }
+
+    public function toArray($notifiable)
+    {
+        $clinic = $this->entry->clinic?->name;
+        return [
+            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
+            'queue_entry_id' => $this->entry->id,
+            'clinic_id' => $this->entry->clinic_id,
+            'type' => 'queue_next_up'
+        ];
+    }
 <?php
 
 namespace App\Notifications;

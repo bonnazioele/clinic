@@ -21,9 +21,32 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
         return ['database','broadcast'];
     }
 
-    public function broadcastOn(): array
+    public function broadcastOn(object $notifiable): array
     {
-        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->servedEntry->clinic->id.'-'.$notifiable->id)];
+        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$notifiable->id)];
+    }
+
+    public function toBroadcast($notifiable)
+    {
+        return new \Illuminate\Notifications\Messages\BroadcastMessage($this->toArray($notifiable));
+    }
+
+    public function toArray($notifiable): array
+    {
+        $served = $this->servedEntry;
+        $next = $this->nextEntry;
+        $message = 'Doctor served queue #' . $served->queue_number . ' (' . ($served->user?->name ?? 'Patient') . ') at ' . $served->clinic?->name . '.';
+        if ($next) {
+            $message .= ' Next: #' . $next->queue_number . ' - ' . ($next->user?->name ?? 'Patient');
+        } else {
+            $message .= ' No more waiting patients.';
+        }
+        return [
+            'message' => $message,
+            'clinic_id' => $served->clinic_id,
+            'served_queue_id' => $served->id,
+            'next_queue_id' => $next?->id,
+        ];
     }
 
     public function toDatabase(object $notifiable): DatabaseMessage

@@ -25,6 +25,20 @@ class PatientAppointmentBooked extends Notification implements ShouldBroadcast
         ];
     }
 
-    public function broadcastOn(): array
-    { return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->appointment->user_id)]; }
+    public function toBroadcast($notifiable)
+    {
+        return new \Illuminate\Notifications\Messages\BroadcastMessage($this->toArray($notifiable));
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'message' => "Appointment (#{$this->appointment->id}) confirmed for {$this->appointment->appointment_date} at {$this->appointment->appointment_time}.",
+            'appointment_id' => $this->appointment->id,
+            'role' => 'patient'
+        ];
+    }
+
+    public function broadcastOn(object $notifiable): array
+    { return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$notifiable->id)]; }
 }

@@ -19,6 +19,18 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
         'appointment_id' => $this->appointment->id,
         'role' => 'doctor'
       ]; }
-    public function broadcastOn(): array
-    { return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->appointment->doctor_id)]; }
+    public function toBroadcast($notifiable)
+    {
+        return new \Illuminate\Notifications\Messages\BroadcastMessage($this->toArray($notifiable));
+    }
+
+    public function toArray($notifiable): array
+    { return [
+        'message' => "New patient (".$this->appointment->user?->name.") booked for {$this->appointment->appointment_date} at {$this->appointment->appointment_time}.",
+        'appointment_id' => $this->appointment->id,
+        'role' => 'doctor'
+      ]; }
+
+    public function broadcastOn(object $notifiable): array
+    { return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$notifiable->id)]; }
 }

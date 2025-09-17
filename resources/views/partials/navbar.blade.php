@@ -29,7 +29,7 @@
           </li>
         @else
           @if(auth()->user()->is_admin)
-            {{-- Admin sees Manage Clinics + Services --}}
+            {{-- Admin sees Manage Clinics + Services + Users overview --}}
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('admin.clinics.*')) active @endif"
                  href="{{ route('admin.clinics.index') }}">
@@ -43,19 +43,22 @@
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link @if(request()->routeIs('admin.secretaries.*')) active @endif"
-                 href="{{ route('admin.secretaries.index') }}">
-                <i class="bi bi-person-badge me-1"></i>Manage Secretaries
+              <a class="nav-link @if(request()->routeIs('admin.users.*')) active @endif"
+                 href="{{ route('admin.users.index') }}">
+                <i class="bi bi-people me-1"></i>Users
               </a>
             </li>
 
-
           @elseif(auth()->user()->is_secretary)
-            {{-- Secretary sees Manage Appointments + Doctors --}}
+            {{-- Secretary sees Manage Appointments + Doctors; show assigned clinic pill --}}
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('secretary.appointments.*')) active @endif"
                  href="{{ route('secretary.appointments.index') }}">
                 <i class="bi bi-calendar-check me-1"></i>Appointments
+                @php $assigned = auth()->user()->secretaryClinics()->pluck('name'); @endphp
+                @if($assigned->isNotEmpty())
+                  <span class="badge rounded-pill bg-light text-primary ms-2">{{ $assigned->join(', ') }}</span>
+                @endif
               </a>
             </li>
             <li class="nav-item">
@@ -138,10 +141,12 @@
           {{-- Dashboard Link (role-aware for doctor) --}}
           <li class="nav-item me-2">
             @php
-              $dashRoute = (auth()->user()->is_doctor ?? false) ? 'doctor.dashboard' : 'dashboard';
+              $dashRoute = 'dashboard';
+              if(auth()->user()->is_admin){ $dashRoute = 'admin.dashboard'; }
+              elseif(auth()->user()->is_doctor){ $dashRoute = 'doctor.dashboard'; }
+              elseif(auth()->user()->is_secretary){ $dashRoute = 'secretary.dashboard'; }
             @endphp
-            <a class="nav-link @if(request()->routeIs($dashRoute)) active @endif"
-               href="{{ route($dashRoute) }}" title="Dashboard">
+            <a class="nav-link @if(request()->routeIs($dashRoute)) active @endif" href="{{ route($dashRoute) }}" title="Dashboard">
               <i class="bi bi-speedometer2"></i>
             </a>
           </li>

@@ -35,6 +35,19 @@ class AppointmentStatusChanged extends Notification implements ShouldBroadcast
         return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->appointment->user_id)];
     }
 
+    public function toBroadcast($notifiable)
+    {
+        return new \Illuminate\Notifications\Messages\BroadcastMessage($this->toArray($notifiable));
+    }
+
+    public function toArray($notifiable): array
+    {
+        return [
+            'message' => "Your appointment (#{$this->appointment->id}) status changed to “{$this->appointment->status}.”",
+            'appointment_id' => $this->appointment->id,
+        ];
+    }
+
     /**
      * Get the array representation for the database channel.
      */

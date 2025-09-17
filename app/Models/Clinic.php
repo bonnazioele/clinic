@@ -23,6 +23,8 @@ class Clinic extends Model
         'contact_number',
         'email',
         'logo',
+    'cover_image',
+    'description',
         'gps_latitude',
         'gps_longitude',
         'status',

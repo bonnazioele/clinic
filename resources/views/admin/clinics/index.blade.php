@@ -122,7 +122,9 @@
                   </div>
                 @endif
                 <div>
-                  <h6 class="fw-semibold text-dark mb-2">{{ $clinic->name }}</h6>
+                  <h6 class="fw-semibold text-dark mb-2">
+                    <a href="{{ route('admin.clinics.show', $clinic) }}" class="text-decoration-none">{{ $clinic->name }}</a>
+                  </h6>
                   <small class="text-muted d-block mb-1">
                     <i class="bi bi-tag me-1"></i>{{ $clinic->branch_code }}
                   </small>
@@ -189,6 +191,9 @@
             </td>
             <td class="px-4 py-4">
               <div class="d-flex gap-2">
+                <a href="{{ route('admin.clinics.show', $clinic) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                  <i class="bi bi-eye me-1"></i>Details
+                </a>
                 <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-sm btn-outline-primary rounded-pill">
                   <i class="bi bi-pencil me-1"></i>Edit
                 </a>
@@ -287,6 +292,9 @@
               <h6 class="fw-bold text-primary">{{ addslashes($clinic->name) }}</h6>
               <p class="mb-2">{{ addslashes($clinic->address) }}</p>
               <div class="d-grid gap-1">
+                <a href="{{ route('admin.clinics.show', $clinic) }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye me-1"></i>View Details
+                </a>
                 <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-sm btn-outline-primary">
                   <i class="bi bi-pencil me-1"></i>Edit Clinic
                 </a>
