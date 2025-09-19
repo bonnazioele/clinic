@@ -10,11 +10,10 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-    $role = $request->input('role', 'all'); // default to all
+    $role = $request->input('role', 'all');
 
         $query = User::query();
 
-        // Role filter
         if ($role && $role !== 'all') {
             switch ($role) {
                 case 'admin':
@@ -34,7 +33,6 @@ class UserController extends Controller
             }
         }
 
-        // Search by name/email/phone
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
             $query->where(function ($s) use ($q) {
@@ -44,18 +42,14 @@ class UserController extends Controller
             });
         }
 
-        // Eager load relations needed per role for the table view
         switch ($role) {
             case 'doctor':
-                // Doctors: show clinics and services
                 $query->with(['clinics', 'services']);
                 break;
             case 'secretary':
-                // Secretaries: show assigned clinics
                 $query->with(['secretaryClinics']);
                 break;
             default:
-                // Patients/Admins/All: no heavy eager loads needed
                 break;
         }
 

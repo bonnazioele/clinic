@@ -12,7 +12,7 @@ return new class extends Migration {
                 $table->id();
                 $table->foreignId('doctor_id')->constrained('users')->cascadeOnDelete();
                 $table->foreignId('clinic_id')->constrained('clinics')->cascadeOnDelete();
-                $table->unsignedTinyInteger('day_of_week'); // 0=Sun..6=Sat
+                $table->unsignedTinyInteger('day_of_week'); 
                 $table->time('start_time');
                 $table->time('end_time');
                 $table->boolean('is_active')->default(true);

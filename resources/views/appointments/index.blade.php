@@ -82,7 +82,7 @@
                 <tr>
                   <td class="fw-semibold">{{ $a->clinic->name }}</td>
                   <td>{{ $a->service->name }}</td>
-                  <td>{{ $a->doctor ? $a->doctor->name : '—' }}</td>
+                  <td>{{ $a->doctor ? ('Dr. ' . $a->doctor->name) : '—' }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
                   <td>
@@ -163,7 +163,7 @@
                 <tr>
                   <td class="fw-semibold">{{ $a->clinic->name }}</td>
                   <td>{{ $a->service->name }}</td>
-                  <td>{{ $a->doctor ? $a->doctor->name : '—' }}</td>
+                  <td>{{ $a->doctor ? ('Dr. ' . $a->doctor->name) : '—' }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
                   <td>

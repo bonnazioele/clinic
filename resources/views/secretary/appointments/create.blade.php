@@ -16,7 +16,7 @@
                 <div class="card-body">
                     @include('partials.alerts')
 
-                    <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm">
+                    <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm" enctype="multipart/form-data">
                         @csrf
 
                         <!-- Patient Selection -->
@@ -133,6 +133,18 @@
                             @enderror
                         </div>
 
+                        <!-- Medical Document (Optional) -->
+                        <div class="mb-3">
+                            <label for="medical_document" class="form-label fw-semibold">
+                                <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (Optional)
+                            </label>
+                            <input type="file" name="medical_document" id="medical_document" class="form-control @error('medical_document') is-invalid @enderror" accept=".pdf,image/*">
+                            @error('medical_document')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Attach a past prescription, lab result, or relevant file (PDF or image, max 5MB).</div>
+                        </div>
+
                         <!-- Submit Buttons -->
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary px-4">
@@ -185,10 +197,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (clinicId) {
             const clinic = clinics.find(c => c.id == clinicId);
             if (clinic && clinic.doctors) {
-                clinic.doctors.forEach(doctor => {
+                                clinic.doctors.forEach(doctor => {
                     const option = document.createElement('option');
                     option.value = doctor.id;
-                    option.textContent = doctor.name;
+                                    option.textContent = `Dr. ${doctor.name}`;
                     doctorSelect.appendChild(option);
                 });
             }

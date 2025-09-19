@@ -47,7 +47,6 @@ class RegisterController extends Controller
 
     protected function registered(Request $request, $user)
     {
-        // After successful registration, do not keep the user logged in.
         $this->guard()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

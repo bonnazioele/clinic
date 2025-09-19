@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between align-items-center">
       <div>
         <h2 class="fw-bold text-primary mb-1">
-          <i class="bi bi-person-badge medical-icon me-2"></i>{{ $doctor->name }}
+          <i class="bi bi-person-badge medical-icon me-2"></i>Dr. {{ $doctor->name }}
         </h2>
         <div class="text-muted">
           <i class="bi bi-envelope me-1"></i>{{ $doctor->email }}

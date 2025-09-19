@@ -33,6 +33,10 @@ class SecretaryAppointmentBooked extends Notification implements ShouldBroadcast
     ];
   }
 
-  public function broadcastOn(object $notifiable): array
-  { return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$notifiable->id)]; }
+  public function broadcastOn(): array
+  {
+    // Secretary notifications typically go to the patient user who owns the appointment
+    // Adjust if later you want to broadcast to a secretary-specific channel.
+    return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.' . $this->appointment->user_id)];
+  }
 }

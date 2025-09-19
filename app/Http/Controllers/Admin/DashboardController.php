@@ -26,7 +26,6 @@ class DashboardController extends Controller
             'appointments' => Appointment::count(),
         ];
 
-        // Pending clinic applicants (status = 'pending')
         $pendingClinics = Clinic::where('status', 'pending')
             ->latest()
             ->take(6)

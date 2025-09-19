@@ -38,12 +38,10 @@ class ScheduleController extends Controller
             'is_active'   => 'nullable|boolean'
         ]);
 
-        // Ensure clinic belongs to doctor
         if (! $doctor->clinics()->where('clinics.id', $data['clinic_id'])->exists()) {
             return back()->withErrors(['clinic_id' => 'You are not associated with this clinic.']);
         }
 
-        // Prevent overlapping schedule entries
         $overlap = DoctorSchedule::where('doctor_id',$doctor->id)
             ->where('clinic_id',$data['clinic_id'])
             ->where('day_of_week',$data['day_of_week'])
@@ -97,12 +95,10 @@ class ScheduleController extends Controller
             'is_active'   => 'nullable|boolean'
         ]);
 
-        // Ensure clinic belongs to doctor
         if (! $doctor->clinics()->where('clinics.id', $data['clinic_id'])->exists()) {
             return back()->withErrors(['clinic_id' => 'You are not associated with this clinic.']);
         }
 
-        // Overlap check excluding current schedule
         $overlap = DoctorSchedule::where('doctor_id',$doctor->id)
             ->where('clinic_id',$data['clinic_id'])
             ->where('day_of_week',$data['day_of_week'])

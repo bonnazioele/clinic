@@ -15,7 +15,6 @@ class DoctorController extends Controller
     {
         $this->middleware('auth');
 
-        // ensure only secretaries hit these routes:
         $this->middleware(function($req, $next) {
             if (! $req->user()?->is_secretary) {
                 abort(403,'Forbidden');
@@ -24,7 +23,6 @@ class DoctorController extends Controller
         });
     }
 
-    /** GET /secretary/doctors */
     public function index()
     {
         $clinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id');
@@ -39,24 +37,18 @@ class DoctorController extends Controller
         return view('secretary.doctors.index', compact('doctors'));
     }
 
-    /** GET /secretary/doctors/create */
     public function create()
 {
-    $clinics  = auth()->user()->secretaryClinics()->get();
     $services = Service::all();
-    return view('secretary.doctors.create', compact('clinics','services'));
+    return view('secretary.doctors.create', compact('services'));
 }
 
-
-    /** POST /secretary/doctors */
     public function store(Request $req)
 {
     $data = $req->validate([
         'name'             => 'required|string|max:255',
         'email'            => 'required|email|unique:users,email',
         'password'         => 'required|string|min:6|confirmed',
-        'clinic_ids'       => 'array',
-        'clinic_ids.*'     => 'exists:clinics,id',
         'service_ids'      => 'array',
         'service_ids.*'    => 'exists:services,id',
         'phone'            => 'nullable|string|max:50',
@@ -72,28 +64,27 @@ class DoctorController extends Controller
         'is_doctor'  => true,
     ]);
 
-    // sync pivots:
-    $doctor->clinics()->sync($data['clinic_ids'] ?? []);
+    // Auto-assign to all clinics the secretary is assigned to
+    $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id')->all();
+    $doctor->clinics()->sync($secretaryClinicIds);
     $doctor->services()->sync($data['service_ids'] ?? []);
 
     return redirect()->route('secretary.doctors.index')
                      ->with('status','Doctor added.');
 }
 
-    /** GET /secretary/doctors/{doctor}/edit */
     public function edit(User $doctor)
 {
     abort_unless($doctor->is_doctor,404);
     $clinics  = auth()->user()->secretaryClinics()->get();
     $services = Service::all();
-    // Ensure doctor is within secretary clinics
+
     if (! $doctor->clinics()->whereIn('clinics.id', $clinics->pluck('id'))->exists()) {
         abort(403,'Doctor not in your assigned clinics.');
     }
     return view('secretary.doctors.edit', compact('doctor','clinics','services'));
 }
 
-    /** PATCH /secretary/doctors/{doctor} */
     public function update(Request $req, User $doctor)
 {
     abort_unless($doctor->is_doctor,404);
@@ -102,8 +93,6 @@ class DoctorController extends Controller
         'name'             => 'required|string|max:255',
         'email'            => 'required|email|unique:users,email,'.$doctor->id,
         'password'         => 'nullable|string|min:6|confirmed',
-        'clinic_ids'       => 'array',
-        'clinic_ids.*'     => 'exists:clinics,id',
         'service_ids'      => 'array',
         'service_ids.*'    => 'exists:services,id',
         'phone'            => 'nullable|string|max:50',
@@ -120,14 +109,15 @@ class DoctorController extends Controller
                         : $doctor->password,
     ]);
 
-    $doctor->clinics()->sync($data['clinic_ids'] ?? []);
+    // Keep clinics scoped to secretary's clinics only
+    $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id')->all();
+    $doctor->clinics()->sync($secretaryClinicIds);
     $doctor->services()->sync($data['service_ids'] ?? []);
 
     return redirect()->route('secretary.doctors.index')
                      ->with('status','Doctor updated.');
 }
 
-    /** DELETE /secretary/doctors/{doctor} */
     public function destroy(User $doctor)
     {
         abort_unless($doctor->is_doctor, 404);
@@ -135,13 +125,11 @@ class DoctorController extends Controller
         return back()->with('status','Doctor removed.');
     }
 
-    /** SHOW detailed doctor profile */
     public function show(User $doctor)
     {
         abort_unless($doctor->is_doctor,404);
         $doctor->load(['clinics:id,name','services:id,name','doctorSchedules.clinic:id,name']);
 
-        // Group schedules by day
         $scheduleByDay = $doctor->doctorSchedules
             ->sortBy(fn($s)=>[$s->day_of_week,$s->start_time])
             ->groupBy('day_of_week');

@@ -14,17 +14,11 @@ class AppointmentStatusChanged extends Notification implements ShouldBroadcast
 
     protected Appointment $appointment;
 
-    /**
-     * Create a new notification instance.
-     */
     public function __construct(Appointment $appointment)
     {
         $this->appointment = $appointment;
     }
 
-    /**
-     * Get the notification’s delivery channels.
-     */
     public function via($notifiable): array
     {
         return ['database','broadcast'];
@@ -48,9 +42,6 @@ class AppointmentStatusChanged extends Notification implements ShouldBroadcast
         ];
     }
 
-    /**
-     * Get the array representation for the database channel.
-     */
     public function toDatabase($notifiable): array
     {
         return [

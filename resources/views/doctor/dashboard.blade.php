@@ -2,15 +2,45 @@
 @section('title','Doctor Dashboard')
 @section('content')
 <div class="container py-4">
-  <div class="medical-card p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-      <div>
-        <h2 class="fw-bold text-primary mb-1 d-flex align-items-center"><i class="bi bi-person-badge medical-icon me-2"></i>Doctor Dashboard</h2>
-        <p class="text-muted mb-0">Today's overview</p>
-      </div>
-      <div class="d-flex gap-2">
-        <a href="{{ route('doctor.queue.index') }}" class="btn btn-primary"><i class="bi bi-list-ol me-2"></i>Queue</a>
-        <a href="{{ route('doctor.schedules.index') }}" class="btn btn-secondary"><i class="bi bi-calendar-range me-2"></i>Schedule</a>
+  <!-- Unified Welcome Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="medical-card p-4 text-center">
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <i class="bi bi-heart-pulse-fill medical-icon me-3" style="font-size: 3rem;"></i>
+          <div>
+            <h1 class="mb-1 fw-bold text-primary">Welcome back, {{ auth()->user()->name }}!</h1>
+            <p class="text-muted mb-0">
+              <i class="bi bi-person-badge me-2"></i>Doctor Dashboard
+            </p>
+          </div>
+        </div>
+        <div class="row g-3 text-start">
+          <div class="col-md-3">
+            <div class="p-4 rounded text-white" style="background:#1976ff;">
+              <div class="fs-3 fw-bold">{{ $appointments->count() }}</div>
+              <div class="mt-1">Today's Appointments</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="p-4 rounded" style="background:#ffc107;">
+              <div class="fs-3 fw-bold">{{ $queue->count() }}</div>
+              <div class="mt-1">People in Queue</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="p-4 rounded text-white" style="background:#1f7f56;">
+              <div class="fs-3 fw-bold">{{ $clinics->count() }}</div>
+              <div class="mt-1">Your Clinics</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="p-4 rounded text-white" style="background:#10c9f4;">
+              <div class="fs-3 fw-bold">{{ auth()->user()->services()->count() }}</div>
+              <div class="mt-1">Services Offered</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -21,9 +51,14 @@
         <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-calendar-day medical-icon me-2"></i>Today's Appointments</h5>
         @forelse($appointments as $appt)
           <div class="mb-3 small p-2 rounded border bg-light">
-            <span class="badge bg-primary me-2">{{ \Carbon\Carbon::parse($appt->appointment_time)->format('H:i') }}</span>
+            <span class="badge bg-primary me-2">{{ time12($appt->appointment_time) }}</span>
             <strong>{{ $appt->user->name }}</strong>
             <div class="text-muted mt-1"><i class="bi bi-gear me-1"></i>{{ $appt->service->name }}</div>
+            @if($appt->medical_document)
+              <div class="mt-1">
+                <a class="small" href="{{ asset('storage/' . $appt->medical_document) }}" target="_blank"><i class="bi bi-file-earmark-medical me-1"></i>View document</a>
+              </div>
+            @endif
           </div>
         @empty
           <p class="text-muted small mb-0">No appointments today.</p>

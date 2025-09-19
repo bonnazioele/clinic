@@ -146,6 +146,37 @@
       </div>
     </div>
 
+    {{-- Secretary Credentials Section --}}
+    <hr class="my-4">
+    <h6 class="text-primary mb-3"><i class="bi bi-person-badge me-1"></i>Initial Secretary Account</h6>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Secretary Name <span class="text-danger">*</span></label>
+        <input type="text" name="secretary_name" class="form-control @error('secretary_name') is-invalid @enderror" value="{{ old('secretary_name') }}" placeholder="Full name" required>
+        @error('secretary_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Secretary Email <span class="text-danger">*</span></label>
+        <input type="email" name="secretary_email" class="form-control @error('secretary_email') is-invalid @enderror" value="{{ old('secretary_email') }}" placeholder="secretary@example.com" required>
+        @error('secretary_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Contact (optional)</label>
+        <input type="text" name="secretary_phone" class="form-control @error('secretary_phone') is-invalid @enderror" value="{{ old('secretary_phone') }}" placeholder="Phone number">
+        @error('secretary_phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Password <span class="text-danger">*</span></label>
+        <input type="password" name="secretary_password" class="form-control @error('secretary_password') is-invalid @enderror" required>
+        @error('secretary_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+        <input type="password" name="secretary_password_confirmation" class="form-control" required>
+      </div>
+    </div>
+    <div class="form-text mt-2">An initial secretary user will be created and automatically linked to this clinic.</div>
+
     <div class="d-flex gap-2 mt-4">
       <button type="submit" class="btn btn-primary">
         <i class="bi bi-save me-2"></i>Save Clinic

@@ -33,7 +33,7 @@
       <tbody>
         @foreach($doctors as $d)
         <tr>
-          <td>{{ $d->name }}</td>
+          <td>Dr. {{ $d->name }}</td>
           <td>{{ $d->email }}</td>
           <td>{{ $d->phone }}</td>
           <td>

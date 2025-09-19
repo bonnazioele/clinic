@@ -58,7 +58,6 @@ class ServiceController extends Controller
 
     public function edit(Service $service)
     {
-        // ensure service belongs to at least one of secretary clinics
         $clinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
         if (! $service->clinics()->whereIn('clinics.id',$clinicIds)->exists()) {
             abort(403,'Service not in your clinics');

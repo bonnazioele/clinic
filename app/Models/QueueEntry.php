@@ -34,17 +34,11 @@ class QueueEntry extends Model
         return $this->belongsTo(Appointment::class);
     }
 
-    /**
-     * Scope to get waiting entries
-     */
     public function scopeWaiting($query)
     {
         return $query->where('status', 'waiting');
     }
 
-    /**
-     * Check if this entry is next in line
-     */
     public function isNextInLine()
     {
         return $this->status === 'waiting' &&
@@ -53,9 +47,6 @@ class QueueEntry extends Model
                    ->min('queue_number');
     }
 
-    /**
-     * Get estimated wait time in minutes
-     */
     public function getEstimatedWaitTime()
     {
         if ($this->status !== 'waiting') {
@@ -67,20 +58,14 @@ class QueueEntry extends Model
             ->where('queue_number', '<', $this->queue_number)
             ->count();
 
-        return $ahead * 15; // 15 minutes per person
+        return $ahead * 15;
     }
 
-    /**
-     * Get formatted created time
-     */
     public function getFormattedCreatedTimeAttribute()
     {
         return \Carbon\Carbon::parse($this->created_at)->format('g:i A');
     }
 
-    /**
-     * Get formatted served time
-     */
     public function getFormattedServedTimeAttribute()
     {
         if (!$this->served_at) {

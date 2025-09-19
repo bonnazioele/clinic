@@ -52,8 +52,11 @@
 
   <!-- Queue Table -->
   <div class="medical-card p-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h5 class="mb-0"><i class="bi bi-people medical-icon me-2"></i>Active Queue</h5>
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <h5 class="mb-0"><i class="bi bi-people medical-icon me-2"></i>Active Queue</h5>
+        <span class="badge bg-info text-dark">Mode: {{ $clinic->queue_mode === 'priority' ? 'Priority (Appointment Time)' : 'First Come, First Served' }}</span>
+      </div>
       <span class="badge bg-primary">{{ $waiting->count() }} waiting</span>
     </div>
 
@@ -72,6 +75,7 @@
             <th class="border-0 px-4 py-3">Patient</th>
             <th class="border-0 px-4 py-3">Wait Time</th>
             <th class="border-0 px-4 py-3">Appointment</th>
+            <th class="border-0 px-4 py-3">Document</th>
             <th class="border-0 px-4 py-3" width="200">Actions</th>
           </tr>
         </thead>
@@ -108,6 +112,15 @@
                   </div>
                 @else
                   <small class="text-muted">Walk-in</small>
+                @endif
+              </td>
+              <td class="px-4 py-4">
+                @if($queueEntry->appointment?->medical_document)
+                  <a href="{{ asset('storage/' . $queueEntry->appointment->medical_document) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-file-earmark-medical me-1"></i>View
+                  </a>
+                @else
+                  <span class="text-muted">—</span>
                 @endif
               </td>
               <td class="px-4 py-4">

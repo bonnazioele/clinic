@@ -22,38 +22,7 @@
       </div>
     </div>
 
-    <!-- Statistics Row -->
-    <div class="row g-4 mb-4">
-      <div class="col-md-3">
-        <div class="p-4 border rounded bg-primary text-white">
-          <h4 class="fw-semibold">{{ $clinics->count() }}</h4>
-          <small>Total Clinics</small>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="p-4 border rounded bg-success text-white">
-          <h4 class="fw-semibold">{{ \App\Models\Service::count() }}</h4>
-          <small>Total Services</small>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="p-4 border rounded bg-warning text-dark">
-          @php $totalWaiting = \App\Models\QueueEntry::where('status', 'waiting')->count(); @endphp
-          <h4 class="fw-semibold">{{ $totalWaiting }}</h4>
-          <small>People Waiting</small>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="p-4 border rounded bg-info text-white">
-          @php
-            $totalServed = \App\Models\QueueEntry::where('status', 'served')
-              ->whereDate('served_at', today())->count();
-          @endphp
-          <h4 class="fw-semibold">{{ $totalServed }}</h4>
-          <small>Served Today</small>
-        </div>
-      </div>
-    </div>
+
   </div>
 
   <!-- Search and Filter -->

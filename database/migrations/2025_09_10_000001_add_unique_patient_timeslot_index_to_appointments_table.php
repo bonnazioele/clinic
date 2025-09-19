@@ -8,7 +8,6 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            // Global uniqueness for patient per date+time (ignore cancelled via application logic)
             $table->unique(['user_id','appointment_date','appointment_time'], 'appointments_user_date_time_unique');
         });
     }

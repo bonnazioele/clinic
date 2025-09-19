@@ -17,7 +17,7 @@ class QueueUpdated implements ShouldBroadcast
 
     public function __construct(public QueueEntry $entry, public string $action)
     {
-        // $action: created|served|cancelled
+
     }
 
     public function broadcastOn(): array

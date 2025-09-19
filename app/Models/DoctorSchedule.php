@@ -12,7 +12,7 @@ class DoctorSchedule extends Model
     protected $fillable = [
         'doctor_id',
         'clinic_id',
-        'day_of_week', // 0=Sun .. 6=Sat
+        'day_of_week', 
         'start_time',
         'end_time',
         'is_active'

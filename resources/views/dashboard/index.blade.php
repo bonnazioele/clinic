@@ -31,22 +31,22 @@
             </p>
           </div>
         </div>
-        <div class="row g-3">
+        <div class="row g-3 text-start">
           <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">{{ $upcoming->count() }}</div>
-              <small class="text-muted">Upcoming Appointments</small>
+            <div class="p-4 rounded text-white" style="background:#1976ff;">
+              <div class="fs-3 fw-bold">{{ $upcoming->count() }}</div>
+              <div class="mt-1">Upcoming Appointments</div>
             </div>
           </div>
           <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">{{ $past->count() }}</div>
-              <small class="text-muted">Past Visits</small>
+            <div class="p-4 rounded text-white" style="background:#1f7f56;">
+              <div class="fs-3 fw-bold">{{ $past->count() }}</div>
+              <div class="mt-1">Past Visits</div>
             </div>
           </div>
           <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">
+            <div class="p-4 rounded" style="background:#ffc107;">
+              <div class="fs-3 fw-bold">
                 @if(Auth::user()->is_admin)
                   {{ \App\Models\Clinic::count() }}
                 @elseif(Auth::user()->is_secretary)
@@ -55,7 +55,7 @@
                   {{ \App\Models\Clinic::count() }}
                 @endif
               </div>
-              <small class="text-muted">
+              <div class="mt-1">
                 @if(Auth::user()->is_admin)
                   Total Clinics
                 @elseif(Auth::user()->is_secretary)
@@ -63,12 +63,12 @@
                 @else
                   Available Clinics
                 @endif
-              </small>
+              </div>
             </div>
           </div>
           <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">
+            <div class="p-4 rounded text-white" style="background:#10c9f4;">
+              <div class="fs-3 fw-bold">
                 @if(Auth::user()->is_admin)
                   {{ \App\Models\Service::count() }}
                 @elseif(Auth::user()->is_secretary)
@@ -77,7 +77,7 @@
                   {{ \App\Models\Service::count() }}
                 @endif
               </div>
-              <small class="text-muted">
+              <div class="mt-1">
                 @if(Auth::user()->is_admin)
                   Total Services
                 @elseif(Auth::user()->is_secretary)
@@ -85,7 +85,7 @@
                 @else
                   Available Services
                 @endif
-              </small>
+              </div>
             </div>
           </div>
         </div>

@@ -1,8 +1,29 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-primary shadow-lg">
   <div class="container">
     {{-- Brand --}}
+    @php
+      $homeRoute = 'welcome';
+      if(auth()->check()){
+        $u = auth()->user();
+        if($u->is_admin){
+          $homeRoute = 'admin.dashboard';
+        } elseif($u->is_owner){
+          $clinic = \App\Models\Clinic::where('user_id',$u->id)
+            ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->first();
+          $homeRoute = ($clinic && $clinic->status === 'approved') ? 'owner.dashboard' : 'welcome';
+        } elseif($u->is_doctor){
+          $homeRoute = 'doctor.dashboard';
+        } elseif($u->is_secretary){
+          $homeRoute = 'secretary.dashboard';
+        } else {
+          $homeRoute = 'dashboard';
+        }
+      }
+    @endphp
     <a class="navbar-brand d-flex align-items-center"
-       href="{{ route('welcome') }}">
+       href="{{ route($homeRoute) }}">
       <i class="bi bi-heart-pulse-fill me-2" style="font-size: 1.8rem;"></i>
       <span class="fw-bold">CliniQ</span>
     </a>
@@ -50,17 +71,7 @@
             </li>
 
           @elseif(auth()->user()->is_secretary)
-            {{-- Secretary sees Manage Appointments + Doctors; show assigned clinic pill --}}
-            <li class="nav-item">
-              <a class="nav-link @if(request()->routeIs('secretary.appointments.*')) active @endif"
-                 href="{{ route('secretary.appointments.index') }}">
-                <i class="bi bi-calendar-check me-1"></i>Appointments
-                @php $assigned = auth()->user()->secretaryClinics()->pluck('name'); @endphp
-                @if($assigned->isNotEmpty())
-                  <span class="badge rounded-pill bg-light text-primary ms-2">{{ $assigned->join(', ') }}</span>
-                @endif
-              </a>
-            </li>
+            {{-- Secretary primary nav (Appointments moved into dashboard) --}}
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('secretary.doctors.*')) active @endif"
                  href="{{ route('secretary.doctors.index') }}">
@@ -80,14 +91,16 @@
               </a>
             </li>
 
-          @elseif(auth()->user()->is_doctor)
-            {{-- Doctor sees their dashboard, queue, schedule --}}
+          @elseif(auth()->user()->is_owner)
+            {{-- Owner primary nav --}}
             <li class="nav-item">
-              <a class="nav-link @if(request()->routeIs('doctor.dashboard')) active @endif"
-                 href="{{ route('doctor.dashboard') }}">
-                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+              <a class="nav-link @if(request()->routeIs('owner.staff.*')) active @endif"
+                 href="{{ route('owner.staff.index') }}">
+                <i class="bi bi-people me-1"></i>Staff
               </a>
             </li>
+          @elseif(auth()->user()->is_doctor)
+            {{-- Doctor sees their dashboard, queue, schedule --}}
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('doctor.queue.*')) active @endif"
                  href="{{ route('doctor.queue.index') }}">
@@ -128,6 +141,11 @@
       <ul class="navbar-nav ms-auto align-items-center">
         @guest
           <li class="nav-item">
+            <a class="nav-link text-white me-2" href="{{ route('owner.apply') }}">
+              <i class="bi bi-building-add me-1"></i>Register Clinic
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link btn btn-outline-light btn-sm me-2" href="{{ route('login') }}">
               <i class="bi bi-box-arrow-in-right me-1"></i>Login
             </a>
@@ -138,11 +156,12 @@
             </a>
           </li>
         @else
-          {{-- Dashboard Link (role-aware for doctor) --}}
+          {{-- Dashboard icon (role-aware) --}}
           <li class="nav-item me-2">
             @php
               $dashRoute = 'dashboard';
               if(auth()->user()->is_admin){ $dashRoute = 'admin.dashboard'; }
+              elseif(auth()->user()->is_owner){ $dashRoute = 'owner.dashboard'; }
               elseif(auth()->user()->is_doctor){ $dashRoute = 'doctor.dashboard'; }
               elseif(auth()->user()->is_secretary){ $dashRoute = 'secretary.dashboard'; }
             @endphp
@@ -233,6 +252,8 @@
                         <i class="bi bi-shield-check me-1"></i>Administrator
                       @elseif(Auth::user()->is_secretary)
                         <i class="bi bi-person-badge me-1"></i>Secretary
+                      @elseif(Auth::user()->is_owner)
+                        <i class="bi bi-building-gear me-1"></i>Clinic Owner
                       @elseif(Auth::user()->is_doctor)
                         <i class="bi bi-stethoscope me-1"></i>Doctor
                       @else
@@ -253,6 +274,16 @@
                   <i class="bi bi-pencil-square me-2"></i>Edit Profile
                 </a>
               </li>
+              @if(Auth::user()->is_secretary && Auth::user()->secretaryClinics()->exists())
+                @php $firstClinic = Auth::user()->secretaryClinics()->select('clinics.id')->first(); @endphp
+                @if($firstClinic)
+                <li>
+                  <a class="dropdown-item" href="{{ route('secretary.clinic.edit', $firstClinic->id) }}">
+                    <i class="bi bi-gear me-2"></i>Clinic Settings
+                  </a>
+                </li>
+                @endif
+              @endif
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item text-danger" href="#"

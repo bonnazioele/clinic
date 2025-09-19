@@ -6,9 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+    
      public function up() {
     Schema::table('appointments', function (Blueprint $t) {
       $t->foreignId('doctor_id')

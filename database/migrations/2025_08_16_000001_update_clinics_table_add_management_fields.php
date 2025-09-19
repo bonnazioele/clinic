@@ -7,12 +7,10 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+
     public function up(): void
     {
-        // Add columns individually if missing to avoid duplicate-column errors
+
         if (!Schema::hasColumn('clinics', 'branch_code')) {
             Schema::table('clinics', function (Blueprint $table) {
                 $table->string('branch_code')->unique()->nullable()->after('name');
@@ -34,7 +32,6 @@ return new class extends Migration
             });
         }
 
-        // GPS columns expected by the app
         if (!Schema::hasColumn('clinics', 'gps_latitude')) {
             Schema::table('clinics', function (Blueprint $table) {
                 $table->decimal('gps_latitude', 10, 7)->nullable()->after('logo');
@@ -46,7 +43,6 @@ return new class extends Migration
             });
         }
 
-        // Optional: status and submitter
         if (!Schema::hasColumn('clinics', 'status')) {
             Schema::table('clinics', function (Blueprint $table) {
                 $table->string('status')->default('active')->after('gps_longitude');
@@ -58,25 +54,19 @@ return new class extends Migration
             });
         }
 
-        // Soft deletes support (used by the model)
         if (!Schema::hasColumn('clinics', 'deleted_at')) {
             Schema::table('clinics', function (Blueprint $table) {
                 $table->softDeletes();
             });
         }
 
-        // Backfill gps_* from legacy latitude/longitude if present
         if (Schema::hasColumn('clinics', 'latitude') && Schema::hasColumn('clinics', 'longitude')) {
             DB::statement('UPDATE clinics SET gps_latitude = COALESCE(gps_latitude, latitude), gps_longitude = COALESCE(gps_longitude, longitude)');
         }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        // Drop columns if they exist (reverse of up)
         if (Schema::hasColumn('clinics', 'user_id')) {
             Schema::table('clinics', function (Blueprint $table) {
                 $table->dropForeign(['user_id']);

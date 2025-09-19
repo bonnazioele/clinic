@@ -21,6 +21,7 @@
             <th class="px-4 py-3">Patient</th>
             <th class="px-4 py-3">Appointment Time</th>
             <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Document</th>
             <th class="px-4 py-3" width="140">Action</th>
           </tr>
         </thead>
@@ -29,8 +30,17 @@
             <tr>
               <td class="px-4 py-3"><span class="badge bg-warning text-dark">#{{ $entry->queue_number }}</span></td>
               <td class="px-4 py-3">{{ $entry->appointment?->user?->name ?? 'Patient' }}</td>
-              <td class="px-4 py-3">{{ $entry->appointment?->appointment_time ? \Carbon\Carbon::parse($entry->appointment->appointment_time)->format('H:i') : '-' }}</td>
+              <td class="px-4 py-3">{{ $entry->appointment?->appointment_time ? time12($entry->appointment->appointment_time) : '-' }}</td>
               <td class="px-4 py-3"><span class="badge bg-info text-dark"><i class="bi bi-clock me-1"></i>Waiting</span></td>
+              <td class="px-4 py-3">
+                @if($entry->appointment?->medical_document)
+                  <a href="{{ asset('storage/' . $entry->appointment->medical_document) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-file-earmark-medical me-1"></i>View
+                  </a>
+                @else
+                  <span class="text-muted">—</span>
+                @endif
+              </td>
               <td class="px-4 py-3">
                 <form method="POST" action="{{ route('doctor.queue.serve', $entry) }}" onsubmit="return confirm('Mark as served?')">
                   @csrf

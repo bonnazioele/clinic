@@ -16,7 +16,6 @@ class ClinicServiceController extends Controller
         $this->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class]);
     }
 
-    /** Show form to create a new master service (will also attach to a chosen clinic) */
     public function create(Request $request)
     {
         $assignedClinics = Auth::user()->secretaryClinics()->orderBy('name')->get();
@@ -30,7 +29,6 @@ class ClinicServiceController extends Controller
         ]);
     }
 
-    /** Store new master service & optionally attach to selected clinics */
     public function store(Request $request)
     {
         $assignedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
@@ -42,7 +40,6 @@ class ClinicServiceController extends Controller
             'clinic_ids.*' => 'integer|exists:clinics,id',
             'duration_minutes' => 'nullable|integer|min:5|max:480'
         ]);
-        // Authorization check each clinic
         foreach ($data['clinic_ids'] as $cid) {
             if (! $assignedClinicIds->contains($cid)) {
                 return back()->withInput()->withErrors(['clinic_ids' => 'Clinic not assigned to you.']);
@@ -62,7 +59,6 @@ class ClinicServiceController extends Controller
             ->with('status','Service created and attached.');
     }
 
-    /** List services for a selected clinic (or first assigned clinic) and allow attaching from master list */
     public function index(Request $request)
     {
         $assignedClinics = Auth::user()->secretaryClinics()->orderBy('name')->get();
@@ -93,10 +89,8 @@ class ClinicServiceController extends Controller
         ]);
     }
 
-    /** Attach existing services from master list to clinic */
     public function attach(Request $request, Clinic $clinic)
     {
-        // authorization
         if (! Auth::user()->secretaryClinics()->where('clinics.id',$clinic->id)->exists()) {
             abort(403,'Clinic not assigned to you.');
         }
@@ -115,17 +109,16 @@ class ClinicServiceController extends Controller
             ->with('status','Service(s) attached to clinic.');
     }
 
-    /** Detach a service from clinic if unused */
     public function detach(Clinic $clinic, Service $service)
     {
         if (! Auth::user()->secretaryClinics()->where('clinics.id',$clinic->id)->exists()) {
             abort(403,'Clinic not assigned to you.');
         }
-        // ensure relation exists
+
         if (! $clinic->services()->where('services.id',$service->id)->exists()) {
             return back()->with('error','Service not attached to clinic.');
         }
-        // usage check: appointments referencing this service & clinic
+
         $inUse = Appointment::where('clinic_id',$clinic->id)
             ->where('service_id',$service->id)
             ->where('status','!=','cancelled')
@@ -137,17 +130,15 @@ class ClinicServiceController extends Controller
         return back()->with('status','Service detached from clinic.');
     }
 
-    /** Permanently delete a master service if unused anywhere */
     public function destroy(Service $service)
     {
-        // Only allow if service not referenced by any appointment across clinics
         $inUse = Appointment::where('service_id',$service->id)
             ->where('status','!=','cancelled')
             ->exists();
         if ($inUse) {
             return back()->with('error','Cannot delete: service used in appointments.');
         }
-        // ensure secretary has at least one clinic referencing or has permission indirectly
+
         $assignedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
         $attachedInAssigned = $service->clinics()->whereIn('clinics.id',$assignedClinicIds)->exists();
         if (! $attachedInAssigned) {

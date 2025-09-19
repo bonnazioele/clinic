@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('queue_entries', function (Blueprint $table) {
@@ -21,16 +18,12 @@ return new class extends Migration
             $table->timestamp('served_at')->nullable();
             $table->timestamps();
 
-            // Indexes for better performance
             $table->index(['clinic_id', 'status']);
             $table->index(['clinic_id', 'queue_number']);
             $table->index(['user_id', 'status']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('queue_entries');

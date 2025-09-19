@@ -74,7 +74,7 @@
               <tbody>
                 @foreach($clinic->doctors as $doc)
                   <tr>
-                    <td>{{ $doc->name }}</td>
+                    <td>Dr. {{ $doc->name }}</td>
                     <td>{{ $doc->email }}</td>
                     <td>{{ $doc->phone }}</td>
                   </tr>

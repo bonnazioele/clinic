@@ -6,11 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateServicesTable extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up()
     {
         if (!Schema::hasTable('clinics')) {
@@ -27,11 +22,6 @@ class CreateServicesTable extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down()
     {
         Schema::table('services', function (Blueprint $table) {

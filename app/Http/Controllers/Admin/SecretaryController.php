@@ -8,7 +8,6 @@ use App\Models\User;
 
 class SecretaryController extends Controller
 {
-    // Read-only overview
     public function index(Request $request)
     {
         $query = User::where('is_secretary', true)

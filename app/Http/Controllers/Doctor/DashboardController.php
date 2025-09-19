@@ -29,7 +29,6 @@ class DashboardController extends Controller
 
         $clinics = $doctor->clinics()->get();
 
-        // Active queue entries for doctor (by clinic + scheduled appointments today)
         $queue = QueueEntry::with('appointment.user','clinic')
             ->whereIn('clinic_id', $clinics->pluck('id'))
             ->where('status','waiting')

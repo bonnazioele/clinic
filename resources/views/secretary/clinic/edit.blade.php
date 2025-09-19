@@ -35,6 +35,14 @@
           <textarea name="description" rows="4" class="form-control" placeholder="Describe your clinic...">{{ old('description', $clinic->description) }}</textarea>
         </div>
         <div class="col-md-6">
+          <label class="form-label fw-semibold">Queue Mode <span class="text-danger">*</span></label>
+          <select name="queue_mode" class="form-select" required>
+            <option value="fcfs" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'fcfs' ? 'selected' : '' }}>First Come, First Served</option>
+            <option value="priority" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'priority' ? 'selected' : '' }}>Priority (Appointment Time)</option>
+          </select>
+          <div class="form-text">Priority mode lists patients by their scheduled appointment time first; FCFS uses queue number order.</div>
+        </div>
+        <div class="col-md-6">
           <label class="form-label fw-semibold">Logo</label>
           <input type="file" name="logo" class="form-control" accept="image/*">
           @if($clinic->logo)

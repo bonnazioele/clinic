@@ -9,7 +9,7 @@ class SecretarySeeder extends Seeder
 {
     public function run()
     {
-        User::where('email','secretary@cliniq.com')   // or ->where('id',3)
+        User::where('email','secretary@cliniq.com')  
             ->update(['is_secretary'=>true]);
     }
 }

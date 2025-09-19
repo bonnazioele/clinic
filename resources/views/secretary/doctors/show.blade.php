@@ -5,7 +5,7 @@
   @include('partials.alerts')
   <div class="medical-card p-4 mb-4 d-flex justify-content-between align-items-center">
     <div>
-      <h2 class="fw-bold text-primary mb-1"><i class="bi bi-person-badge me-2"></i>{{ $doctor->name }}</h2>
+  <h2 class="fw-bold text-primary mb-1"><i class="bi bi-person-badge me-2"></i>Dr. {{ $doctor->name }}</h2>
       <p class="text-muted mb-0">Doctor Profile & Credentials</p>
     </div>
     <div class="d-flex gap-2">
@@ -20,7 +20,7 @@
       <div class="medical-card p-4 h-100">
         <h5 class="fw-semibold mb-3"><i class="bi bi-person-lines-fill me-2"></i>Basic Information</h5>
         <dl class="row mb-0 small">
-          <dt class="col-5">Name</dt><dd class="col-7">{{ $doctor->name }}</dd>
+          <dt class="col-5">Name</dt><dd class="col-7">Dr. {{ $doctor->name }}</dd>
           <dt class="col-5">Email</dt><dd class="col-7">{{ $doctor->email }}</dd>
           <dt class="col-5">Phone</dt><dd class="col-7">{{ $doctor->phone ?: '—' }}</dd>
           <dt class="col-5">Address</dt><dd class="col-7">{{ $doctor->address ?: '—' }}</dd>
@@ -60,7 +60,7 @@
                 <tr>
                   <td>{{ ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][$day] }}</td>
                   <td>{{ $entry->clinic->name }}</td>
-                  <td>{{ substr($entry->start_time,0,5) }} - {{ substr($entry->end_time,0,5) }}</td>
+                  <td>{{ time12($entry->start_time) }} - {{ time12($entry->end_time) }}</td>
                 </tr>
                 @endforeach
               @endforeach
@@ -96,7 +96,7 @@
             @foreach($recent as $a)
               <tr>
                 <td>{{ \Carbon\Carbon::parse($a->appointment_date)->format('Y-m-d') }}</td>
-                <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('H:i') }}</td>
+                <td>{{ time12($a->appointment_time) }}</td>
                 <td>{{ $a->user->name }}</td>
                 <td>{{ $a->clinic->name }}</td>
                 <td>{{ $a->service->name }}</td>

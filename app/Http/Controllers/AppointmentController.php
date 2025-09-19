@@ -14,13 +14,9 @@ class AppointmentController extends Controller
 {
     public function __construct()
     {
-        // Ensure only authenticated & verified patients can book
         $this->middleware(['auth', 'verified']);
     }
 
-    /**
-     * Show the patient dashboard of upcoming vs past appointments.
-     */
     public function index()
     {
         $user = Auth::user();
@@ -45,9 +41,6 @@ class AppointmentController extends Controller
         return view('appointments.index', compact('upcoming', 'past'));
     }
 
-    /**
-     * Show the booking form.
-     */
     public function create()
     {
         $clinics = Clinic::with(['services','doctors.services'])->get();
@@ -55,8 +48,92 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Persist a new appointment.
+     * Return availability (time slots) for a doctor at a clinic on a given date.
      */
+    public function availability(Request $request)
+    {
+        $data = $request->validate([
+            'clinic_id'  => 'required|exists:clinics,id',
+            'doctor_id'  => 'required|exists:users,id',
+            'date'       => 'required|date|after_or_equal:today',
+            'service_id' => 'nullable|exists:services,id',
+        ]);
+
+        $date      = \Carbon\Carbon::parse($data['date']);
+        $dayOfWeek = $date->dayOfWeek; // 0 (Sun) .. 6 (Sat)
+
+        // Fetch all active schedule blocks for that doctor/clinic/day
+        $schedules = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
+            ->where('clinic_id', $data['clinic_id'])
+            ->where('day_of_week', $dayOfWeek)
+            ->where('is_active', true)
+            ->orderBy('start_time')
+            ->get(['id','start_time','end_time']);
+
+        if ($schedules->isEmpty()) {
+            return response()->json([
+                'date' => $date->toDateString(),
+                'weekday' => $date->format('l'),
+                'slots' => [],
+                'schedule' => [],
+                'message' => 'No schedule for this doctor on the selected day.'
+            ]);
+        }
+
+        // Determine slot length (service duration pivot) or fallback to 30 minutes
+        $slotMinutes = 30;
+        if (!empty($data['service_id'])) {
+            $dur = \DB::table('clinic_service')
+                ->where('clinic_id', $data['clinic_id'])
+                ->where('service_id', $data['service_id'])
+                ->value('duration_minutes');
+            if ($dur && is_numeric($dur) && $dur > 0 && $dur <= 480) {
+                $slotMinutes = (int) $dur;
+            }
+        }
+
+        // Gather already booked times (exact appointment_time matches) for doctor on that date
+        $booked = Appointment::where('doctor_id', $data['doctor_id'])
+            ->whereDate('appointment_date', $date->toDateString())
+            ->where('status', '!=', 'cancelled')
+            ->pluck('appointment_time')
+            ->map(fn($t) => substr($t,0,5))
+            ->unique()
+            ->values();
+
+        $slots = [];
+        foreach ($schedules as $sch) {
+            $start = \Carbon\Carbon::createFromFormat('H:i:s', $sch->start_time, $date->timezone)
+                ->setDate($date->year, $date->month, $date->day);
+            $end   = \Carbon\Carbon::createFromFormat('H:i:s', $sch->end_time, $date->timezone)
+                ->setDate($date->year, $date->month, $date->day);
+
+            // Generate slots inside [start, end) ensuring slot fits fully before end
+            $cursor = $start->copy();
+            while ($cursor->copy()->addMinutes($slotMinutes) <= $end) {
+                $timeLabel = $cursor->format('H:i');
+                $slots[] = [
+                    'time'      => $timeLabel,            // underlying 24h value to submit
+                    'display'   => $cursor->format('g:i A'), // user-facing label
+                    'available' => !$booked->contains($timeLabel),
+                ];
+                $cursor->addMinutes($slotMinutes);
+            }
+        }
+
+        return response()->json([
+            'date' => $date->toDateString(),
+            'weekday' => $date->format('l'),
+            'slot_minutes' => $slotMinutes,
+            'schedule' => $schedules->map(fn($s) => [
+                'start' => substr($s->start_time,0,5),
+                'end'   => substr($s->end_time,0,5),
+            ]),
+            'booked' => $booked,
+            'slots'  => $slots,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -65,13 +142,12 @@ class AppointmentController extends Controller
             'doctor_id'        => 'required|exists:users,id',
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required',
+            'medical_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,gif,webp|max:5120',
         ]);
 
-        // Enforce doctor schedule availability & no double booking
-        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek; // 0-6
+        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $time = $data['appointment_time'];
 
-        // Ensure doctor has an active schedule covering this time at this clinic
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
             ->where('day_of_week', $day)
@@ -85,7 +161,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Prevent doctor double-booking same timeslot
         $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $time)
@@ -97,7 +172,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Enforce one patient per timeslot (across all clinics/doctors)
         $patientConflict = Appointment::where('user_id', Auth::id())
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $time)
@@ -109,7 +183,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Create the appointment
         $appointment = Auth::user()
                            ->appointments()
                            ->create([
@@ -121,7 +194,12 @@ class AppointmentController extends Controller
                                'status'           => 'scheduled',
                            ]);
 
-        // Automatically add patient to the clinic's queue
+        // Store optional medical document
+        if ($request->hasFile('medical_document')) {
+            $path = $request->file('medical_document')->store('medical-documents', 'public');
+            $appointment->update(['medical_document' => $path]);
+        }
+
         $queueService = app(\App\Services\QueueService::class);
         $queueNumber = $queueService->getNextNumber($data['clinic_id']);
 
@@ -133,10 +211,8 @@ class AppointmentController extends Controller
             'status'        => 'waiting',
         ]);
 
-    // Patient notification
     Auth::user()->notify(new PatientAppointmentBooked($appointment));
 
-        // Notify only secretaries of the booked clinic
         if ($appointment->clinic) {
             $appointment->clinic->secretaries()->each(function($sec) use ($appointment) {
                 $sec->notify(new SecretaryAppointmentBooked($appointment));
@@ -152,27 +228,20 @@ class AppointmentController extends Controller
             ->with('status', 'Appointment booked successfully.');
     }
 
-    /**
-     * Cancel (delete) an appointment.
-     */
     public function destroy(Appointment $appointment)
     {
-        // Only the owner may cancel
         if ($appointment->user_id !== Auth::id()) {
             abort(403, 'Forbidden');
         }
 
-        // If already completed, do not allow cancel
         if ($appointment->status === 'completed') {
             return back()->with('error', 'Completed appointments cannot be cancelled.');
         }
 
-        // Update queue entry (if any) to cancelled
         \App\Models\QueueEntry::where('appointment_id', $appointment->id)
             ->where('status', 'waiting')
             ->update(['status' => 'cancelled']);
 
-        // Mark appointment as cancelled instead of deleting (so secretaries can see it)
         $appointment->update(['status' => 'cancelled']);
 
         return back()->with('status', 'Appointment cancelled.');

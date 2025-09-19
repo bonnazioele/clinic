@@ -21,16 +21,26 @@ class QueueController extends Controller
         $doctor = Auth::user();
         $clinics = $doctor->clinics()->pluck('clinics.id');
 
-        $waiting = QueueEntry::with('appointment.user','clinic')
+        $waitingQuery = QueueEntry::with('appointment.user','clinic')
             ->whereIn('clinic_id', $clinics)
-            ->where('status','waiting')
-            ->orderBy('queue_number')
-            ->get();
+            ->where('status','waiting');
+
+        // Mixed clinics: order per clinic mode would require union; simplify: if all selected clinics share mode priority, use priority ordering
+        $clinicModes = \App\Models\Clinic::whereIn('id', $clinics)->pluck('queue_mode')->unique();
+        if ($clinicModes->count() === 1 && $clinicModes->first() === 'priority') {
+            $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
+                ->select('queue_entries.*')
+                ->orderBy('appointments.appointment_date')
+                ->orderBy('appointments.appointment_time')
+                ->orderBy('queue_number');
+        } else {
+            $waitingQuery->orderBy('queue_number');
+        }
+        $waiting = $waitingQuery->get();
 
         return view('doctor.queue.index', compact('waiting'));
     }
 
-    // Doctor signals completion of current appointment (serve first waiting item in a clinic)
     public function serve(QueueEntry $entry)
     {
         $doctor = Auth::user();
@@ -38,22 +48,19 @@ class QueueController extends Controller
             abort(403);
         }
 
-        // Atomic serve to prevent race conditions
     \DB::transaction(function() use ($entry) {
             $fresh = QueueEntry::lockForUpdate()->find($entry->id);
             if ($fresh->status !== 'waiting') {
-                return; // another process handled it
+                return;
             }
             $fresh->update(['status' => 'served', 'served_at' => now()]);
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
                 $fresh->appointment->update(['status' => 'completed']);
-                // Notify patient that appointment completed
                 if ($fresh->appointment->user) {
                     $fresh->appointment->user->notify(new \App\Notifications\AppointmentStatusChanged($fresh->appointment));
                 }
             }
 
-            // Notify secretaries + include next
             $next = QueueEntry::where('clinic_id', $fresh->clinic_id)
                 ->where('status','waiting')
                 ->orderBy('queue_number')

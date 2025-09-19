@@ -21,7 +21,6 @@ class ClinicController extends Controller
 
     $clinics = $query->paginate(10);
 
-    // Today's appointments across all clinics (based on appointment_date)
     $todaysAppointmentsCount = Appointment::whereDate('appointment_date', now())->count();
 
     return view('clinics.index', compact('clinics','todaysAppointmentsCount'));

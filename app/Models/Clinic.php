@@ -23,28 +23,23 @@ class Clinic extends Model
         'contact_number',
         'email',
         'logo',
-    'cover_image',
-    'description',
+        'cover_image',
+        'description',
         'gps_latitude',
         'gps_longitude',
         'status',
+        'queue_mode',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Get the user who submitted this clinic.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Get all services offered by the clinic.
-     */
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'clinic_service', 'clinic_id', 'service_id')
@@ -52,25 +47,16 @@ class Clinic extends Model
                     ->withTimestamps();
     }
 
-    /**
-     * Get all appointments for the clinic.
-     */
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class, 'clinic_id');
     }
 
-    /**
-     * Get all queue entries for the clinic.
-     */
     public function queueEntries(): HasMany
     {
         return $this->hasMany(QueueEntry::class, 'clinic_id');
     }
 
-    /**
-     * Get all doctors associated with the clinic.
-     */
     public function doctors(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'clinic_doctor', 'clinic_id', 'doctor_id')
@@ -78,9 +64,6 @@ class Clinic extends Model
                     ->withTimestamps();
     }
 
-    /**
-     * Get all secretaries associated with the clinic.
-     */
     public function secretaries(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'clinic_secretary', 'clinic_id', 'secretary_id')
@@ -90,16 +73,30 @@ class Clinic extends Model
 
     public function scopeStatus($query, string $status)
     {
-        //usage: Clinic::status('approved')->get();
         return $query->where('status', $status);
     }
 
     public function scopeWithService($query, int $serviceId)
     {
-        //usage: Clinic::withService(1)->get();
         return $query->whereHas('services', function ($q) use ($serviceId) {
             $q->where('services.id', $serviceId);
         });
+    }
+
+    /**
+     * Treat legacy / alternate status values as approved equivalents.
+     */
+    public function isApprovedLike(): bool
+    {
+        return in_array(strtolower((string)$this->status), ['approved','active'], true);
+    }
+
+    /**
+     * Check the configured queue mode. Modes: fcfs, priority
+     */
+    public function queueModeIs(string $mode): bool
+    {
+        return strtolower($this->queue_mode ?? 'fcfs') === strtolower($mode);
     }
 }
 

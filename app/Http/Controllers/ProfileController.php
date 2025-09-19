@@ -12,7 +12,6 @@ class ProfileController extends Controller
         $this->middleware('auth');
     }
 
-    // 1) Show read-only profile
     public function show()
     {
         return view('profile.show', [
@@ -20,7 +19,6 @@ class ProfileController extends Controller
         ]);
     }
 
-    // 2) Edit form
     public function edit()
     {
         return view('profile.edit', [
@@ -28,7 +26,6 @@ class ProfileController extends Controller
         ]);
     }
 
-    // 3) Update action
     public function update(Request $req)
     {
         $u = Auth::user();

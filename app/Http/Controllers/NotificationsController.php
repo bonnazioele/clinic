@@ -12,9 +12,6 @@ class NotificationsController extends Controller
         $this->middleware('auth');
     }
 
-    /**
-     * Show the list of notifications, newest first.
-     */
     public function index()
     {
         $user     = Auth::user();
@@ -24,9 +21,6 @@ class NotificationsController extends Controller
         return view('notifications.index', compact('all','unread'));
     }
 
-    /**
-     * Mark all unread notifications as read.
-     */
     public function markAllRead(Request $request)
     {
         Auth::user()->unreadNotifications->markAsRead();

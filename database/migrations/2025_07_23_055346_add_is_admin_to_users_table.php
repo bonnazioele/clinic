@@ -6,10 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    // database/migrations/xxxx_xx_xx_add_is_admin_to_users_table.php
+    
 public function up()
 {
     Schema::table('users', function (Blueprint $table) {

@@ -1,5 +1,4 @@
 <?php
-// app/Notifications/AppointmentBooked.php
 
 namespace App\Notifications;
 

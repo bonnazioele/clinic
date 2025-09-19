@@ -37,10 +37,8 @@ class DoctorController extends Controller
     {
         abort_unless($doctor->is_doctor, 404);
 
-        // Load clinics
         $doctor->load(['clinics:id,name']);
 
-        // Recent appointments for this doctor (last 10)
         $recentAppointments = \App\Models\Appointment::where('doctor_id', $doctor->id)
             ->with(['clinic:id,name', 'user:id,name'])
             ->orderByDesc('appointment_date')
@@ -48,7 +46,6 @@ class DoctorController extends Controller
             ->take(10)
             ->get();
 
-        // Queue insights per clinic
         $queueByClinic = [];
         foreach ($doctor->clinics as $clinic) {
             $waiting = \App\Models\QueueEntry::where('clinic_id', $clinic->id)

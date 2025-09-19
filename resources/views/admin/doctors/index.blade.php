@@ -53,7 +53,7 @@
           @forelse($doctors as $d)
             <tr>
               <td class="py-3">
-                <a href="{{ route('admin.doctors.show', $d) }}" class="text-decoration-none">{{ $d->name }}</a>
+                <a href="{{ route('admin.doctors.show', $d) }}" class="text-decoration-none">Dr. {{ $d->name }}</a>
               </td>
               <td class="py-3">{{ $d->email }}</td>
               <td class="py-3">{{ $d->phone }}</td>

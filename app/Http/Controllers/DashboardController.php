@@ -9,15 +9,36 @@ class DashboardController extends Controller
 {
     public function __construct()
     {
-        // Only require auth for the index method, not for welcome
         $this->middleware('auth')->only('index');
     }
 
-    /**
-     * Public welcome page - no authentication required
-     */
     public function welcome()
     {
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user->is_admin) {
+                return redirect()->route('admin.dashboard');
+            }
+            if ($user->is_owner) {
+                $clinic = \App\Models\Clinic::where('user_id', $user->id)
+                    ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
+                    ->orderByDesc('id')
+                    ->first();
+                if ($clinic && $clinic->isApprovedLike()) {
+                    return redirect()->route('owner.dashboard');
+                }
+                session()->flash('warning', 'Your clinic application is pending review.');
+                return view('welcome');
+            }
+            if ($user->is_doctor) {
+                return redirect()->route('doctor.dashboard');
+            }
+            if ($user->is_secretary) {
+                return redirect()->route('secretary.dashboard');
+            }
+            // Regular patients -> patient dashboard
+            return redirect()->route('dashboard');
+        }
         return view('welcome');
     }
 
@@ -26,21 +47,28 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         if ($user->is_admin) {
-            // Admin role dashboard
             return redirect()->route('admin.dashboard');
         }
 
+        if ($user->is_owner) {
+            $clinic = \App\Models\Clinic::where('user_id', $user->id)
+                ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
+                ->orderByDesc('id')
+                ->first();
+            if ($clinic && $clinic->isApprovedLike()) {
+                return redirect()->route('owner.dashboard');
+            }
+            return redirect()->route('welcome')->with('warning','Your clinic application is pending review.');
+        }
+
         if ($user->is_doctor) {
-            // Doctor role dashboard
             return redirect()->route('doctor.dashboard');
         }
 
         if ($user->is_secretary) {
-            // Secretary role dashboard
             return redirect()->route('secretary.dashboard');
         }
 
-        // patient: load the patient dashboard
         $upcoming = $user->appointments()
                          ->where('appointment_date','>=',now()->toDateString())
                          ->where('status','scheduled')
@@ -50,7 +78,6 @@ class DashboardController extends Controller
                          ->with('clinic','service')
                          ->get();
 
-        // Improved past appointments query - include completed, cancelled, and past scheduled appointments
         $past = $user->appointments()
                      ->where(function($query) {
                          $query->where('appointment_date','<', now()->toDateString())
@@ -61,7 +88,6 @@ class DashboardController extends Controller
                      ->with('clinic','service')
                      ->get();
 
-        // Alternative approach using the model methods
         $allAppointments = $user->appointments()
                                ->with('clinic','service')
                                ->orderBy('appointment_date','desc')
@@ -71,7 +97,6 @@ class DashboardController extends Controller
             return $appointment->isPast() || $appointment->isCompleted() || $appointment->isCancelled();
         })->take(10);
 
-        // Debug information
         \Log::info('Dashboard data for user ' . $user->id, [
             'upcoming_count' => $upcoming->count(),
             'past_count' => $past->count(),

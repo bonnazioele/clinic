@@ -12,7 +12,6 @@ class ClinicProfileController extends Controller
 {
     public function edit(Clinic $clinic)
     {
-        // Must be assigned to this clinic
         if (! Auth::user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
             abort(403);
         }
@@ -31,9 +30,9 @@ class ClinicProfileController extends Controller
             'description' => 'nullable|string',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'queue_mode' => 'required|in:fcfs,priority',
         ]);
 
-        // Handle uploads
         if ($request->hasFile('logo')) {
             if ($clinic->logo && Storage::disk('public')->exists($clinic->logo)) {
                 Storage::disk('public')->delete($clinic->logo);
@@ -47,7 +46,7 @@ class ClinicProfileController extends Controller
             $data['cover_image'] = $request->file('cover_image')->store('clinic-covers', 'public');
         }
 
-        $clinic->update($data);
+    $clinic->update($data);
 
         return redirect()->route('secretary.clinic.edit', $clinic)
             ->with('status', 'Clinic profile updated.');

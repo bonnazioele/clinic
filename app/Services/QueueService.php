@@ -7,10 +7,6 @@ use Carbon\Carbon;
 
 class QueueService
 {
-    /**
-     * Get next available queue number for a clinic today.
-    * NOTE: Relies on chronological queue_number assignment; consider locking if high concurrency.
-     */
     public function getNextNumber(int $clinicId): int
     {
         $today = Carbon::today();

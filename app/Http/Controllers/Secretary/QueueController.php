@@ -11,9 +11,7 @@ use App\Events\QueueUpdated;
 
 class QueueController extends Controller
 {
-    /**
-     * Overview of queues across clinics for secretaries
-     */
+
     public function overview()
     {
         $user = auth()->user();
@@ -40,27 +38,31 @@ class QueueController extends Controller
 
         return view('secretary.queue.overview', compact('clinics','totalWaiting','totalServedToday'));
     }
-    /**
-     * View queue for a clinic
-     */
+
     public function queue(Clinic $clinic)
     {
-        // Authorization: ensure clinic is assigned to this secretary
         if (! auth()->user()->secretaryClinics()->where('clinics.id',$clinic->id)->exists()) {
             abort(403,'Not assigned to this clinic');
         }
-        $waiting = QueueEntry::with(['user','appointment.service'])
+        $waitingQuery = QueueEntry::with(['user','appointment.service'])
             ->where('clinic_id', $clinic->id)
-            ->where('status', 'waiting')
-            ->orderBy('queue_number')
-            ->get();
+            ->where('status', 'waiting');
+
+        if ($clinic->queueModeIs('priority')) {
+            // Order by appointment date/time if appointment exists, else fall back to queue_number
+            $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
+                ->select('queue_entries.*')
+                ->orderBy('appointments.appointment_date')
+                ->orderBy('appointments.appointment_time')
+                ->orderBy('queue_number');
+        } else {
+            $waitingQuery->orderBy('queue_number');
+        }
+        $waiting = $waitingQuery->get();
 
         return view('secretary.queue.index', compact('clinic','waiting'));
     }
 
-    /**
-     * Mark a queue entry as served
-     */
     public function serve(Clinic $clinic, QueueEntry $entry)
     {
         if (! auth()->user()->secretaryClinics()->where('clinics.id',$clinic->id)->exists()) {
@@ -75,13 +77,11 @@ class QueueController extends Controller
         }
 
     DB::transaction(function() use ($entry) {
-            // Mark queue entry as served
             $entry->update([
                 'status' => 'served',
                 'served_at' => now(),
             ]);
 
-            // If tied to an appointment, mark it completed and notify patient
             if ($entry->appointment) {
                 $appointment = $entry->appointment;
                 if ($appointment->status !== 'completed') {
@@ -92,25 +92,29 @@ class QueueController extends Controller
                 }
             }
         });
-    // Notify next patient they are now next
-    $next = \App\Models\QueueEntry::where('clinic_id',$entry->clinic_id)
-        ->where('status','waiting')
-        ->orderBy('queue_number')
-        ->first();
+    // Determine next based on clinic mode
+    $clinic = $entry->clinic;
+    $nextQuery = \App\Models\QueueEntry::where('clinic_id',$entry->clinic_id)
+        ->where('status','waiting');
+    if ($clinic && $clinic->queueModeIs('priority')) {
+        $nextQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
+            ->select('queue_entries.*')
+            ->orderBy('appointments.appointment_date')
+            ->orderBy('appointments.appointment_time')
+            ->orderBy('queue_number');
+    } else {
+        $nextQuery->orderBy('queue_number');
+    }
+    $next = $nextQuery->first();
     if ($next && $next->user) {
         $next->user->notify(new \App\Notifications\QueueNextUp($next));
     }
 
     event(new QueueUpdated($entry->fresh(),'served'));
 
-    // Potential future: dispatch event for real-time updates (e.g., broadcast to secretaries)
-
     return back()->with('status', "Served queue #{$entry->queue_number} and marked appointment as completed.");
     }
 
-    /**
-     * Cancel a waiting entry (patient left)
-     */
     public function cancel(Clinic $clinic, QueueEntry $entry)
     {
         if ($entry->clinic_id !== $clinic->id) {
@@ -125,7 +129,7 @@ class QueueController extends Controller
             $entry->update(['status' => 'cancelled']);
             if ($entry->appointment) {
                 $appointment = $entry->appointment;
-                // Don't override completed appointments
+
                 if ($appointment->status !== 'completed') {
                     $appointment->update(['status' => 'cancelled']);
                     if ($appointment->user) {
