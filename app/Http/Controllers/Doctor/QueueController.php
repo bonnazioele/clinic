@@ -30,6 +30,8 @@ class QueueController extends Controller
         if ($clinicModes->count() === 1 && $clinicModes->first() === 'priority') {
             $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
                 ->select('queue_entries.*')
+                // Push walk-ins (NULL appointment_date) after scheduled appointment holders
+                ->orderByRaw('appointments.appointment_date IS NULL')
                 ->orderBy('appointments.appointment_date')
                 ->orderBy('appointments.appointment_time')
                 ->orderBy('queue_number');

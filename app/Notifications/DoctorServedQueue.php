@@ -21,9 +21,20 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
         return ['database','broadcast'];
     }
 
-    public function broadcastOn(object $notifiable): array
+    public function broadcastOn(): array
     {
-        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$notifiable->id)];
+        // We still want per-user notification channels; for broadcast queue events we notify
+        // secretaries of the clinic and possibly the served user separately when dispatching.
+        // Here, fallback to served user channel for compatibility.
+        $userId = $this->servedEntry->user_id ?? null;
+        if (!$userId && $this->nextEntry) {
+            $userId = $this->nextEntry->user_id;
+        }
+        if ($userId) {
+            return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.' . $userId)];
+        }
+        // Fallback generic channel (could be listened to by admins/secretaries)
+        return [new \Illuminate\Broadcasting\PrivateChannel('queue.updates')];
     }
 
     public function toBroadcast($notifiable)

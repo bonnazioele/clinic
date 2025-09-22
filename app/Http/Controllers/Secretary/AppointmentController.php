@@ -31,7 +31,7 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
         $clinics = $user->secretaryClinics()
-            ->with(['services','doctors'])
+            ->with(['services','doctors.services'])
             ->get();
 
         return view('secretary.appointments.create', compact('clinics'));

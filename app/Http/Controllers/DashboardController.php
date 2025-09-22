@@ -19,16 +19,20 @@ class DashboardController extends Controller
             if ($user->is_admin) {
                 return redirect()->route('admin.dashboard');
             }
-            if ($user->is_owner) {
-                $clinic = \App\Models\Clinic::where('user_id', $user->id)
-                    ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
-                    ->orderByDesc('id')
-                    ->first();
-                if ($clinic && $clinic->isApprovedLike()) {
-                    return redirect()->route('owner.dashboard');
+            // Applicant path: user who created a clinic (legacy owner removal)
+            $clinic = \App\Models\Clinic::where('user_id', $user->id)
+                ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
+                ->orderByDesc('id')
+                ->first();
+            if ($clinic) {
+                if ($clinic->isApprovedLike()) {
+                    if (! $user->is_secretary) { $user->is_secretary = true; $user->save(); }
+                    return redirect()->route('secretary.dashboard');
                 }
-                session()->flash('warning', 'Your clinic application is pending review.');
-                return view('welcome');
+                if (! $user->is_doctor && ! $user->is_secretary) {
+                    session()->flash('warning', 'Your clinic application is pending review.');
+                    return view('welcome');
+                }
             }
             if ($user->is_doctor) {
                 return redirect()->route('doctor.dashboard');
@@ -50,15 +54,18 @@ class DashboardController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        if ($user->is_owner) {
-            $clinic = \App\Models\Clinic::where('user_id', $user->id)
-                ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
-                ->orderByDesc('id')
-                ->first();
-            if ($clinic && $clinic->isApprovedLike()) {
-                return redirect()->route('owner.dashboard');
+        $clinic = \App\Models\Clinic::where('user_id', $user->id)
+            ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->first();
+        if ($clinic) {
+            if ($clinic->isApprovedLike()) {
+                if (! $user->is_secretary) { $user->is_secretary = true; $user->save(); }
+                return redirect()->route('secretary.dashboard');
             }
-            return redirect()->route('welcome')->with('warning','Your clinic application is pending review.');
+            if (! $user->is_doctor && ! $user->is_secretary) {
+                return redirect()->route('welcome')->with('warning','Your clinic application is pending review.');
+            }
         }
 
         if ($user->is_doctor) {

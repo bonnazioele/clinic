@@ -92,12 +92,21 @@ class AppointmentController extends Controller
             }
         }
 
-        // Gather already booked times (exact appointment_time matches) for doctor on that date
+        // Gather already booked times (non-cancelled) ensuring we normalize to HH:MM.
+        // pluck() invokes the accessor which returns a Carbon instance; calling substr on that produced incorrect values (e.g. '2025-').
         $booked = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $date->toDateString())
             ->where('status', '!=', 'cancelled')
-            ->pluck('appointment_time')
-            ->map(fn($t) => substr($t,0,5))
+            ->get(['appointment_time'])
+            ->map(function($a){
+                $raw = $a->getRawOriginal('appointment_time'); // 'HH:MM:SS'
+                if (is_string($raw) && strlen($raw) >= 5) {
+                    return substr($raw,0,5); // HH:MM
+                }
+                $val = $a->appointment_time; // accessor (Carbon) fallback
+                return $val instanceof \Carbon\Carbon ? $val->format('H:i') : (string) $val;
+            })
+            ->filter()
             ->unique()
             ->values();
 
@@ -238,12 +247,14 @@ class AppointmentController extends Controller
             return back()->with('error', 'Completed appointments cannot be cancelled.');
         }
 
+        // Cancel any waiting queue entries tied to this appointment
         \App\Models\QueueEntry::where('appointment_id', $appointment->id)
             ->where('status', 'waiting')
             ->update(['status' => 'cancelled']);
 
-        $appointment->update(['status' => 'cancelled']);
+        // Hard delete to free the doctor timeslot (unique index enforcement)
+        $appointment->delete();
 
-        return back()->with('status', 'Appointment cancelled.');
+        return back()->with('status', 'Appointment cancelled and slot freed.');
     }
 }

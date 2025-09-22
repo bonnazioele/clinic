@@ -20,7 +20,7 @@ use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 use App\Http\Controllers\Auth\SecretaryRegisterController;
 use App\Http\Controllers\Owner\ApplicationController as OwnerApplicationController;
-use App\Http\Middleware\OwnerMiddleware;
+// OwnerMiddleware removed (owner role deprecated)
 
 
 /*
@@ -166,13 +166,14 @@ Route::prefix('doctor')
 Owner Routes
 */
 
+// Owner routes deprecated: redirect to secretary dashboard
 Route::prefix('owner')
-      ->middleware(['auth', OwnerMiddleware::class])
-      ->name('owner.')
-      ->group(function(){
-           Route::get('/dashboard', [\App\Http\Controllers\Owner\DashboardController::class,'index'])->name('dashboard');
-           Route::get('/staff', [\App\Http\Controllers\Owner\StaffController::class,'index'])->name('staff.index');
-           Route::post('/staff/attach', [\App\Http\Controllers\Owner\StaffController::class,'attach'])->name('staff.attach');
-           Route::delete('/staff/detach', [\App\Http\Controllers\Owner\StaffController::class,'detach'])->name('staff.detach');
-      });
+     ->middleware(['auth'])
+     ->name('owner.')
+     ->group(function(){
+          Route::get('/dashboard', function(){ return redirect()->route('secretary.dashboard'); })->name('dashboard');
+          Route::get('/staff', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.index');
+          Route::post('/staff/attach', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.attach');
+          Route::delete('/staff/detach', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.detach');
+     });
 

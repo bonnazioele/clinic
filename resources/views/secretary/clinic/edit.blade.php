@@ -35,12 +35,16 @@
           <textarea name="description" rows="4" class="form-control" placeholder="Describe your clinic...">{{ old('description', $clinic->description) }}</textarea>
         </div>
         <div class="col-md-6">
-          <label class="form-label fw-semibold">Queue Mode <span class="text-danger">*</span></label>
+          <label class="form-label fw-semibold">Queue Strategy <span class="text-danger">*</span></label>
           <select name="queue_mode" class="form-select" required>
-            <option value="fcfs" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'fcfs' ? 'selected' : '' }}>First Come, First Served</option>
-            <option value="priority" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'priority' ? 'selected' : '' }}>Priority (Appointment Time)</option>
+            <option value="fcfs" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'fcfs' ? 'selected' : '' }}>First-Come, First-Served (FCFS)</option>
+            <option value="priority" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'priority' ? 'selected' : '' }}>Priority-Aware Queue</option>
           </select>
-          <div class="form-text">Priority mode lists patients by their scheduled appointment time first; FCFS uses queue number order.</div>
+          <div class="small mt-2">
+            <strong>1. First-Come, First-Served (FCFS):</strong> Patients are served strictly in order of arrival, regardless of any priority flags. This ignores priority patients.<br>
+            <strong>2. Priority-Aware Queue</strong> <span class="text-muted">(sometimes called <em>Priority Scheduling</em> or <em>Triage Queueing</em>)</span>:<br>
+            The system adjusts the order dynamically, allowing patients with designated priority flags (senior, PWD, pregnant, emergency) to <em>override the queue</em> and be served earlier.
+          </div>
         </div>
         <div class="col-md-6">
           <label class="form-label fw-semibold">Logo</label>

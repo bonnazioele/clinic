@@ -81,42 +81,31 @@
                             @enderror
                         </div>
 
-                        <!-- Date and Time -->
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="appointment_date" class="form-label fw-semibold">
-                                        <i class="bi bi-calendar me-1"></i>Date
-                                    </label>
-                                    <input type="date"
-                                           name="appointment_date"
-                                           id="appointment_date"
-                                           class="form-control @error('appointment_date') is-invalid @enderror"
-                                           value="{{ old('appointment_date') }}"
-                                           min="{{ date('Y-m-d') }}"
-                                           required>
-                                    @error('appointment_date')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="appointment_time" class="form-label fw-semibold">
-                                        <i class="bi bi-clock me-1"></i>Time
-                                    </label>
-                                    <input type="time"
-                                           name="appointment_time"
-                                           id="appointment_time"
-                                           class="form-control @error('appointment_time') is-invalid @enderror"
-                                           value="{{ old('appointment_time') }}"
-                                           required>
-                                    @error('appointment_time')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
+                                                <!-- Date / Day / Dynamic Time Slot -->
+                                                <div class="row g-3 mb-2">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold"><i class="bi bi-calendar me-1"></i>Date <span class="text-danger">*</span></label>
+                                                        <input type="date" id="appointment_date" name="appointment_date" class="form-control @error('appointment_date') is-invalid @enderror" value="{{ old('appointment_date') }}" min="{{ date('Y-m-d') }}" required>
+                                                        @error('appointment_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold"><i class="bi bi-calendar-week me-1"></i>Day</label>
+                                                        <input type="text" id="dayDisplay" class="form-control" placeholder="—" readonly>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold mb-0"><i class="bi bi-clock-history me-1"></i>Available Time Slot <span class="text-danger">*</span></label>
+                                                        <select id="timeSlot" name="appointment_time" class="form-select d-none @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required>
+                                                            <option value="">Select doctor & date first</option>
+                                                        </select>
+                                                        <div id="slotGridPlaceholder" class="text-muted small">Select doctor & date first</div>
+                                                        <div id="slotGrid" class="slot-grid mt-2" style="display:none;"></div>
+                                                        @error('appointment_time') <div class="invalid-feedback d-none">{{ $message }}</div> @enderror
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3" id="doctorScheduleWrap" style="display:none;">
+                                                    <label class="form-label fw-semibold"><i class="bi bi-list-check me-1"></i>Doctor Availability</label>
+                                                    <div class="border rounded p-2 small" id="doctorScheduleInfo"></div>
+                                                </div>
 
                         <!-- Notes -->
                         <div class="mb-3">
@@ -167,55 +156,135 @@ document.addEventListener('DOMContentLoaded', function() {
     const clinicSelect = document.getElementById('clinic_id');
     const serviceSelect = document.getElementById('service_id');
     const doctorSelect = document.getElementById('doctor_id');
+    const dateInput     = document.getElementById('appointment_date');
+    const dayInput      = document.getElementById('dayDisplay');
+    const slotSelect    = document.getElementById('timeSlot');
+    const scheduleWrap  = document.getElementById('doctorScheduleWrap');
+    const scheduleInfo  = document.getElementById('doctorScheduleInfo');
     // Only secretary-assigned clinics supplied from controller
-    const clinics = @json($clinics);
+        const clinicsRaw = @json($clinics);
+        // Normalize into a map: id -> {services:[{id,name}], doctors:[{id,name,services:[ids]}]}
+        const clinicMap = {};
+        clinicsRaw.forEach(c => {
+            clinicMap[c.id] = {
+                services: (c.services||[]).map(s => ({ id: s.id, name: s.name })),
+                doctors: (c.doctors||[]).map(d => ({ id: d.id, name: d.name, services: (d.services||[]).map(s=>s.id) }))
+            };
+        });
+        console.debug('Secretary clinicMap', clinicMap);
 
-    // Update services when clinic changes
-    clinicSelect.addEventListener('change', function() {
-        const clinicId = this.value;
-        serviceSelect.innerHTML = '<option value="">Select Service</option>';
-        doctorSelect.innerHTML = '<option value="">Select Doctor</option>';
-
-        if (clinicId) {
-            const clinic = clinics.find(c => c.id == clinicId);
-            if (clinic && clinic.services) {
-                clinic.services.forEach(service => {
-                    const option = document.createElement('option');
-                    option.value = service.id;
-                    option.textContent = service.name;
-                    serviceSelect.appendChild(option);
-                });
+        function resetSelect(el, placeholder){ el.innerHTML=''; el.add(new Option(placeholder,'')); }
+            function populateServices(cid){
+                resetSelect(serviceSelect,'Select Service');
+                resetSelect(doctorSelect,'Select Doctor');
+                const list = clinicMap[cid]?.services || [];
+                list.forEach(s=> serviceSelect.add(new Option(s.name, s.id)));
             }
+                function populateDoctors(cid, sid){
+                    resetSelect(doctorSelect,'Select Doctor');
+                    const docs = clinicMap[cid]?.doctors || [];
+                    if(!sid){ // show all doctors if no specific service yet
+                        docs.forEach(d=> doctorSelect.add(new Option('Dr. '+d.name, d.id)));
+                        return;
+                    }
+                    docs.filter(d => (d.services||[]).includes(Number(sid))).forEach(d=> doctorSelect.add(new Option('Dr. '+d.name, d.id)));
+                }
+        clinicSelect.addEventListener('change', e=>{ const cid=e.target.value; if(!cid){ resetSelect(serviceSelect,'Select Service'); resetSelect(doctorSelect,'Select Doctor'); return;} populateServices(cid); populateDoctors(cid, null); fetchAvailability(); });
+        serviceSelect.addEventListener('change', e=>{ if(!clinicSelect.value){ resetSelect(doctorSelect,'Select Doctor'); return;} populateDoctors(clinicSelect.value, e.target.value || null); fetchAvailability(); });
+        doctorSelect.addEventListener('change', fetchAvailability);
+        dateInput.addEventListener('change', fetchAvailability);
+
+        function resetAvailability(){ dayInput.value=''; scheduleWrap.style.display='none'; scheduleInfo.innerHTML=''; resetSelect(slotSelect,'Select doctor & date first'); }
+        async function fetchAvailability(){
+            const cid=clinicSelect.value, did=doctorSelect.value, dateVal=dateInput.value; if(!cid||!did||!dateVal){ resetAvailability(); return; }
+            resetSelect(slotSelect,'Loading...');
+            try {
+                const params = new URLSearchParams({ clinic_id: cid, doctor_id: did, date: dateVal, service_id: serviceSelect.value||'' });
+                const res = await fetch(`{{ route('appointments.availability') }}?${params.toString()}`, { headers: { 'Accept':'application/json' } });
+                if(!res.ok) throw new Error('fail');
+                const data = await res.json();
+                dayInput.value = data.weekday || '';
+                scheduleWrap.style.display='block';
+                scheduleInfo.innerHTML = renderSchedule(data);
+                // Build grid similar to patient UI
+                const slotGrid = document.getElementById('slotGrid');
+                const slotGridPh = document.getElementById('slotGridPlaceholder');
+                resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
+                slotGrid.innerHTML='';
+                if (data.slots.length) {
+                    slotGridPh.style.display='none';
+                    slotGrid.style.display='grid';
+                    slotGrid.style.gridTemplateColumns='repeat(auto-fill,minmax(90px,1fr))';
+                    slotGrid.style.gap='6px';
+                    data.slots.forEach(s => {
+                        const opt = new Option(s.display, s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt);
+                        const btn = document.createElement('button'); btn.type='button'; btn.className='slot-btn btn btn-sm w-100 ' + (s.available? 'btn-outline-primary':'btn-outline-secondary disabled taken'); btn.textContent=s.display; btn.dataset.time=s.time; if(s.available){ btn.addEventListener('click', ()=>{ slotGrid.querySelectorAll('.slot-btn.selected').forEach(el=>el.classList.remove('selected','btn-primary')); btn.classList.add('selected','btn-primary'); btn.classList.remove('btn-outline-primary'); slotSelect.value=s.time; }); } slotGrid.appendChild(btn);
+                    });
+                } else {
+                    slotGridPh.textContent='No slots';
+                    slotGridPh.style.display='block';
+                    slotGrid.style.display='none';
+                }
+                @if(old('appointment_time'))
+                    if ([...slotSelect.options].some(o=>o.value==="{{ old('appointment_time') }}")) { slotSelect.value = "{{ old('appointment_time') }}"; const b = slotGrid.querySelector(`[data-time='{{ old('appointment_time') }}']`); if(b && !b.classList.contains('taken')) b.click(); }
+                @endif
+            } catch(err){ resetAvailability(); resetSelect(slotSelect,'Error loading availability'); }
         }
-    });
+        function renderSchedule(data){ if(data.message) return `<span class="text-muted">${data.message}</span>`; let html=`<div><strong>Date:</strong> ${data.date} (${data.weekday})</div>`; if(data.schedule?.length){ html += '<div class="mt-1"><strong>Schedule Blocks:</strong> ' + data.schedule.map(r=>`${to12(r.start)}–${to12(r.end)}`).join(', ') + '</div>'; } html += `<div class="mt-1"><strong>Slot Length:</strong> ${data.slot_minutes} minutes</div>`; const count=(data.slots||[]).filter(s=>s.available).length; html += `<div class="mt-1"><strong>Available Slots:</strong> ${count}</div>`; return html; }
+        function to12(t){ if(!/^\d{2}:\d{2}$/.test(t)) return t; const [h,m]=t.split(':').map(Number); const ampm=h>=12?'PM':'AM'; const hour=((h+11)%12)+1; return `${hour}:${m.toString().padStart(2,'0')} ${ampm}`; }
+        if(slotSelect.dataset.slotError){ slotSelect.classList.remove('is-invalid'); const fb=slotSelect.parentElement.querySelector('.invalid-feedback'); if(fb) fb.remove(); setTimeout(fetchAvailability,30); }
+        const form = document.getElementById('appointmentForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        form.addEventListener('submit', async e => {
+            const chosen = slotSelect.value; if(!chosen) return; e.preventDefault(); submitBtn.disabled=true; const original = submitBtn.innerHTML; submitBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Checking...';
+            try {
+                const params = new URLSearchParams({ clinic_id: clinicSelect.value, doctor_id: doctorSelect.value, date: dateInput.value, service_id: serviceSelect.value||'' });
+                const res= await fetch(`{{ route('appointments.availability') }}?${params.toString()}`, { headers:{'Accept':'application/json'} });
+                if(!res.ok) throw new Error();
+                const data= await res.json();
+                const stillFree = (data.slots||[]).some(s=>s.available && s.time===chosen);
+                if(!stillFree){
+                    // rebuild grid silently
+                    const slotGrid = document.getElementById('slotGrid');
+                    const slotGridPh = document.getElementById('slotGridPlaceholder');
+                    resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
+                    slotGrid.innerHTML='';
+                    data.slots.forEach(s=>{ const opt = new Option(s.display, s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt); const btn=document.createElement('button'); btn.type='button'; btn.className='slot-btn btn btn-sm w-100 ' + (s.available? 'btn-outline-primary':'btn-outline-secondary disabled taken'); btn.textContent=s.display; btn.dataset.time=s.time; if(s.available){ btn.addEventListener('click',()=>{ slotGrid.querySelectorAll('.slot-btn.selected').forEach(el=>el.classList.remove('selected','btn-primary')); btn.classList.add('selected','btn-primary'); btn.classList.remove('btn-outline-primary'); slotSelect.value=s.time; }); } slotGrid.appendChild(btn); });
+                    slotSelect.value='';
+                    submitBtn.disabled=false; submitBtn.innerHTML=original; return; }
+                submitBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+                form.submit();
+            } catch(err) { submitBtn.disabled=false; submitBtn.innerHTML=original; }
+        });
+        // passive refresh
+        setInterval(()=>{ if(clinicSelect.value && doctorSelect.value && dateInput.value){ fetchAvailability(); } }, 60000);
+        document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && clinicSelect.value && doctorSelect.value && dateInput.value){ fetchAvailability(); }});
 
-    // Update doctors when clinic changes
-    clinicSelect.addEventListener('change', function() {
-        const clinicId = this.value;
-        doctorSelect.innerHTML = '<option value="">Select Doctor</option>';
-
-        if (clinicId) {
-            const clinic = clinics.find(c => c.id == clinicId);
-            if (clinic && clinic.doctors) {
-                                clinic.doctors.forEach(doctor => {
-                    const option = document.createElement('option');
-                    option.value = doctor.id;
-                                    option.textContent = `Dr. ${doctor.name}`;
-                    doctorSelect.appendChild(option);
-                });
+        // Initial population if old input or single clinic pre-selected
+        (function init(){
+            const pre = clinicSelect.value || (clinicSelect.options.length === 2 ? clinicSelect.options[1].value : '');
+            if(pre && !clinicSelect.value){ clinicSelect.value = pre; }
+            if(clinicSelect.value){
+                populateServices(clinicSelect.value);
+                // If old('service_id')
+                @if(old('service_id'))
+                    serviceSelect.value = "{{ old('service_id') }}";
+                @endif
+                populateDoctors(clinicSelect.value, serviceSelect.value || null);
+                @if(old('doctor_id'))
+                    doctorSelect.value = "{{ old('doctor_id') }}";
+                @endif
             }
-        }
-    });
-
-    // Form submission loading state
-    const form = document.getElementById('appointmentForm');
-    const submitBtn = form.querySelector('button[type="submit"]');
-
-    form.addEventListener('submit', function() {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Creating...';
-    });
+            if(clinicSelect.value && doctorSelect.value && dateInput.value){ fetchAvailability(); }
+        })();
 });
 </script>
+@endpush
+@push('styles')
+<style>
+    .slot-grid .slot-btn { font-size:.75rem; line-height:1.1rem; white-space:nowrap; }
+    .slot-grid .slot-btn.taken { pointer-events:none; opacity:.55; text-decoration:line-through; }
+    .slot-grid .slot-btn.selected { font-weight:600; }
+</style>
 @endpush
 @endsection

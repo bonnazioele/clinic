@@ -1,24 +1,3 @@
-    public function toBroadcast($notifiable)
-    {
-        $clinic = $this->entry->clinic?->name;
-        return new \Illuminate\Notifications\Messages\BroadcastMessage([
-            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
-            'queue_entry_id' => $this->entry->id,
-            'clinic_id' => $this->entry->clinic_id,
-            'type' => 'queue_next_up'
-        ]);
-    }
-
-    public function toArray($notifiable)
-    {
-        $clinic = $this->entry->clinic?->name;
-        return [
-            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
-            'queue_entry_id' => $this->entry->id,
-            'clinic_id' => $this->entry->clinic_id,
-            'type' => 'queue_next_up'
-        ];
-    }
 <?php
 
 namespace App\Notifications;
@@ -27,7 +6,9 @@ use App\Models\QueueEntry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\DatabaseMessage;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Broadcasting\PrivateChannel;
 
 class QueueNextUp extends Notification implements ShouldBroadcast
 {
@@ -35,12 +16,12 @@ class QueueNextUp extends Notification implements ShouldBroadcast
 
     public function __construct(public QueueEntry $entry) {}
 
-    public function via($notifiable): array
+    public function via(object $notifiable): array
     {
         return ['database','broadcast'];
     }
 
-    public function toDatabase($notifiable): DatabaseMessage
+    public function toDatabase(object $notifiable): DatabaseMessage
     {
         $clinic = $this->entry->clinic?->name;
         return new DatabaseMessage([
@@ -51,8 +32,19 @@ class QueueNextUp extends Notification implements ShouldBroadcast
         ]);
     }
 
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        $clinic = $this->entry->clinic?->name;
+        return new BroadcastMessage([
+            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
+            'queue_entry_id' => $this->entry->id,
+            'clinic_id' => $this->entry->clinic_id,
+            'type' => 'queue_next_up'
+        ]);
+    }
+
     public function broadcastOn(): array
     {
-        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.'.$this->entry->user_id)];
+        return [new PrivateChannel('user.notifications.' . $this->entry->user_id)];
     }
 }

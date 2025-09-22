@@ -52,6 +52,8 @@ class QueueController extends Controller
             // Order by appointment date/time if appointment exists, else fall back to queue_number
             $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
                 ->select('queue_entries.*')
+                // Push walk-ins (NULL appointment_date) after scheduled patients
+                ->orderByRaw('appointments.appointment_date IS NULL')
                 ->orderBy('appointments.appointment_date')
                 ->orderBy('appointments.appointment_time')
                 ->orderBy('queue_number');
@@ -99,6 +101,8 @@ class QueueController extends Controller
     if ($clinic && $clinic->queueModeIs('priority')) {
         $nextQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
             ->select('queue_entries.*')
+            // Walk-ins (NULL appointment_date) last
+            ->orderByRaw('appointments.appointment_date IS NULL')
             ->orderBy('appointments.appointment_date')
             ->orderBy('appointments.appointment_time')
             ->orderBy('queue_number');

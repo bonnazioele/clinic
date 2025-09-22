@@ -38,13 +38,14 @@ class ApplicationController extends Controller
             'password' => ['required','string','min:8','confirmed'],
         ])->validate();
 
+        // Create applicant as secretary directly (owner role deprecated)
         $user = User::create([
-            'first_name' => $data['first_name'],
-            'last_name'  => $data['last_name'],
-            'name'       => $data['first_name'].' '.$data['last_name'],
-            'email'      => $data['email'],
-            'password'   => Hash::make($data['password']),
-            'is_owner'   => true,
+            'first_name'    => $data['first_name'],
+            'last_name'     => $data['last_name'],
+            'name'          => $data['first_name'].' '.$data['last_name'],
+            'email'         => $data['email'],
+            'password'      => Hash::make($data['password']),
+            'is_secretary'  => false, // will be promoted when clinic approved
         ]);
 
         // Branch code and clinic email are required by validation; use as-is

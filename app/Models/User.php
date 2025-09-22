@@ -17,7 +17,7 @@ class User extends Authenticatable
      protected $fillable = [
         'name','first_name','last_name','email','password',
         'phone','address','medical_document',
-    'is_admin', 'is_owner', 'is_secretary', 'is_doctor',
+        'is_admin','is_secretary','is_doctor',
     ];
 
     protected $hidden = [
@@ -30,7 +30,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_admin'          => 'boolean',
-            'is_owner'          => 'boolean',
             'is_secretary'      => 'boolean',
             'is_doctor'         => 'boolean',
             'password' => 'hashed',
@@ -157,9 +156,6 @@ public function queueEntries()
             }
             if (!isset($user->is_admin)) {
                 $user->is_admin = false;
-            }
-            if (!isset($user->is_owner)) {
-                $user->is_owner = false;
             }
             if (!isset($user->is_secretary)) {
                 $user->is_secretary = false;
