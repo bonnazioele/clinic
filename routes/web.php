@@ -49,11 +49,19 @@ Auth::routes(['verify' => true]);
 
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
+// Forced password change routes (accessible when initial login is required)
+Route::middleware(['auth'])->group(function(){
+     Route::get('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'show'])
+          ->name('auth.password.force.show');
+     Route::put('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'update'])
+          ->name('auth.password.force.update');
+});
+
 /*
 Patient Routes
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'force.password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class,'show'])->name('profile.show');
@@ -91,7 +99,7 @@ Admin Routes
 */
 
 Route::prefix('admin')
-     ->middleware(['auth', AdminMiddleware::class])
+     ->middleware(['auth', 'force.password.change', AdminMiddleware::class])
      ->name('admin.')
      ->group(function () {
          Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
@@ -113,7 +121,7 @@ Route::prefix('admin')
      });
 
 Route::prefix('secretary')
-     ->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class])
+     ->middleware(['auth', 'force.password.change', \App\Http\Middleware\SecretaryMiddleware::class])
      ->name('secretary.')
      ->group(function(){
 
@@ -149,7 +157,7 @@ Doctor Routes
 */
 
 Route::prefix('doctor')
-      ->middleware(['auth', \App\Http\Middleware\DoctorMiddleware::class])
+     ->middleware(['auth', 'force.password.change', \App\Http\Middleware\DoctorMiddleware::class])
       ->name('doctor.')
       ->group(function(){
            Route::get('/dashboard', [\App\Http\Controllers\Doctor\DashboardController::class,'index'])->name('dashboard');
@@ -168,7 +176,7 @@ Owner Routes
 
 // Owner routes deprecated: redirect to secretary dashboard
 Route::prefix('owner')
-     ->middleware(['auth'])
+     ->middleware(['auth', 'force.password.change'])
      ->name('owner.')
      ->group(function(){
           Route::get('/dashboard', function(){ return redirect()->route('secretary.dashboard'); })->name('dashboard');

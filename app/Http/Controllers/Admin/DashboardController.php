@@ -19,12 +19,9 @@ class DashboardController extends Controller
 
     public function index()
     {
-        $stats = [
-            'clinics' => Clinic::count(),
-            'services' => Service::count(),
-            'users' => User::count(),
-            'appointments' => Appointment::count(),
-        ];
+        $registeredClinics = Clinic::whereIn('status', ['approved','active'])->count();
+        $services = Service::count();
+        $users = User::count();
 
         $pendingClinics = Clinic::where('status', 'pending')
             ->latest()
@@ -32,9 +29,12 @@ class DashboardController extends Controller
             ->get(['id','name','address','email','contact_number','created_at']);
         $pendingCount = Clinic::where('status', 'pending')->count();
 
-        return view('admin.dashboard', array_merge($stats, [
+        return view('admin.dashboard', [
+            'registeredClinics' => $registeredClinics,
+            'services' => $services,
+            'users' => $users,
             'pendingClinics' => $pendingClinics,
             'pendingCount' => $pendingCount,
-        ]));
+        ]);
     }
 }

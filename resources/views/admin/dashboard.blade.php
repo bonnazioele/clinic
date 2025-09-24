@@ -18,8 +18,8 @@
         <div class="row g-3 text-start">
           <div class="col-md-3">
             <div class="p-4 rounded text-white" style="background:#1976ff;">
-              <div class="fs-3 fw-bold">{{ $clinics }}</div>
-              <div class="mt-1">Total Clinics</div>
+              <div class="fs-3 fw-bold">{{ $registeredClinics }}</div>
+              <div class="mt-1">Total Registered Clinics</div>
             </div>
           </div>
           <div class="col-md-3">
@@ -35,9 +35,9 @@
             </div>
           </div>
           <div class="col-md-3">
-            <div class="p-4 rounded text-white" style="background:#10c9f4;">
-              <div class="fs-3 fw-bold">{{ $appointments }}</div>
-              <div class="mt-1">Total Appointments</div>
+            <div class="p-4 rounded text-white" style="background:#6c757d;">
+              <div class="fs-3 fw-bold">{{ $pendingCount }}</div>
+              <div class="mt-1">Total Pending Clinics</div>
             </div>
           </div>
         </div>
