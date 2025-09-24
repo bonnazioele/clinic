@@ -128,15 +128,6 @@
                 <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required>
                 @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
               </div>
-              <div class="col-md-3">
-                <label class="form-label">Password</label>
-                <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" required>
-                @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">Confirm Password</label>
-                <input type="password" name="password_confirmation" class="form-control" required>
-              </div>
             </div>
 
             <div class="mt-4 d-flex justify-content-end gap-2">

@@ -7,17 +7,17 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
 
-    public function up(): void
-    {
-        Schema::table('services', function (Blueprint $table) {
-            $table->renameColumn('service_name', 'name');
-        });
-    }
+    // public function up(): void
+    // {
+    //     Schema::table('services', function (Blueprint $table) {
+    //         $table->renameColumn('service_name', 'name');
+    //     });
+    // }
 
-    public function down(): void
-    {
-        Schema::table('services', function (Blueprint $table) {
-            $table->renameColumn('name', 'service_name');
-        });
-    }
+    // public function down(): void
+    // {
+    //     Schema::table('services', function (Blueprint $table) {
+    //         $table->renameColumn('name', 'service_name');
+    //     });
+    // }
 };

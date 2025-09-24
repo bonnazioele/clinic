@@ -7,13 +7,19 @@ use App\Models\Clinic;
 use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use App\Models\User;
+use App\Mail\ClinicApprovedMail;
+use Illuminate\Support\Facades\Log;
 
 class ClinicController extends Controller
 {
 
     public function index(Request $request)
     {
-        $query = Clinic::with(['services']);
+        $query = Clinic::with(['services'])
+            ->whereIn('status', ['approved','active']);
 
         if ($request->filled('name')) {
             $name = trim((string) $request->input('name'));
@@ -25,7 +31,7 @@ class ClinicController extends Controller
 
         $clinics = $query->latest()->paginate(10)->withQueryString();
 
-        $mapQuery = Clinic::query();
+    $mapQuery = Clinic::query()->whereIn('status', ['approved','active']);
         if ($request->filled('name')) {
             $name = trim((string) $request->input('name'));
             $mapQuery->where('name', 'like', "%{$name}%");
@@ -88,7 +94,7 @@ class ClinicController extends Controller
 
             $clinic->services()->sync($data['service_ids'] ?? []);
 
-            $secretary = \App\Models\User::create([
+            $secretary = User::create([
                 'name'        => $data['secretary_name'],
                 'email'       => $data['secretary_email'],
                 'phone'       => $data['secretary_phone'] ?? null,
@@ -97,11 +103,53 @@ class ClinicController extends Controller
             ]);
 
             $clinic->secretaries()->syncWithoutDetaching([$secretary->id]);
+
+            // Also immediately approve and create owner credentials when admin manually adds a clinic
+            $clinic->status = 'approved';
+            $clinic->save();
+
+            // Create or fetch an owner user for the clinic email
+            $owner = User::where('email', $clinic->email)->first();
+            $tempPasswordPlain = null;
+            if (!$owner) {
+                $tempPasswordPlain = method_exists(Str::class, 'password') ? Str::password(12) : Str::random(12);
+                $owner = User::create([
+                    'name'     => trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: 'Clinic Owner',
+                    'first_name' => $clinic->owner_first_name,
+                    'last_name'  => $clinic->owner_last_name,
+                    'email'    => $clinic->email,
+                    'password' => $tempPasswordPlain,
+                    'is_secretary' => true, // grant secretary access by default
+                ]);
+            }
+
+            // Associate owner to clinic record
+            $clinic->user_id = $owner->id;
+            $clinic->save();
+            $clinic->secretaries()->syncWithoutDetaching([$owner->id]);
+
+            // Send approval email with credentials (password only if new)
+            $loginUrl = route('login');
+            try {
+                Mail::to($clinic->email)->send(new ClinicApprovedMail(
+                    clinicName: $clinic->name,
+                    name: trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: $owner->name,
+                    email: $owner->email,
+                    password: $tempPasswordPlain,
+                    loginUrl: $loginUrl
+                ));
+            } catch (\Throwable $e) {
+                Log::error('Failed sending ClinicApprovedMail', [
+                    'clinic_id' => $clinic->id,
+                    'email' => $clinic->email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         });
 
         return redirect()
             ->route('admin.clinics.index')
-            ->with('status','Clinic added successfully. Secretary account created: ' . $data['secretary_email']);
+            ->with('status','Clinic added and approved. Accounts created for secretary and owner.');
     }
 
     public function show(Clinic $clinic)
@@ -180,8 +228,56 @@ class ClinicController extends Controller
 
     public function approve(Clinic $clinic)
     {
-        $clinic->update(['status' => 'approved']);
-        return back()->with('status', 'Clinic approved.');
+        if ($clinic->isApprovedLike()) {
+            // Already approved/active, but still ensure user exists and email sent (without password)
+        }
+
+        $tempPasswordPlain = null;
+
+        \DB::transaction(function () use ($clinic, &$tempPasswordPlain) {
+            $clinic->status = 'approved';
+            $clinic->save();
+
+            // Create or get owner account based on clinic email
+            $owner = User::where('email', $clinic->email)->first();
+            if (!$owner) {
+                $tempPasswordPlain = method_exists(Str::class, 'password') ? Str::password(12) : Str::random(12);
+                $owner = User::create([
+                    'name'     => trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: 'Clinic Owner',
+                    'first_name' => $clinic->owner_first_name,
+                    'last_name'  => $clinic->owner_last_name,
+                    'email'    => $clinic->email,
+                    'password' => $tempPasswordPlain,
+                    'is_secretary' => true, // default role to manage clinic
+                ]);
+            }
+
+            // Update linkage and secretary pivot
+            $clinic->user_id = $owner->id;
+            $clinic->save();
+            $clinic->secretaries()->syncWithoutDetaching([$owner->id]);
+        });
+
+        // Send email (include password if we created the user above)
+        $loginUrl = route('login');
+        try {
+            $emailName = trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: (optional($clinic->user)->name ?: 'Clinic Owner');
+            Mail::to($clinic->email)->send(new ClinicApprovedMail(
+                clinicName: $clinic->name,
+                name: $emailName,
+                email: $clinic->email,
+                password: $tempPasswordPlain,
+                loginUrl: $loginUrl
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed sending ClinicApprovedMail', [
+                'clinic_id' => $clinic->id,
+                'email' => $clinic->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return back()->with('status', 'Clinic approved. Credentials sent to owner email.');
     }
 
     public function decline(Clinic $clinic)

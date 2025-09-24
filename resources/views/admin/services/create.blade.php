@@ -39,21 +39,6 @@
             @enderror
           </div>
 
-          <div class="mb-3">
-            <label for="clinic_ids" class="form-label"><i class="bi bi-building me-1"></i>Available at Clinics <span class="text-danger">*</span></label>
-            <div class="form-text mb-2">Select which clinics will offer this service</div>
-        <select name="clinic_ids[]" id="clinic_ids" class="form-select enhanced-multiselect @error('clinic_ids') is-invalid @enderror" multiple required>
-              @foreach(\App\Models\Clinic::all() as $clinic)
-                <option value="{{ $clinic->id }}" {{ in_array($clinic->id, old('clinic_ids', [])) ? 'selected' : '' }}>
-                  {{ $clinic->name }} - {{ $clinic->branch_code }}
-                </option>
-              @endforeach
-            </select>
-            @error('clinic_ids')
-              <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-          </div>
-
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-save me-2"></i>Save Service

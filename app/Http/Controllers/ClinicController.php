@@ -10,7 +10,8 @@ class ClinicController extends Controller
 {
     public function index(Request $req)
     {
-        $query = Clinic::with('services');
+        $query = Clinic::with('services')
+            ->whereIn('status', ['approved','active']);
 
         if($req->service_id) {
             $query->whereHas('services', fn($q)=> $q->where('service_id',$req->service_id));

@@ -35,8 +35,6 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|unique:services,name',
             'description' => 'nullable|string',
-            'clinic_ids'  => 'required|array|min:1',
-            'clinic_ids.*' => 'exists:clinics,id',
         ]);
 
         $service = Service::create([
@@ -44,11 +42,9 @@ class ServiceController extends Controller
             'description' => $data['description'],
         ]);
 
-        $service->clinics()->attach($data['clinic_ids']);
-
         return redirect()
             ->route('admin.services.index')
-            ->with('status','Service added successfully and linked to selected clinics.');
+            ->with('status','Service added successfully.');
     }
 
     public function edit(Service $service)
@@ -61,8 +57,6 @@ class ServiceController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|unique:services,name,'.$service->id,
             'description' => 'nullable|string',
-            'clinic_ids'  => 'required|array|min:1',
-            'clinic_ids.*' => 'exists:clinics,id',
         ]);
 
         $service->update([
@@ -70,9 +64,7 @@ class ServiceController extends Controller
             'description' => $data['description'],
         ]);
 
-        $service->clinics()->sync($data['clinic_ids']);
-
-        return back()->with('status','Service updated successfully and clinic associations updated.');
+        return back()->with('status','Service updated successfully.');
     }
 
     public function destroy(Service $service)

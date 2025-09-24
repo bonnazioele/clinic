@@ -22,6 +22,8 @@ class Clinic extends Model
         'address',
         'contact_number',
         'email',
+        'owner_first_name',
+        'owner_last_name',
         'logo',
         'cover_image',
         'description',
