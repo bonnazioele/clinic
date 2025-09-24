@@ -14,45 +14,13 @@
   <!-- Alerts: upper-right, below the header (floating) -->
   @include('partials.alerts', ['toastOffsetTop' => '7rem'])
 
-  <!-- Page Header -->
+  <!-- Page Header (centered) -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
-        <div class="d-flex align-items-center justify-content-center mb-3">
-          <i class="bi bi-building medical-icon me-3" style="font-size: 3rem;"></i>
-          <div>
-            <h1 class="mb-1 fw-bold text-primary">Find Your Healthcare Provider</h1>
-            <p class="text-muted mb-0">
-              <i class="bi bi-geo-alt me-2"></i>Discover clinics and medical services near you
-            </p>
-          </div>
-        </div>
-        <div class="row g-3">
-          <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">{{ $clinics->total() }}</div>
-              <small class="text-muted">Available Clinics</small>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">{{ \App\Models\Service::count() }}</div>
-              <small class="text-muted">Medical Services</small>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="text-center">
-              <div class="dashboard-stat">{{ \App\Models\User::where('is_doctor', true)->count() }}</div>
-              <small class="text-muted">Healthcare Professionals</small>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="text-center">
-                <div class="dashboard-stat text-primary">{{ $todaysAppointmentsCount ?? 0 }}</div>
-              <small class="text-muted">Today's Appointments</small>
-            </div>
-          </div>
-        </div>
+        <i class="bi bi-building medical-icon d-block mx-auto mb-2" style="font-size: 2.25rem;"></i>
+        <h1 class="h3 mb-1 fw-bold text-primary">Find Your Healthcare Provider</h1>
+        <p class="text-muted mb-0">Discover clinics and medical services near you</p>
       </div>
     </div>
   </div>

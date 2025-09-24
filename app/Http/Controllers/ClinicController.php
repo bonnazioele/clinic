@@ -22,9 +22,7 @@ class ClinicController extends Controller
 
     $clinics = $query->paginate(10);
 
-    $todaysAppointmentsCount = Appointment::whereDate('appointment_date', now())->count();
-
-    return view('clinics.index', compact('clinics','todaysAppointmentsCount'));
+    return view('clinics.index', compact('clinics'));
     }
 }
 
