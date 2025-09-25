@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Clinic;
 use App\Models\Service;
 
 class DoctorController extends Controller
@@ -74,16 +73,18 @@ class DoctorController extends Controller
 }
 
     public function edit(User $doctor)
-{
-    abort_unless($doctor->is_doctor,404);
-    $clinics  = auth()->user()->secretaryClinics()->get();
-    $services = Service::all();
+    {
+        abort_unless($doctor->is_doctor,404);
 
-    if (! $doctor->clinics()->whereIn('clinics.id', $clinics->pluck('id'))->exists()) {
-        abort(403,'Doctor not in your assigned clinics.');
+        // Ensure the secretary is allowed to edit this doctor (doctor must belong to at least one of secretary's clinics)
+        $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id');
+        if (! $doctor->clinics()->whereIn('clinics.id', $secretaryClinicIds)->exists()) {
+            abort(403,'Doctor not in your assigned clinics.');
+        }
+
+        $services = Service::all();
+        return view('secretary.doctors.edit', compact('doctor','services'));
     }
-    return view('secretary.doctors.edit', compact('doctor','clinics','services'));
-}
 
     public function update(Request $req, User $doctor)
 {

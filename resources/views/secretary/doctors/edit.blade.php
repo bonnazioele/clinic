@@ -74,29 +74,6 @@
       </div>
     </div>
 
-    <!-- Clinics -->
-    <div class="mb-3">
-  <label class="form-label"><i class="bi bi-building me-1"></i>Clinics</label>
-  <select name="clinic_ids[]"
-      class="form-select enhanced-multiselect @error('clinic_ids') is-invalid @enderror"
-              multiple>
-        @foreach($clinics as $c)
-          <option value="{{ $c->id }}"
-            @selected(
-              in_array(
-                $c->id,
-                old('clinic_ids',
-                    $doctor->clinics->pluck('id')->toArray()
-                )
-              )
-            )>
-            {{ $c->name }}
-          </option>
-        @endforeach
-      </select>
-      @error('clinic_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
-  <div class="form-text">Tip: Hold Ctrl (Cmd on Mac) to select multiple clinics.</div>
-    </div>
 
     <!-- Services -->
     <div class="mb-3">
