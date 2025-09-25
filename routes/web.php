@@ -61,7 +61,7 @@ Route::middleware(['auth'])->group(function(){
 Patient Routes
 */
 
-Route::middleware(['auth', 'verified', 'force.password.change'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class,'show'])->name('profile.show');
@@ -99,7 +99,7 @@ Admin Routes
 */
 
 Route::prefix('admin')
-     ->middleware(['auth', 'force.password.change', AdminMiddleware::class])
+     ->middleware(['auth', AdminMiddleware::class])
      ->name('admin.')
      ->group(function () {
          Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
