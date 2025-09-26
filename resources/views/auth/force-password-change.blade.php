@@ -12,7 +12,7 @@
         </div>
         <div class="card-body">
           <p class="text-muted">For security, you must set a new password before accessing the system for the first time.</p>
-          <form method="POST" action="{{ route('auth.password.force.update') }}">
+          <form method="POST" action="{{ route('secretary.auth.password.force.update') }}">
             @csrf
             @method('PUT')
 

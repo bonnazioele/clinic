@@ -20,19 +20,18 @@ use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 use App\Http\Controllers\Auth\SecretaryRegisterController;
 use App\Http\Controllers\Owner\ApplicationController as OwnerApplicationController;
-// OwnerMiddleware removed (owner role deprecated)
 
 
-/*
-Public Routes
-*/
+
+
+//Public Routes
+
 
 Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);
 
 Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
 
-// Owner Application (guest)
 Route::middleware('guest')->group(function(){
      Route::get('/apply/clinic', [OwnerApplicationController::class, 'create'])->name('owner.apply');
      Route::post('/apply/clinic', [OwnerApplicationController::class, 'store'])->name('owner.apply.store');
@@ -41,28 +40,25 @@ Route::middleware('guest')->group(function(){
      })->name('owner.apply.thanks');
 });
 
-/*
-Authentication
-*/
+
+//Authentication
+
 
 Auth::routes(['verify' => true]);
 
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
-// Forced password change routes (accessible when initial login is required)
-Route::middleware(['auth'])->group(function(){
-     Route::get('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'show'])
-          ->name('auth.password.force.show');
-     Route::put('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'update'])
-          ->name('auth.password.force.update');
-});
+// Force password change now restricted to secretary role only
+// (Secretary group below already has force.password.change middleware)
 
-/*
-Patient Routes
-*/
 
-Route::middleware(['auth', 'verified', 'force.password.change'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+//Patient Routes
+
+
+Route::middleware(['auth'])
+     ->group(function () {
+
+     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class,'show'])->name('profile.show');
      Route::get('/profile/edit', [ProfileController::class,'edit'])->name('profile.edit');
@@ -91,15 +87,14 @@ Route::middleware(['auth', 'verified', 'force.password.change'])->group(function
     Route::get('/queue/status', [QueueController::class, 'status'])->name('queue.status');
     Route::get('/queue/status/{entry}', [QueueController::class, 'status'])->name('queue.status.entry');
     Route::post('/queue/join/{clinic}', [QueueController::class, 'join'])->name('queue.join');
-    Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])->name('queue.leave');
+     Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])->name('queue.leave');
 });
 
-/*
-Admin Routes
-*/
+
+//Admin Routes
+
 
 Route::prefix('admin')
-     ->middleware(['auth', 'force.password.change', AdminMiddleware::class])
      ->name('admin.')
      ->group(function () {
          Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
@@ -124,6 +119,11 @@ Route::prefix('secretary')
      ->middleware(['auth', 'force.password.change', \App\Http\Middleware\SecretaryMiddleware::class])
      ->name('secretary.')
      ->group(function(){
+         // Force password change endpoints (secretary only)
+         Route::get('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'show'])
+              ->name('auth.password.force.show');
+         Route::put('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'update'])
+              ->name('auth.password.force.update');
 
          Route::get('/dashboard', [\App\Http\Controllers\Secretary\DashboardController::class,'index'])->name('dashboard');
 
@@ -152,12 +152,11 @@ Route::prefix('secretary')
          Route::put('clinics/{clinic}', [\App\Http\Controllers\Secretary\ClinicProfileController::class,'update'])->name('clinic.update');
      });
 
-/*
-Doctor Routes
-*/
+
+//Doctor Routes
+
 
 Route::prefix('doctor')
-     ->middleware(['auth', 'force.password.change', \App\Http\Middleware\DoctorMiddleware::class])
       ->name('doctor.')
       ->group(function(){
            Route::get('/dashboard', [\App\Http\Controllers\Doctor\DashboardController::class,'index'])->name('dashboard');
@@ -170,13 +169,12 @@ Route::prefix('doctor')
            Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'destroy'])->name('schedules.destroy');
       });
 
-/*
-Owner Routes
-*/
 
-// Owner routes deprecated: redirect to secretary dashboard
+//Owner Routes
+
+
 Route::prefix('owner')
-     ->middleware(['auth', 'force.password.change'])
+     ->middleware(['auth'])
      ->name('owner.')
      ->group(function(){
           Route::get('/dashboard', function(){ return redirect()->route('secretary.dashboard'); })->name('dashboard');
