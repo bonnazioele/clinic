@@ -62,6 +62,34 @@ class ForcePasswordChangeTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_doctor_not_redirected_even_if_initial_login_true()
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('TempPass123!'),
+            'is_doctor' => true,
+            'is_secretary' => false,
+            'is_initial_login' => true,
+        ]);
+
+        // Access doctor dashboard
+        $response = $this->actingAs($user)->get('/doctor/dashboard');
+        $response->assertOk();
+    }
+
+    public function test_admin_not_redirected_even_if_initial_login_true()
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('TempPass123!'),
+            'is_admin' => true,
+            'is_secretary' => false,
+            'is_initial_login' => true,
+        ]);
+
+        // Admin dashboard is /admin (route name admin.dashboard)
+        $response = $this->actingAs($user)->get('/admin');
+        $response->assertOk();
+    }
+
     public function test_force_password_change_endpoint_reachable_for_secretary()
     {
         $user = $this->createSecretary();

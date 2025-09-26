@@ -20,7 +20,6 @@ class ForcedPasswordChangeController extends Controller
         ]);
 
         $user = $request->user();
-        // Prevent using the same current (temporary) password
         if (Hash::check($request->input('password'), $user->password)) {
             return back()
                 ->withErrors(['password' => 'Your new password must be different from your current password.'])

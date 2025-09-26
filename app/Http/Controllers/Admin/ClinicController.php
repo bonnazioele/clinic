@@ -69,10 +69,10 @@ class ClinicController extends Controller
             'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'service_ids'    => 'nullable|array',
             'service_ids.*'  => 'exists:services,id',
-            'secretary_name'                  => 'required|string|max:255',
-            'secretary_email'                 => 'required|email|max:255|unique:users,email',
-            'secretary_phone'                 => 'nullable|string|max:50',
-            'secretary_password'              => 'required|string|min:8|confirmed',
+            'secretary_name' => 'required|string|max:255',
+            'secretary_email'=> 'required|email|max:255|unique:users,email',
+            'secretary_phone'=> 'nullable|string|max:50',
+            'secretary_password' => 'required|string|min:8|confirmed',
         ]);
 
         $logoPath = null;
@@ -104,11 +104,9 @@ class ClinicController extends Controller
 
             $clinic->secretaries()->syncWithoutDetaching([$secretary->id]);
 
-            // Also immediately approve and create owner credentials when admin manually adds a clinic
             $clinic->status = 'approved';
             $clinic->save();
 
-            // Create or fetch an owner user for the clinic email
             $owner = User::where('email', $clinic->email)->first();
             $tempPasswordPlain = null;
             if (!$owner) {
@@ -119,16 +117,14 @@ class ClinicController extends Controller
                     'last_name'  => $clinic->owner_last_name,
                     'email'    => $clinic->email,
                     'password' => $tempPasswordPlain,
-                    'is_secretary' => true, // grant secretary access by default
+                    'is_secretary' => true,
                 ]);
             }
 
-            // Associate owner to clinic record
             $clinic->user_id = $owner->id;
             $clinic->save();
             $clinic->secretaries()->syncWithoutDetaching([$owner->id]);
 
-            // Send approval email with credentials (password only if new)
             $loginUrl = route('login');
             try {
                 Mail::to($clinic->email)->send(new ClinicApprovedMail(
@@ -229,7 +225,6 @@ class ClinicController extends Controller
     public function approve(Clinic $clinic)
     {
         if ($clinic->isApprovedLike()) {
-            // Already approved/active, but still ensure user exists and email sent (without password)
         }
 
         $tempPasswordPlain = null;
@@ -238,7 +233,6 @@ class ClinicController extends Controller
             $clinic->status = 'approved';
             $clinic->save();
 
-            // Create or get owner account based on clinic email
             $owner = User::where('email', $clinic->email)->first();
             if (!$owner) {
                 $tempPasswordPlain = method_exists(Str::class, 'password') ? Str::password(12) : Str::random(12);
@@ -248,17 +242,15 @@ class ClinicController extends Controller
                     'last_name'  => $clinic->owner_last_name,
                     'email'    => $clinic->email,
                     'password' => $tempPasswordPlain,
-                    'is_secretary' => true, // default role to manage clinic
+                    'is_secretary' => true,
                 ]);
             }
 
-            // Update linkage and secretary pivot
             $clinic->user_id = $owner->id;
             $clinic->save();
             $clinic->secretaries()->syncWithoutDetaching([$owner->id]);
         });
 
-        // Send email (include password if we created the user above)
         $loginUrl = route('login');
         try {
             $emailName = trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: (optional($clinic->user)->name ?: 'Clinic Owner');

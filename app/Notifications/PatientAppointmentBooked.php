@@ -41,7 +41,6 @@ class PatientAppointmentBooked extends Notification implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        // Use the appointment's owning user for channel scoping
         return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.' . $this->appointment->user_id)];
     }
 }

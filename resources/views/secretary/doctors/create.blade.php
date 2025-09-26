@@ -18,38 +18,50 @@
 
     <!-- Name -->
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-person me-1"></i>Name</label>
-      <input type="text" name="name"
-             class="form-control @error('name') is-invalid @enderror"
-             value="{{ old('name') }}" required>
-      @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      <label for="doctor_name" class="form-label">Name</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-person"></i></span>
+        <input id="doctor_name" type="text" name="name"
+               class="form-control @error('name') is-invalid @enderror"
+               value="{{ old('name') }}" required>
+      </div>
+      @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Email -->
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-envelope me-1"></i>Email</label>
-      <input type="email" name="email"
-             class="form-control @error('email') is-invalid @enderror"
-             value="{{ old('email') }}" required>
-      @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      <label for="doctor_email" class="form-label">Email</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+        <input id="doctor_email" type="email" name="email"
+               class="form-control @error('email') is-invalid @enderror"
+               value="{{ old('email') }}" required>
+      </div>
+      @error('email')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Phone -->
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-telephone me-1"></i>Phone</label>
-      <input type="text" name="phone"
-             class="form-control @error('phone') is-invalid @enderror"
-             value="{{ old('phone') }}">
-      @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      <label for="doctor_phone" class="form-label">Phone</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+        <input id="doctor_phone" type="text" name="phone"
+               class="form-control @error('phone') is-invalid @enderror"
+               value="{{ old('phone') }}">
+      </div>
+      @error('phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Address -->
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address</label>
-      <textarea name="address"
-                class="form-control @error('address') is-invalid @enderror"
-                rows="2">{{ old('address') }}</textarea>
-      @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      <label for="doctor_address" class="form-label">Address</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+        <textarea id="doctor_address" name="address"
+                  class="form-control @error('address') is-invalid @enderror"
+                  rows="2">{{ old('address') }}</textarea>
+      </div>
+      @error('address')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Password & Confirmation -->
@@ -82,19 +94,19 @@
 
     <!-- Services Multi-Select -->
     <div class="mb-3">
-  <label class="form-label"><i class="bi bi-scissors me-1"></i>Assign to Services</label>
-  <select name="service_ids[]"
-      class="form-select enhanced-multiselect @error('service_ids') is-invalid @enderror"
-              multiple>
-        @foreach($services as $service)
-          <option value="{{ $service->id }}"
-            @selected(in_array($service->id, old('service_ids', [])))>
-            {{ $service->name }}
-          </option>
-        @endforeach
-      </select>
-      @error('service_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
-  <div class="form-text">Tip: Hold Ctrl (Cmd on Mac) to select multiple services.</div>
+      <label for="doctor_services" class="form-label">Assign to Services</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-scissors"></i></span>
+        <select id="doctor_services" name="service_ids[]"
+                class="form-select enhanced-multiselect @error('service_ids') is-invalid @enderror"
+                multiple>
+          @foreach($services as $service)
+            <option value="{{ $service->id }}" @selected(in_array($service->id, old('service_ids', [])))>{{ $service->name }}</option>
+          @endforeach
+        </select>
+      </div>
+      @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+      <div class="form-text">Tip: Hold Ctrl (Cmd on Mac) to select multiple services.</div>
     </div>
 
     <!-- Form Actions -->

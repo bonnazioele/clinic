@@ -49,10 +49,8 @@ class QueueController extends Controller
             ->where('status', 'waiting');
 
         if ($clinic->queueModeIs('priority')) {
-            // Order by appointment date/time if appointment exists, else fall back to queue_number
             $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
                 ->select('queue_entries.*')
-                // Push walk-ins (NULL appointment_date) after scheduled patients
                 ->orderByRaw('appointments.appointment_date IS NULL')
                 ->orderBy('appointments.appointment_date')
                 ->orderBy('appointments.appointment_time')
@@ -94,14 +92,12 @@ class QueueController extends Controller
                 }
             }
         });
-    // Determine next based on clinic mode
     $clinic = $entry->clinic;
     $nextQuery = \App\Models\QueueEntry::where('clinic_id',$entry->clinic_id)
         ->where('status','waiting');
     if ($clinic && $clinic->queueModeIs('priority')) {
         $nextQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
             ->select('queue_entries.*')
-            // Walk-ins (NULL appointment_date) last
             ->orderByRaw('appointments.appointment_date IS NULL')
             ->orderBy('appointments.appointment_date')
             ->orderBy('appointments.appointment_time')

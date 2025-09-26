@@ -25,12 +25,10 @@ class QueueController extends Controller
             ->whereIn('clinic_id', $clinics)
             ->where('status','waiting');
 
-        // Mixed clinics: order per clinic mode would require union; simplify: if all selected clinics share mode priority, use priority ordering
         $clinicModes = \App\Models\Clinic::whereIn('id', $clinics)->pluck('queue_mode')->unique();
         if ($clinicModes->count() === 1 && $clinicModes->first() === 'priority') {
             $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
                 ->select('queue_entries.*')
-                // Push walk-ins (NULL appointment_date) after scheduled appointment holders
                 ->orderByRaw('appointments.appointment_date IS NULL')
                 ->orderBy('appointments.appointment_date')
                 ->orderBy('appointments.appointment_time')

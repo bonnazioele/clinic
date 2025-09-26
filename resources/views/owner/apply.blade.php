@@ -15,37 +15,52 @@
 
             <h6 class="text-muted mb-3">Clinic Details</h6>
             <div class="mb-3">
-              <label class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>
-              <input type="text" name="clinic_name" class="form-control @error('clinic_name') is-invalid @enderror" value="{{ old('clinic_name') }}" required maxlength="255" placeholder="Enter clinic name">
-              @error('clinic_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+              <label for="clinic_name" class="form-label">Clinic Name <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                <input id="clinic_name" type="text" name="clinic_name" class="form-control @error('clinic_name') is-invalid @enderror" value="{{ old('clinic_name') }}" required maxlength="255" placeholder="Enter clinic name">
+              </div>
+              @error('clinic_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
 
             <div class="mb-3">
-              <label class="form-label"><i class="bi bi-tag me-1"></i>Branch Code <span class="text-danger">*</span></label>
-              <input type="text" name="branch_code" class="form-control @error('branch_code') is-invalid @enderror" value="{{ old('branch_code') }}" maxlength="50" required placeholder="e.g., CLINIC001, BRANCH-A1">
-              @error('branch_code') <div class="invalid-feedback">{{ $message }}</div> @enderror
+              <label for="branch_code" class="form-label">Branch Code <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                <input id="branch_code" type="text" name="branch_code" class="form-control @error('branch_code') is-invalid @enderror" value="{{ old('branch_code') }}" maxlength="50" required placeholder="e.g., CLINIC001, BRANCH-A1">
+              </div>
+              @error('branch_code') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
               <div class="form-text">Provide a unique code for this clinic branch.</div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address <span class="text-danger">*</span></label>
-              <textarea name="clinic_address" class="form-control @error('clinic_address') is-invalid @enderror" rows="3" required maxlength="1000" placeholder="Enter complete address">{{ old('clinic_address') }}</textarea>
-              @error('clinic_address') <div class="invalid-feedback">{{ $message }}</div> @enderror
+              <label for="clinic_address" class="form-label">Address <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                <textarea id="clinic_address" name="clinic_address" class="form-control @error('clinic_address') is-invalid @enderror" rows="3" required maxlength="1000" placeholder="Enter complete address">{{ old('clinic_address') }}</textarea>
+              </div>
+              @error('clinic_address') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
 
             <div class="row">
               <div class="col-md-6">
                 <div class="mb-3">
-                  <label class="form-label"><i class="bi bi-telephone me-1"></i>Contact Number <span class="text-danger">*</span></label>
-                  <input type="tel" name="clinic_contact" class="form-control @error('clinic_contact') is-invalid @enderror" value="{{ old('clinic_contact') }}" required maxlength="50" placeholder="e.g., +63 917 123 4567">
-                  @error('clinic_contact') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                  <label for="clinic_contact" class="form-label">Contact Number <span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                    <input id="clinic_contact" type="tel" name="clinic_contact" class="form-control @error('clinic_contact') is-invalid @enderror" value="{{ old('clinic_contact') }}" required maxlength="50" placeholder="e.g., +63 917 123 4567">
+                  </div>
+                  @error('clinic_contact') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="mb-3">
-                  <label class="form-label"><i class="bi bi-envelope me-1"></i>Clinic Email <span class="text-danger">*</span></label>
-                  <input type="email" name="clinic_email" class="form-control @error('clinic_email') is-invalid @enderror" value="{{ old('clinic_email') }}" maxlength="100" required placeholder="clinic@example.com">
-                  @error('clinic_email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                  <label for="clinic_email" class="form-label">Clinic Email <span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input id="clinic_email" type="email" name="clinic_email" class="form-control @error('clinic_email') is-invalid @enderror" value="{{ old('clinic_email') }}" maxlength="100" required placeholder="clinic@example.com">
+                  </div>
+                  @error('clinic_email') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
               </div>
             </div>
@@ -57,15 +72,24 @@
                 <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="servicesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                   Select Services
                 </button>
-                <ul class="dropdown-menu w-100" aria-labelledby="servicesDropdown" style="max-height: 200px; overflow-y: auto;">
-                  @foreach(($services ?? []) as $service)
-                    <li>
-                      <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2 service-checkbox" name="service_ids[]" value="{{ $service->id }}" {{ in_array($service->id, old('service_ids', [])) ? 'checked' : '' }}>
-                        {{ $service->name }}
-                      </label>
-                    </li>
-                  @endforeach
+                <ul class="dropdown-menu w-100 p-2" aria-labelledby="servicesDropdown" style="max-height: 250px; overflow-y: auto;">
+                  {{-- Search box --}}
+                  <li class="mb-2">
+                    <input type="text" id="serviceSearch" class="form-control form-control-sm" placeholder="Search services...">
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+
+                  {{-- Service list --}}
+                  <div id="servicesList">
+                    @foreach(($services ?? []) as $service)
+                      <li>
+                        <label class="dropdown-item">
+                          <input type="checkbox" class="form-check-input me-2 service-checkbox" name="service_ids[]" value="{{ $service->id }}" {{ in_array($service->id, old('service_ids', [])) ? 'checked' : '' }}>
+                          {{ $service->name }}
+                        </label>
+                      </li>
+                    @endforeach
+                  </div>
                 </ul>
               </div>
               @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -107,28 +131,7 @@
               </div>
             </div>
 
-            <hr class="my-4">
-            <h6 class="text-muted mb-3">Owner Account</h6>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label">First Name</label>
-                <input type="text" name="first_name" class="form-control @error('first_name') is-invalid @enderror" value="{{ old('first_name') }}" required>
-                @error('first_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Last Name</label>
-                <input type="text" name="last_name" class="form-control @error('last_name') is-invalid @enderror" value="{{ old('last_name') }}" required>
-                @error('last_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-              </div>
-            </div>
-
-            <div class="row g-3 mt-1">
-              <div class="col-md-6">
-                <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required>
-                @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
-              </div>
-            </div>
+            <!-- Removed legacy secondary clinic account & email fields. Clinic email above is now the sole email captured. -->
 
             <div class="mt-4 d-flex justify-content-end gap-2">
               <a href="{{ route('welcome') }}" class="btn btn-light">Cancel</a>
@@ -175,6 +178,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   updatePanel();
+
+  // Service search filter
+  const searchInput = document.getElementById('serviceSearch');
+  const servicesList = document.getElementById('servicesList');
+  let fetchTimeout;
+  async function remoteSearch(term){
+    try {
+      const params = new URLSearchParams();
+      if(term) params.append('q', term);
+      const res = await fetch(`/services/search?${params.toString()}`);
+      if(!res.ok) return; // silently ignore
+      const json = await res.json();
+      const selectedIds = Array.from(document.querySelectorAll('.service-checkbox:checked')).map(cb=>parseInt(cb.value));
+      servicesList.innerHTML = '';
+      json.data.forEach(s => {
+        const li = document.createElement('li');
+        const label = document.createElement('label');
+        label.className = 'dropdown-item';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'service_ids[]';
+        input.value = s.id;
+        input.className = 'form-check-input me-2 service-checkbox';
+        if(selectedIds.includes(s.id)) input.checked = true;
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(' '+s.name));
+        li.appendChild(label);
+        servicesList.appendChild(li);
+      });
+      updatePanel();
+    } catch(e){ /* noop */ }
+  }
+  if (searchInput && servicesList) {
+    searchInput.addEventListener('input', function(){
+      clearTimeout(fetchTimeout);
+      const term = this.value.trim();
+      fetchTimeout = setTimeout(()=>remoteSearch(term), 250);
+    });
+  }
 
   // Logo preview
   const logoInput = document.getElementById('logoInput');

@@ -19,7 +19,6 @@ class DashboardController extends Controller
             if ($user->is_admin) {
                 return redirect()->route('admin.dashboard');
             }
-            // Applicant path: user who created a clinic (legacy owner removal)
             $clinic = \App\Models\Clinic::where('user_id', $user->id)
                 ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
                 ->orderByDesc('id')
@@ -40,7 +39,6 @@ class DashboardController extends Controller
             if ($user->is_secretary) {
                 return redirect()->route('secretary.dashboard');
             }
-            // Regular patients -> patient dashboard
             return redirect()->route('dashboard');
         }
         return view('welcome');

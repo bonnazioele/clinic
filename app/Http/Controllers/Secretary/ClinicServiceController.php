@@ -71,7 +71,7 @@ class ClinicServiceController extends Controller
             ]);
         }
 
-        $clinicId = $request->input('clinic_id') ?: $assignedClinics->first()->id;
+    $clinicId = $request->input('clinic_id') ?: session('active_clinic_id') ?: $assignedClinics->first()->id;
         $clinic = $assignedClinics->firstWhere('id', (int)$clinicId);
         if (! $clinic) {
             abort(403,'Clinic not assigned to you.');

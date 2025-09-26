@@ -5,7 +5,9 @@
   @include('partials.alerts')
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="fw-bold text-primary mb-0 d-flex align-items-center"><i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services</h2>
+      <h2 class="fw-bold text-primary mb-0 d-flex align-items-center">
+        <i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services
+      </h2>
       <div class="d-flex gap-2">
         <a href="{{ route('secretary.services.create',['clinic_id'=>$clinic?->id]) }}" class="btn btn-success">
           <i class="bi bi-plus-circle me-2"></i>New Service
@@ -14,12 +16,15 @@
     </div>
     <form method="GET" class="row g-3 align-items-end">
       <div class="col-sm-4 col-md-3">
-        <label class="form-label fw-semibold">Clinic</label>
-        <select name="clinic_id" class="form-select" onchange="this.form.submit()">
-          @foreach($assignedClinics as $c)
-            <option value="{{ $c->id }}" @if($clinic && $clinic->id===$c->id) selected @endif>{{ $c->name }}</option>
-          @endforeach
-        </select>
+        <label for="clinic_filter" class="form-label fw-semibold">Clinic</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-hospital"></i></span>
+          <select id="clinic_filter" name="clinic_id" class="form-select" onchange="this.form.submit()">
+            @foreach($assignedClinics as $c)
+              <option value="{{ $c->id }}" @if($clinic && $clinic->id===$c->id) selected @endif>{{ $c->name }}</option>
+            @endforeach
+          </select>
+        </div>
       </div>
       <div class="col-sm-4 col-md-3 d-flex align-items-end">
         @if($clinic)
@@ -35,7 +40,10 @@
     <div class="row g-4">
       <div class="col-lg-7">
         <div class="medical-card p-4 h-100">
-          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center"><i class="bi bi-link-45deg medical-icon me-2"></i>Attached Services <span class="badge bg-secondary ms-2">{{ $services->count() }}</span></h5>
+          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center">
+            <i class="bi bi-link-45deg medical-icon me-2"></i>
+            Attached Services <span class="badge bg-secondary ms-2">{{ $services->count() }}</span>
+          </h5>
           @if($services->isEmpty())
             <div class="text-muted">No services attached to this clinic yet.</div>
           @else
@@ -75,26 +83,36 @@
       </div>
       <div class="col-lg-5">
         <div class="medical-card p-4 h-100">
-          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center"><i class="bi bi-plus-circle medical-icon me-2"></i>Attach from Master List</h5>
+          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center">
+            <i class="bi bi-plus-circle medical-icon me-2"></i>Attach from Master List
+          </h5>
           @if($availableServices->isEmpty())
             <div class="text-muted">All services already attached.</div>
           @else
             <form method="POST" action="{{ route('secretary.services.attach',$clinic) }}">
               @csrf
               <div class="mb-3">
-                <label class="form-label fw-semibold">Select Services</label>
-                <select name="service_ids[]" class="form-select @error('service_ids') is-invalid @enderror" multiple required size="8">
-                  @foreach($availableServices as $svc)
-                    <option value="{{ $svc->id }}">{{ $svc->name }}</option>
-                  @endforeach
-                </select>
-                <div class="form-text">Hold CTRL to multi-select.</div>
-                @error('service_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <label for="serviceSelect" class="form-label fw-semibold">Select Services</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-list-check"></i></span>
+                  <select id="serviceSelect"
+                          name="service_ids[]"
+                          class="form-select @error('service_ids') is-invalid @enderror"
+                          multiple required>
+                    @foreach($availableServices as $svc)
+                      <option value="{{ $svc->id }}">{{ $svc->name }}</option>
+                    @endforeach
+                  </select>
+                </div>
+                @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
               </div>
               <div class="mb-3">
-                <label class="form-label fw-semibold">Default Duration (minutes)</label>
-                <input type="number" name="duration_minutes" value="30" min="5" max="480" class="form-control @error('duration_minutes') is-invalid @enderror">
-                @error('duration_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <label for="duration_minutes" class="form-label fw-semibold">Default Duration (minutes)</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-stopwatch"></i></span>
+                  <input id="duration_minutes" type="number" name="duration_minutes" value="30" min="5" max="480" class="form-control @error('duration_minutes') is-invalid @enderror">
+                </div>
+                @error('duration_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
               </div>
               <div class="d-flex gap-2">
                 <button class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Attach Selected</button>
@@ -108,3 +126,37 @@
   @endif
 </div>
 @endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+  /* Custom style for Select2 to blend with Bootstrap */
+  .select2-container .select2-selection--multiple {
+    min-height: 48px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 4px 8px;
+  }
+  .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #0d6efd;
+    border: none;
+    color: #fff;
+    padding: 2px 8px;
+    margin-top: 4px;
+  }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#serviceSelect').select2({
+      placeholder: "Choose services...",
+      allowClear: true,
+      width: '100%'
+    });
+  });
+</script>
+@endpush

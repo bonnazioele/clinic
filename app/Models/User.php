@@ -66,7 +66,6 @@ public function queueEntries()
         );
     }
 
-    // Alias used widely in secretary controllers/views
     public function secretaryClinics()
     {
         return $this->belongsToMany(
@@ -77,10 +76,6 @@ public function queueEntries()
         );
     }
 
-    /**
-     * Backwards-compatible accessor for a doctor's clinics.
-     * Several controllers call $user->clinics() when the user is a doctor.
-     */
     public function clinics()
     {
         return $this->belongsToMany(

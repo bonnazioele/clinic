@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Clinic;
 use App\Models\Service;
 
 class DoctorController extends Controller
@@ -38,10 +37,11 @@ class DoctorController extends Controller
     }
 
     public function create()
-{
-    $services = Service::all();
-    return view('secretary.doctors.create', compact('services'));
-}
+    {
+        $services = Service::all();
+        $activeClinicId = session('active_clinic_id');
+        return view('secretary.doctors.create', compact('services','activeClinicId'));
+    }
 
     public function store(Request $req)
 {
@@ -64,9 +64,13 @@ class DoctorController extends Controller
         'is_doctor'  => true,
     ]);
 
-    // Auto-assign to all clinics the secretary is assigned to
+    $activeClinicId = session('active_clinic_id');
     $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id')->all();
-    $doctor->clinics()->sync($secretaryClinicIds);
+    if ($activeClinicId && in_array($activeClinicId, $secretaryClinicIds)) {
+        $doctor->clinics()->sync([$activeClinicId]);
+    } else {
+        $doctor->clinics()->sync($secretaryClinicIds);
+    }
     $doctor->services()->sync($data['service_ids'] ?? []);
 
     return redirect()->route('secretary.doctors.index')
@@ -74,16 +78,17 @@ class DoctorController extends Controller
 }
 
     public function edit(User $doctor)
-{
-    abort_unless($doctor->is_doctor,404);
-    $clinics  = auth()->user()->secretaryClinics()->get();
-    $services = Service::all();
+    {
+        abort_unless($doctor->is_doctor,404);
 
-    if (! $doctor->clinics()->whereIn('clinics.id', $clinics->pluck('id'))->exists()) {
-        abort(403,'Doctor not in your assigned clinics.');
+        $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id');
+        if (! $doctor->clinics()->whereIn('clinics.id', $secretaryClinicIds)->exists()) {
+            abort(403,'Doctor not in your assigned clinics.');
+        }
+
+        $services = Service::all();
+        return view('secretary.doctors.edit', compact('doctor','services'));
     }
-    return view('secretary.doctors.edit', compact('doctor','clinics','services'));
-}
 
     public function update(Request $req, User $doctor)
 {
@@ -109,9 +114,13 @@ class DoctorController extends Controller
                         : $doctor->password,
     ]);
 
-    // Keep clinics scoped to secretary's clinics only
     $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id')->all();
-    $doctor->clinics()->sync($secretaryClinicIds);
+    $activeClinicId = session('active_clinic_id');
+    if ($activeClinicId && in_array($activeClinicId, $secretaryClinicIds)) {
+        $doctor->clinics()->sync([$activeClinicId]);
+    } else {
+        $doctor->clinics()->sync($secretaryClinicIds);
+    }
     $doctor->services()->sync($data['service_ids'] ?? []);
 
     return redirect()->route('secretary.doctors.index')

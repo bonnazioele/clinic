@@ -90,6 +90,9 @@
                 <i class="bi bi-people me-1"></i>Queue
               </a>
             </li>
+            <li class="nav-item d-flex align-items-center ms-2">
+                @include('partials.secretary_clinic_switcher')
+            </li>
 
           @elseif(auth()->user()->is_owner)
             {{-- Owner primary nav --}}

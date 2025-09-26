@@ -362,6 +362,21 @@
 <div id="app" class="d-flex flex-column min-vh-100">
     @include('partials.navbar')
 
+    <div class="container mt-3">
+        @if(session('warning'))
+            <div class="alert alert-warning d-flex align-items-center mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <div>{{ session('warning') }}</div>
+            </div>
+        @endif
+        @if(session('status'))
+            <div class="alert alert-success d-flex align-items-center mb-3">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <div>{{ session('status') }}</div>
+            </div>
+        @endif
+    </div>
+
     <main class="py-4 flex-grow-1">
         @yield('content')
     </main>

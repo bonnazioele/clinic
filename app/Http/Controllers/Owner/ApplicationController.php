@@ -30,18 +30,11 @@ class ApplicationController extends Controller
             'logo'          => ['nullable','image','mimes:jpeg,png,jpg,gif,svg','max:2048'],
             'service_ids'   => ['nullable','array'],
             'service_ids.*' => ['integer','exists:services,id'],
-            'first_name' => ['required','string','max:255'],
-            'last_name' => ['required','string','max:255'],
-            'email' => ['required','email','max:255','unique:users,email'],
         ])->validate();
 
-        // Do NOT create an account here; credentials will be created and emailed upon admin approval
-
-        // Branch code and clinic email are required by validation; use as-is
         $branchCode = $data['branch_code'];
         $clinicEmail = $data['clinic_email'];
 
-        // Handle optional logo upload
         $logoPath = null;
         if (request()->hasFile('logo')) {
             $logoPath = request()->file('logo')->store('clinic-logos', 'public');
@@ -54,8 +47,8 @@ class ApplicationController extends Controller
             'contact_number' => $data['clinic_contact'],
             'description' => null,
             'email' => $clinicEmail,
-            'owner_first_name' => $data['first_name'] ?? null,
-            'owner_last_name' => $data['last_name'] ?? null,
+            'owner_first_name' => null,
+            'owner_last_name' => null,
             'branch_code' => $branchCode,
             'logo' => $logoPath,
             'gps_latitude' => $data['latitude'] ?? null,
@@ -63,9 +56,8 @@ class ApplicationController extends Controller
             'status' => 'pending',
         ]);
 
-        // Attach selected services if any
-        if (!empty($data['service_ids']) && is_array($data['service_ids'])) {
-            $clinic->services()->sync($data['service_ids']);
+        if ($request->filled('service_ids')) {
+            $clinic->services()->attach($request->input('service_ids'));
         }
 
         return redirect()->route('owner.apply.thanks')

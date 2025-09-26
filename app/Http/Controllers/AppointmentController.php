@@ -47,9 +47,6 @@ class AppointmentController extends Controller
         return view('appointments.create', compact('clinics'));
     }
 
-    /**
-     * Return availability (time slots) for a doctor at a clinic on a given date.
-     */
     public function availability(Request $request)
     {
         $data = $request->validate([
@@ -60,9 +57,8 @@ class AppointmentController extends Controller
         ]);
 
         $date      = \Carbon\Carbon::parse($data['date']);
-        $dayOfWeek = $date->dayOfWeek; // 0 (Sun) .. 6 (Sat)
+        $dayOfWeek = $date->dayOfWeek;
 
-        // Fetch all active schedule blocks for that doctor/clinic/day
         $schedules = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
             ->where('day_of_week', $dayOfWeek)
@@ -80,7 +76,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        // Determine slot length (service duration pivot) or fallback to 30 minutes
         $slotMinutes = 30;
         if (!empty($data['service_id'])) {
             $dur = \DB::table('clinic_service')
@@ -92,18 +87,16 @@ class AppointmentController extends Controller
             }
         }
 
-        // Gather already booked times (non-cancelled) ensuring we normalize to HH:MM.
-        // pluck() invokes the accessor which returns a Carbon instance; calling substr on that produced incorrect values (e.g. '2025-').
         $booked = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $date->toDateString())
             ->where('status', '!=', 'cancelled')
             ->get(['appointment_time'])
             ->map(function($a){
-                $raw = $a->getRawOriginal('appointment_time'); // 'HH:MM:SS'
+                $raw = $a->getRawOriginal('appointment_time');
                 if (is_string($raw) && strlen($raw) >= 5) {
-                    return substr($raw,0,5); // HH:MM
+                    return substr($raw,0,5);
                 }
-                $val = $a->appointment_time; // accessor (Carbon) fallback
+                $val = $a->appointment_time;
                 return $val instanceof \Carbon\Carbon ? $val->format('H:i') : (string) $val;
             })
             ->filter()
@@ -117,13 +110,12 @@ class AppointmentController extends Controller
             $end   = \Carbon\Carbon::createFromFormat('H:i:s', $sch->end_time, $date->timezone)
                 ->setDate($date->year, $date->month, $date->day);
 
-            // Generate slots inside [start, end) ensuring slot fits fully before end
             $cursor = $start->copy();
             while ($cursor->copy()->addMinutes($slotMinutes) <= $end) {
                 $timeLabel = $cursor->format('H:i');
                 $slots[] = [
-                    'time'      => $timeLabel,            // underlying 24h value to submit
-                    'display'   => $cursor->format('g:i A'), // user-facing label
+                    'time'      => $timeLabel,
+                    'display'   => $cursor->format('g:i A'),
                     'available' => !$booked->contains($timeLabel),
                 ];
                 $cursor->addMinutes($slotMinutes);
@@ -203,7 +195,6 @@ class AppointmentController extends Controller
                                'status'           => 'scheduled',
                            ]);
 
-        // Store optional medical document
         if ($request->hasFile('medical_document')) {
             $path = $request->file('medical_document')->store('medical-documents', 'public');
             $appointment->update(['medical_document' => $path]);
@@ -247,12 +238,10 @@ class AppointmentController extends Controller
             return back()->with('error', 'Completed appointments cannot be cancelled.');
         }
 
-        // Cancel any waiting queue entries tied to this appointment
         \App\Models\QueueEntry::where('appointment_id', $appointment->id)
             ->where('status', 'waiting')
             ->update(['status' => 'cancelled']);
 
-        // Hard delete to free the doctor timeslot (unique index enforcement)
         $appointment->delete();
 
         return back()->with('status', 'Appointment cancelled and slot freed.');

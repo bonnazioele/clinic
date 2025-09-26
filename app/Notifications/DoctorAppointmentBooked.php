@@ -31,14 +31,12 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
         'role' => 'doctor'
       ]; }
 
-  // Laravel 12 Notification::broadcastOn() has no argument; determine channel internally
   public function broadcastOn(): array
   {
-    $doctor = $this->appointment->doctor; // may be null if relationship not loaded
+    $doctor = $this->appointment->doctor;
     if ($doctor) {
       return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.' . $doctor->id)];
     }
-    // Fallback: generic channel (could be ignored by listeners if no specific doctor)
     return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.unknown')];
   }
 }

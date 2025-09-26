@@ -37,7 +37,6 @@ class DashboardController extends Controller
 
         $clinics = \App\Models\Clinic::whereIn('id', $clinicIds)->get();
 
-        // Appointments dataset (replicates index filters)
         $query = Appointment::with('user','clinic','service','doctor')
             ->whereIn('clinic_id', $clinicIds);
 

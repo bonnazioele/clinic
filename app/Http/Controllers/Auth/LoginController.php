@@ -24,7 +24,6 @@ class LoginController extends Controller
         if ($user->is_admin) {
             return redirect()->route('admin.dashboard');
         }
-        // If this user submitted a clinic application (owns a clinic record) handle approval/pending states
         $clinic = Clinic::where('user_id', $user->id)
             ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
             ->orderByDesc('id')
@@ -34,7 +33,6 @@ class LoginController extends Controller
                 if (! $user->is_secretary) { $user->is_secretary = true; $user->save(); }
                 return redirect()->route('secretary.dashboard');
             }
-            // Pending clinic application; show welcome with warning unless they already have another role below
             if (! $user->is_doctor && ! $user->is_secretary) {
                 return redirect()->route('welcome')->with('warning', 'Your clinic application is pending review.');
             }

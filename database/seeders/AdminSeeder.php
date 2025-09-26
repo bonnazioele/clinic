@@ -13,7 +13,7 @@ class AdminSeeder extends Seeder
         $admins = [
             [
                 'name' => 'System Admin One',
-                'email' => 'admin1@cliniq.com',
+                'email' => 'admin@cliniq.com',
                 'phone' => '09170000001',
                 'address' => 'HQ - Floor 1',
                 'password' => Hash::make('password'),

@@ -85,17 +85,11 @@ class Clinic extends Model
         });
     }
 
-    /**
-     * Treat legacy / alternate status values as approved equivalents.
-     */
     public function isApprovedLike(): bool
     {
         return in_array(strtolower((string)$this->status), ['approved','active'], true);
     }
 
-    /**
-     * Check the configured queue mode. Modes: fcfs, priority
-     */
     public function queueModeIs(string $mode): bool
     {
         return strtolower($this->queue_mode ?? 'fcfs') === strtolower($mode);

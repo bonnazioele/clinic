@@ -16,21 +16,15 @@ class ClinicApprovedMail extends Mailable
     public ?string $password;
     public string $loginUrl;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(string $clinicName, string $name, string $email, ?string $password, string $loginUrl)
     {
         $this->clinicName = $clinicName;
         $this->name = $name;
         $this->email = $email;
-        $this->password = $password; // May be null if user already existed
+        $this->password = $password;
         $this->loginUrl = $loginUrl;
     }
 
-    /**
-     * Build the message.
-     */
     public function build(): self
     {
         return $this->subject('Your Clinic Has Been Approved — Account Access')
