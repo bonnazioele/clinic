@@ -64,9 +64,9 @@ class ApplicationController extends Controller
         ]);
 
         // Attach selected services if any
-        if (!empty($data['service_ids']) && is_array($data['service_ids'])) {
-            $clinic->services()->sync($data['service_ids']);
-        }
+        if ($request->has('services')) {
+        $clinic->services()->attach($request->services);
+    }
 
         return redirect()->route('owner.apply.thanks')
             ->with('success', 'Application submitted! We\'ll email you credentials once your clinic is approved.');

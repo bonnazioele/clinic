@@ -57,15 +57,24 @@
                 <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="servicesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                   Select Services
                 </button>
-                <ul class="dropdown-menu w-100" aria-labelledby="servicesDropdown" style="max-height: 200px; overflow-y: auto;">
-                  @foreach(($services ?? []) as $service)
-                    <li>
-                      <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2 service-checkbox" name="service_ids[]" value="{{ $service->id }}" {{ in_array($service->id, old('service_ids', [])) ? 'checked' : '' }}>
-                        {{ $service->name }}
-                      </label>
-                    </li>
-                  @endforeach
+                <ul class="dropdown-menu w-100 p-2" aria-labelledby="servicesDropdown" style="max-height: 250px; overflow-y: auto;">
+                  {{-- Search box --}}
+                  <li class="mb-2">
+                    <input type="text" id="serviceSearch" class="form-control form-control-sm" placeholder="Search services...">
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+
+                  {{-- Service list --}}
+                  <div id="servicesList">
+                    @foreach(($services ?? []) as $service)
+                      <li>
+                        <label class="dropdown-item">
+                          <input type="checkbox" class="form-check-input me-2 service-checkbox" name="service_ids[]" value="{{ $service->id }}" {{ in_array($service->id, old('service_ids', [])) ? 'checked' : '' }}>
+                          {{ $service->name }}
+                        </label>
+                      </li>
+                    @endforeach
+                  </div>
                 </ul>
               </div>
               @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -108,7 +117,7 @@
             </div>
 
             <hr class="my-4">
-            <h6 class="text-muted mb-3">Owner Account</h6>
+            <h6 class="text-muted mb-3">Clinic Account</h6>
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">First Name</label>
@@ -175,6 +184,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   updatePanel();
+
+  // Service search filter
+  const searchInput = document.getElementById('serviceSearch');
+  const servicesList = document.getElementById('servicesList');
+  if (searchInput && servicesList) {
+    searchInput.addEventListener('keyup', function () {
+      const term = this.value.toLowerCase();
+      const items = servicesList.querySelectorAll('li label');
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.parentElement.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+  }
 
   // Logo preview
   const logoInput = document.getElementById('logoInput');

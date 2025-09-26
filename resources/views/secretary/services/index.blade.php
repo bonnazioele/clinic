@@ -5,7 +5,9 @@
   @include('partials.alerts')
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="fw-bold text-primary mb-0 d-flex align-items-center"><i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services</h2>
+      <h2 class="fw-bold text-primary mb-0 d-flex align-items-center">
+        <i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services
+      </h2>
       <div class="d-flex gap-2">
         <a href="{{ route('secretary.services.create',['clinic_id'=>$clinic?->id]) }}" class="btn btn-success">
           <i class="bi bi-plus-circle me-2"></i>New Service
@@ -35,7 +37,10 @@
     <div class="row g-4">
       <div class="col-lg-7">
         <div class="medical-card p-4 h-100">
-          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center"><i class="bi bi-link-45deg medical-icon me-2"></i>Attached Services <span class="badge bg-secondary ms-2">{{ $services->count() }}</span></h5>
+          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center">
+            <i class="bi bi-link-45deg medical-icon me-2"></i>
+            Attached Services <span class="badge bg-secondary ms-2">{{ $services->count() }}</span>
+          </h5>
           @if($services->isEmpty())
             <div class="text-muted">No services attached to this clinic yet.</div>
           @else
@@ -75,7 +80,9 @@
       </div>
       <div class="col-lg-5">
         <div class="medical-card p-4 h-100">
-          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center"><i class="bi bi-plus-circle medical-icon me-2"></i>Attach from Master List</h5>
+          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center">
+            <i class="bi bi-plus-circle medical-icon me-2"></i>Attach from Master List
+          </h5>
           @if($availableServices->isEmpty())
             <div class="text-muted">All services already attached.</div>
           @else
@@ -83,12 +90,14 @@
               @csrf
               <div class="mb-3">
                 <label class="form-label fw-semibold">Select Services</label>
-                <select name="service_ids[]" class="form-select @error('service_ids') is-invalid @enderror" multiple required size="8">
+                <select id="serviceSelect" 
+                        name="service_ids[]" 
+                        class="form-select @error('service_ids') is-invalid @enderror" 
+                        multiple required>
                   @foreach($availableServices as $svc)
                     <option value="{{ $svc->id }}">{{ $svc->name }}</option>
                   @endforeach
                 </select>
-                <div class="form-text">Hold CTRL to multi-select.</div>
                 @error('service_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
               <div class="mb-3">
@@ -108,3 +117,37 @@
   @endif
 </div>
 @endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+  /* Custom style for Select2 to blend with Bootstrap */
+  .select2-container .select2-selection--multiple {
+    min-height: 48px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 4px 8px;
+  }
+  .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #0d6efd;
+    border: none;
+    color: #fff;
+    padding: 2px 8px;
+    margin-top: 4px;
+  }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#serviceSelect').select2({
+      placeholder: "Choose services...",
+      allowClear: true,
+      width: '100%'
+    });
+  });
+</script>
+@endpush
