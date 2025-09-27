@@ -15,7 +15,21 @@
             </p>
           </div>
         </div>
+        @php $assignedClinics = auth()->user()->secretaryClinics()->select('clinics.id','clinics.name','clinics.branch_code')->get(); @endphp
         <div class="row g-3 text-start justify-content-center">
+          @if($assignedClinics->count())
+          <!-- Assigned Clinics Column -->
+          <div class="col-md-3">
+            <div class="p-4 rounded text-white h-100" style="background:#0d6efd;">
+              @php $firstClinic = $assignedClinics->first(); @endphp
+              <div class="fs-3 fw-bold">{{ $firstClinic ? Str::limit($firstClinic->name, 18) : '—' }}</div>
+              <div class="mt-1">Assigned Clinic{{ $assignedClinics->count()>1 ? 's' : '' }}</div>
+              @if($assignedClinics->count() > 1)
+                <div class="small opacity-75 mt-2">+{{ $assignedClinics->count() - 1 }} more</div>
+              @endif
+            </div>
+          </div>
+          @endif
 
           <!-- Today's Appointments -->
           <div class="col-md-3">

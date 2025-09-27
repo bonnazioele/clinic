@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Models\User;
 use App\Mail\ClinicApprovedMail;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 
 class ClinicController extends Controller
@@ -63,9 +64,9 @@ class ClinicController extends Controller
             'address'        => 'required|string',
             'latitude'       => 'required|numeric|between:-90,90',
             'longitude'      => 'required|numeric|between:-180,180',
-            'branch_code'    => 'required|string|max:255|unique:clinics,branch_code',
+            'branch_code'    => ['required','string','max:255', Rule::unique('clinics','branch_code')->whereNull('deleted_at')],
             'contact_number' => 'required|string|max:50',
-            'email'          => 'required|email|max:255|unique:clinics,email',
+            'email'          => ['required','email','max:255', Rule::unique('clinics','email')->whereNull('deleted_at')],
             'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'service_ids'    => 'nullable|array',
             'service_ids.*'  => 'exists:services,id',
@@ -182,9 +183,15 @@ class ClinicController extends Controller
             'address'        => 'required|string',
             'latitude'       => 'required|numeric|between:-90,90',
             'longitude'      => 'required|numeric|between:-180,180',
-            'branch_code'    => 'required|string|max:255|unique:clinics,branch_code,' . $clinic->id,
+            'branch_code'    => [
+                'required','string','max:255',
+                Rule::unique('clinics','branch_code')->whereNull('deleted_at')->ignore($clinic->id)
+            ],
             'contact_number' => 'required|string|max:50',
-            'email'          => 'required|email|max:255|unique:clinics,email,' . $clinic->id,
+            'email'          => [
+                'required','email','max:255',
+                Rule::unique('clinics','email')->whereNull('deleted_at')->ignore($clinic->id)
+            ],
             'logo'           => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'service_ids'    => 'nullable|array',
             'service_ids.*'  => 'exists:services,id',
@@ -234,16 +241,25 @@ class ClinicController extends Controller
             $clinic->save();
 
             $owner = User::where('email', $clinic->email)->first();
+            $tempPasswordPlain = method_exists(Str::class, 'password') ? Str::password(12) : Str::random(12);
+
             if (!$owner) {
-                $tempPasswordPlain = method_exists(Str::class, 'password') ? Str::password(12) : Str::random(12);
                 $owner = User::create([
-                    'name'     => trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: 'Clinic Owner',
-                    'first_name' => $clinic->owner_first_name,
-                    'last_name'  => $clinic->owner_last_name,
-                    'email'    => $clinic->email,
-                    'password' => $tempPasswordPlain,
-                    'is_secretary' => true,
+                    'name'        => trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: 'Clinic Owner',
+                    'first_name'  => $clinic->owner_first_name,
+                    'last_name'   => $clinic->owner_last_name,
+                    'email'       => $clinic->email,
+                    'password'    => $tempPasswordPlain,
+                    'is_secretary'=> true,
+                    'is_initial_login' => true,
                 ]);
+            } else {
+                $owner->password = $tempPasswordPlain;
+                $owner->is_initial_login = true;
+                if (!$owner->is_secretary) {
+                    $owner->is_secretary = true;
+                }
+                $owner->save();
             }
 
             $clinic->user_id = $owner->id;
@@ -269,7 +285,7 @@ class ClinicController extends Controller
             ]);
         }
 
-        return back()->with('status', 'Clinic approved. Credentials sent to owner email.');
+        return back()->with('status', 'Clinic approved. Temporary password sent to owner email.');
     }
 
     public function decline(Clinic $clinic)

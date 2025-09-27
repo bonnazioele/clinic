@@ -219,15 +219,32 @@
   <script>
   let map, markers = [];
 
-  document.addEventListener('DOMContentLoaded', function () {
-    tryInitMap();
-  });
+  // Build mapping data in PHP first to avoid complex inline collection/closure syntax that produced a parse error.
+  @php
+    $sourceClinics = isset($clinicsWithCoords) ? $clinicsWithCoords : $clinics;
+    $mapClinics = $sourceClinics->map(function($c){
+        return [
+          'id' => $c->id,
+          'name' => $c->name,
+          'address' => $c->address,
+          'lat' => (float) ($c->gps_latitude ?? $c->latitude),
+          'lng' => (float) ($c->gps_longitude ?? $c->longitude),
+          'showUrl' => route('admin.clinics.show', $c),
+          'editUrl' => route('admin.clinics.edit', $c),
+        ];
+    })->filter(function($c){
+        return !is_null($c['lat']) && !is_null($c['lng']);
+    })->values();
+  @endphp
+  const clinicsData = @json($mapClinics);
+
+  document.addEventListener('DOMContentLoaded', () => tryInitMap());
 
   function tryInitMap(attempt = 0) {
     const el = document.getElementById('map');
     if (!el || typeof L === 'undefined') {
-      if (attempt < 20) return setTimeout(() => tryInitMap(attempt + 1), 150);
-      return; // stop after ~3s
+      if (attempt < 30) return setTimeout(() => tryInitMap(attempt + 1), 100);
+      return;
     }
     initializeMap();
   }
@@ -236,60 +253,48 @@
     const el = document.getElementById('map');
     if (!el) return;
 
-    // Default center: Cebu City
-    map = L.map(el).setView([10.3157, 123.8854], 10);
-
+    map = L.map(el).setView([10.3157, 123.8854], 10); // Cebu default
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     const bounds = L.latLngBounds();
-
-    @php $source = isset($clinicsWithCoords) ? $clinicsWithCoords : $clinics; @endphp
-    @foreach($source as $clinic)
-      @php
-        $lat = $clinic->gps_latitude ?? $clinic->latitude;
-        $lng = $clinic->gps_longitude ?? $clinic->longitude;
-      @endphp
-      @if(!is_null($lat) && !is_null($lng))
-        (function() {
-          const lat = parseFloat('{{ $lat }}');
-          const lng = parseFloat('{{ $lng }}');
-          const marker = L.marker([lat, lng]).addTo(map).bindPopup(`
-            <div class="text-center">
-              <h6 class="fw-bold text-primary">{{ addslashes($clinic->name) }}</h6>
-              <p class="mb-2">{{ addslashes($clinic->address) }}</p>
-              <div class="d-grid gap-1">
-                <a href="{{ route('admin.clinics.show', $clinic) }}" class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-eye me-1"></i>View Details
-                </a>
-                <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-sm btn-outline-primary">
-                  <i class="bi bi-pencil me-1"></i>Edit Clinic
-                </a>
-
-              </div>
-            </div>
-          `);
-          markers.push({ id: {{ $clinic->id }}, marker, lat, lng });
-          bounds.extend([lat, lng]);
-        })();
-      @endif
-    @endforeach
+    clinicsData.forEach(c => {
+      if (isFinite(c.lat) && isFinite(c.lng)) {
+        const marker = L.marker([c.lat, c.lng]).addTo(map).bindPopup(
+          `<div class="text-center">
+             <h6 class="fw-bold text-primary">${escapeHtml(c.name)}</h6>
+             <p class="mb-2">${escapeHtml(c.address ?? '')}</p>
+             <div class="d-grid gap-1">
+               <a href="${c.showUrl}" class="btn btn-sm btn-outline-secondary">
+                 <i class="bi bi-eye me-1"></i>View Details
+               </a>
+               <a href="${c.editUrl}" class="btn btn-sm btn-outline-primary">
+                 <i class="bi bi-pencil me-1"></i>Edit Clinic
+               </a>
+             </div>
+           </div>`
+        );
+        markers.push({ id: c.id, marker, lat: c.lat, lng: c.lng });
+        bounds.extend([c.lat, c.lng]);
+      }
+    });
 
     if (bounds.isValid()) {
       map.fitBounds(bounds.pad(0.1));
     }
+    setTimeout(() => map.invalidateSize(), 200);
+  }
 
-    setTimeout(() => map.invalidateSize(), 300);
+  function escapeHtml(str){
+    return String(str ?? '').replace(/[&<>"'`]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;','`':'&#96;'}[s]));
   }
 
   function focusOnMap(lat, lng) {
     if (!map) return;
     map.setView([lat, lng], 15);
-    markers.forEach(m => {
-      if (m.lat === lat && m.lng === lng) m.marker.openPopup();
-    });
+    markers.forEach(m => { if (m.lat === lat && m.lng === lng) m.marker.openPopup(); });
   }
 
   function deleteClinic(clinicId) {

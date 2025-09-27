@@ -19,12 +19,6 @@
                 <i class="bi bi-shield-check me-2"></i>Administrator Dashboard
               @elseif(Auth::user()->is_secretary)
                 <i class="bi bi-person-badge me-2"></i>Secretary Dashboard
-                @php $secClinics = Auth::user()->secretaryClinics()->pluck('name'); @endphp
-                @if($secClinics->count())
-                  <span class="d-block small text-secondary mt-1">
-                    Assigned Clinics: {{ $secClinics->take(3)->join(', ') }}@if($secClinics->count()>3)...@endif
-                  </span>
-                @endif
               @else
                 <i class="bi bi-person-heart me-2"></i>Patient Dashboard
               @endif

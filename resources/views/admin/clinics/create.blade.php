@@ -24,7 +24,7 @@
 
     {{-- Name --}}
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>
+  <label class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label> <!-- icon already present; kept for consistency -->
       <input type="text" name="name"
              class="form-control @error('name') is-invalid @enderror"
              value="{{ old('name') }}" required maxlength="255"
@@ -34,7 +34,7 @@
 
     {{-- Branch Code --}}
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-tag me-1"></i>Branch Code <span class="text-danger">*</span></label>
+  <label class="form-label"><i class="bi bi-tag me-1"></i>Branch Code <span class="text-danger">*</span></label>
       <input type="text" name="branch_code"
              class="form-control @error('branch_code') is-invalid @enderror"
              value="{{ old('branch_code') }}" required maxlength="50"
@@ -45,7 +45,7 @@
 
     {{-- Address --}}
     <div class="mb-3">
-      <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address <span class="text-danger">*</span></label>
+  <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address <span class="text-danger">*</span></label>
       <textarea name="address"
                 class="form-control @error('address') is-invalid @enderror"
                 rows="3" required maxlength="1000"

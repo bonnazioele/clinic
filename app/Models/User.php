@@ -17,7 +17,7 @@ class User extends Authenticatable
      protected $fillable = [
         'name','first_name','last_name','email','password',
         'phone','address','medical_document',
-        'is_admin','is_secretary','is_doctor',
+        'is_admin','is_secretary','is_doctor','is_initial_login'
     ];
 
     protected $hidden = [
@@ -33,6 +33,7 @@ class User extends Authenticatable
             'is_secretary'      => 'boolean',
             'is_doctor'         => 'boolean',
             'password' => 'hashed',
+            'is_initial_login' => 'boolean',
         ];
     }
 

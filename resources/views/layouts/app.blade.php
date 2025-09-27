@@ -354,6 +354,31 @@
             color: var(--medical-blue);
             text-align: center;
         }
+
+        /* Floating / subtle motion utilities */
+        @keyframes float-sm {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        @keyframes float-md {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .float-sm { animation: float-sm 6s ease-in-out infinite; }
+        .float-md { animation: float-md 8s ease-in-out infinite; }
+        .float-delay-1 { animation-delay: 1s; }
+        .float-delay-2 { animation-delay: 2s; }
+        .float-hover-pause:hover { animation-play-state: paused; }
+
+        /* Apply default floating to key dashboard visual elements */
+        .dashboard-card.float-enabled,
+        .medical-card.float-enabled {
+            animation: float-sm 7s ease-in-out infinite;
+        }
+        /* Respect reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            .float-sm, .float-md, .dashboard-card.float-enabled, .medical-card.float-enabled { animation: none !important; }
+        }
     </style>
 
     @stack('styles')
@@ -378,7 +403,9 @@
     </div>
 
     <main class="py-4 flex-grow-1">
-        @yield('content')
+        <div class="floating-wrapper">
+            @yield('content')
+        </div>
     </main>
 
     @include('partials.footer')

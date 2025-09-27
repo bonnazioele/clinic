@@ -24,11 +24,7 @@
 
         <p>
           <strong>Login Email:</strong> <code>{{ $email }}</code><br>
-          @if($password)
-            <strong>Temporary Password:</strong> <code>{{ $password }}</code>
-          @else
-            <strong>Password:</strong> Your existing account password
-          @endif
+          <strong>Temporary Password:</strong> <code>{{ $password }}</code>
         </p>
 
         <p>
@@ -36,7 +32,7 @@
         </p>
 
         <p class="muted">
-          For security, please change your password after signing in. If you did not request this, please contact support.
+          For security, please change your password immediately after signing in. If you did not request this, please contact support.
         </p>
       </div>
       <p class="muted">This is an automated message, please do not reply.</p>

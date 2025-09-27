@@ -4,7 +4,7 @@
 <div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-lg-9">
-      <div class="card shadow-sm border-0">
+  <div class="card medical-card shadow-sm border-0 float-enabled">
         <div class="card-header bg-primary text-white d-flex align-items-center">
           <i class="bi bi-building-add me-2"></i>
           <h5 class="mb-0">Apply to Register Your Clinic</h5>
@@ -15,51 +15,36 @@
 
             <h6 class="text-muted mb-3">Clinic Details</h6>
             <div class="mb-3">
-              <label for="clinic_name" class="form-label">Clinic Name <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-building"></i></span>
-                <input id="clinic_name" type="text" name="clinic_name" class="form-control @error('clinic_name') is-invalid @enderror" value="{{ old('clinic_name') }}" required maxlength="255" placeholder="Enter clinic name">
-              </div>
+              <label for="clinic_name" class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>
+              <input id="clinic_name" type="text" name="clinic_name" class="form-control @error('clinic_name') is-invalid @enderror" value="{{ old('clinic_name') }}" required maxlength="255" placeholder="Enter clinic name">
               @error('clinic_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
 
             <div class="mb-3">
-              <label for="branch_code" class="form-label">Branch Code <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-tag"></i></span>
-                <input id="branch_code" type="text" name="branch_code" class="form-control @error('branch_code') is-invalid @enderror" value="{{ old('branch_code') }}" maxlength="50" required placeholder="e.g., CLINIC001, BRANCH-A1">
-              </div>
+              <label for="branch_code" class="form-label"><i class="bi bi-tag me-1"></i>Branch Code <span class="text-danger">*</span></label>
+              <input id="branch_code" type="text" name="branch_code" class="form-control @error('branch_code') is-invalid @enderror" value="{{ old('branch_code') }}" maxlength="50" required placeholder="e.g., CLINIC001, BRANCH-A1">
               @error('branch_code') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
               <div class="form-text">Provide a unique code for this clinic branch.</div>
             </div>
 
             <div class="mb-3">
-              <label for="clinic_address" class="form-label">Address <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                <textarea id="clinic_address" name="clinic_address" class="form-control @error('clinic_address') is-invalid @enderror" rows="3" required maxlength="1000" placeholder="Enter complete address">{{ old('clinic_address') }}</textarea>
-              </div>
+              <label for="clinic_address" class="form-label"><i class="bi bi-geo-alt me-1"></i>Address <span class="text-danger">*</span></label>
+              <textarea id="clinic_address" name="clinic_address" class="form-control @error('clinic_address') is-invalid @enderror" rows="3" required maxlength="1000" placeholder="Enter complete address">{{ old('clinic_address') }}</textarea>
               @error('clinic_address') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
 
             <div class="row">
               <div class="col-md-6">
                 <div class="mb-3">
-                  <label for="clinic_contact" class="form-label">Contact Number <span class="text-danger">*</span></label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                    <input id="clinic_contact" type="tel" name="clinic_contact" class="form-control @error('clinic_contact') is-invalid @enderror" value="{{ old('clinic_contact') }}" required maxlength="50" placeholder="e.g., +63 917 123 4567">
-                  </div>
+                  <label for="clinic_contact" class="form-label"><i class="bi bi-telephone me-1"></i>Contact Number <span class="text-danger">*</span></label>
+                  <input id="clinic_contact" type="tel" name="clinic_contact" class="form-control @error('clinic_contact') is-invalid @enderror" value="{{ old('clinic_contact') }}" required maxlength="50" placeholder="e.g., +63 917 123 4567">
                   @error('clinic_contact') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="mb-3">
-                  <label for="clinic_email" class="form-label">Clinic Email <span class="text-danger">*</span></label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                    <input id="clinic_email" type="email" name="clinic_email" class="form-control @error('clinic_email') is-invalid @enderror" value="{{ old('clinic_email') }}" maxlength="100" required placeholder="clinic@example.com">
-                  </div>
+                  <label for="clinic_email" class="form-label"><i class="bi bi-envelope me-1"></i>Clinic Email <span class="text-danger">*</span></label>
+                  <input id="clinic_email" type="email" name="clinic_email" class="form-control @error('clinic_email') is-invalid @enderror" value="{{ old('clinic_email') }}" maxlength="100" required placeholder="clinic@example.com">
                   @error('clinic_email') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
               </div>

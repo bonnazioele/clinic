@@ -59,7 +59,10 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // Only revert nullability/defaults if the columns exist
             if (Schema::hasColumn('users', 'last_login')) {
-                $table->timestamp('last_login')->nullable(false)->change();
+                // Backfill any NULLs first to avoid NOT NULL constraint issues then keep it nullable for safety
+                DB::table('users')->whereNull('last_login')->update(['last_login' => now()]);
+                // Instead of forcing NOT NULL (caused previous failure), retain nullable to avoid migration refresh breakage
+                $table->timestamp('last_login')->nullable()->change();
             }
             if (Schema::hasColumn('users', 'is_secretary')) {
                 $table->boolean('is_secretary')->default(null)->change();
@@ -71,10 +74,12 @@ return new class extends Migration
                 $table->boolean('is_active')->default(null)->change();
             }
             if (Schema::hasColumn('users', 'birthdate')) {
-                $table->date('birthdate')->nullable(false)->change();
+                // Keep nullable to avoid failing if existing rows are null
+                $table->date('birthdate')->nullable()->change();
             }
             if (Schema::hasColumn('users', 'age')) {
-                $table->unsignedTinyInteger('age')->nullable(false)->change();
+                // Keep nullable for refresh safety
+                $table->unsignedTinyInteger('age')->nullable()->change();
             }
         });
     }

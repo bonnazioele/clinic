@@ -44,7 +44,7 @@
             default   => 'bi-bell'
           };
         @endphp
-        <div class="toast align-items-center {{ $bg }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+  <div class="toast align-items-center {{ $bg }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
           <div class="d-flex">
             <div class="toast-body d-flex align-items-center gap-2">
               <i class="bi {{ $icon }}"></i>
@@ -57,7 +57,7 @@
 
       {{-- Validation errors details (collapsible) --}}
       @if($errors->any())
-        <div class="toast text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="8000">
+  <div class="toast text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
           <div class="toast-header">
             <i class="bi bi-bug-fill text-danger me-2"></i>
             <strong class="me-auto">Form Errors</strong>
@@ -81,7 +81,13 @@
     document.addEventListener('DOMContentLoaded', function () {
       const container = document.getElementById('app-toast-container');
       if (!container || typeof bootstrap === 'undefined') return;
-      container.querySelectorAll('.toast').forEach(t => new bootstrap.Toast(t).show());
+
+      const AUTO_DISMISS_MS = 3000; // all toasts unified
+      container.querySelectorAll('.toast').forEach(t => {
+        const toast = new bootstrap.Toast(t, { delay: AUTO_DISMISS_MS });
+        toast.show();
+        t.addEventListener('hidden.bs.toast', () => t.remove());
+      });
     });
   </script>
   @endpush

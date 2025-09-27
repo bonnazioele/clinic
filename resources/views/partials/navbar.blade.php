@@ -90,9 +90,7 @@
                 <i class="bi bi-people me-1"></i>Queue
               </a>
             </li>
-            <li class="nav-item d-flex align-items-center ms-2">
-                @include('partials.secretary_clinic_switcher')
-            </li>
+      {{-- Clinic switcher removed from navbar; now shown within dashboard metrics card --}}
 
           @elseif(auth()->user()->is_owner)
             {{-- Owner primary nav --}}
