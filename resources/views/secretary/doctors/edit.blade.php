@@ -15,49 +15,37 @@
     @csrf @method('PATCH')
     <!-- Name -->
     <div class="mb-3">
-      <label for="doctor_name" class="form-label">Name</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-person"></i></span>
-        <input id="doctor_name" type="text" name="name"
-               class="form-control @error('name') is-invalid @enderror"
-               value="{{ old('name', $doctor->name) }}" required>
-      </div>
+      <label for="doctor_name" class="form-label"><i class="bi bi-person me-1"></i>Name</label>
+      <input id="doctor_name" type="text" name="name"
+             class="form-control @error('name') is-invalid @enderror"
+             value="{{ old('name', $doctor->name) }}" required>
       @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Email -->
     <div class="mb-3">
-      <label for="doctor_email" class="form-label">Email</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-        <input id="doctor_email" type="email" name="email"
-               class="form-control @error('email') is-invalid @enderror"
-               value="{{ old('email', $doctor->email) }}" required>
-      </div>
+      <label for="doctor_email" class="form-label"><i class="bi bi-envelope me-1"></i>Email</label>
+      <input id="doctor_email" type="email" name="email"
+             class="form-control @error('email') is-invalid @enderror"
+             value="{{ old('email', $doctor->email) }}" required>
       @error('email')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Phone -->
     <div class="mb-3">
-      <label for="doctor_phone" class="form-label">Phone</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-        <input id="doctor_phone" type="text" name="phone"
-               class="form-control @error('phone') is-invalid @enderror"
-               value="{{ old('phone', $doctor->phone) }}">
-      </div>
+      <label for="doctor_phone" class="form-label"><i class="bi bi-telephone me-1"></i>Phone</label>
+      <input id="doctor_phone" type="text" name="phone"
+             class="form-control @error('phone') is-invalid @enderror"
+             value="{{ old('phone', $doctor->phone) }}">
       @error('phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
     <!-- Address -->
     <div class="mb-3">
-      <label for="doctor_address" class="form-label">Address</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-        <textarea id="doctor_address" name="address"
-                  class="form-control @error('address') is-invalid @enderror"
-                  rows="2">{{ old('address', $doctor->address) }}</textarea>
-      </div>
+      <label for="doctor_address" class="form-label"><i class="bi bi-geo-alt me-1"></i>Address</label>
+      <textarea id="doctor_address" name="address"
+                class="form-control @error('address') is-invalid @enderror"
+                rows="2">{{ old('address', $doctor->address) }}</textarea>
       @error('address')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
@@ -89,19 +77,16 @@
 
     <!-- Services -->
     <div class="mb-3">
-      <label for="doctor_services" class="form-label">Services</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-scissors"></i></span>
-        <select id="doctor_services" name="service_ids[]"
-                class="form-select enhanced-multiselect @error('service_ids') is-invalid @enderror"
-                multiple>
-          @foreach($services as $s)
-            <option value="{{ $s->id }}" @selected(in_array($s->id, old('service_ids', $doctor->services->pluck('id')->toArray())))>{{ $s->name }}</option>
-          @endforeach
-        </select>
-      </div>
+      <label for="doctor_services" class="form-label"><i class="bi bi-scissors me-1"></i>Services</label>
+      <select id="doctor_services" name="service_ids[]"
+              class="form-select enhanced-multiselect @error('service_ids') is-invalid @enderror"
+              multiple data-placeholder="Select one or more services">
+        @foreach($services as $s)
+          <option value="{{ $s->id }}" @selected(in_array($s->id, old('service_ids', $doctor->services->pluck('id')->toArray())))>{{ $s->name }}</option>
+        @endforeach
+      </select>
       @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-      <div class="form-text">Tip: Hold Ctrl (Cmd on Mac) to select multiple services.</div>
+      <div class="form-text">Select all services this doctor can perform. Start typing to filter.</div>
     </div>
 
     <div class="d-flex gap-2">

@@ -7,7 +7,12 @@
 
   @if(isset($entry))
     <!-- Specific Queue Entry Status -->
-    <div class="medical-card p-4 text-center">
+    <div class="medical-card p-4 text-center position-relative">
+      <div class="position-absolute" style="right:1rem; top:1rem;">
+        <button type="button" class="btn btn-outline-secondary px-3 py-2" style="font-weight:500;" onclick="handleQueueBack()">
+          <i class="bi bi-arrow-left me-2"></i>Back
+        </button>
+      </div>
       <div class="mb-4">
         <i class="bi bi-clock-history medical-icon" style="font-size: 4rem;"></i>
       </div>
@@ -162,3 +167,15 @@
   @endpush
 @endif
 @endsection
+
+@push('scripts')
+<script>
+function handleQueueBack(){
+  if (document.referrer && document.referrer !== window.location.href) {
+    history.back();
+  } else {
+    window.location.href = '{{ route('queue.status') }}';
+  }
+}
+</script>
+@endpush

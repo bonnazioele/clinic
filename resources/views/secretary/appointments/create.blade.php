@@ -94,12 +94,10 @@
                                                     </div>
                                                     <div class="col-md-4">
                                                         <label class="form-label fw-semibold mb-0"><i class="bi bi-clock-history me-1"></i>Available Time Slot <span class="text-danger">*</span></label>
-                                                        <select id="timeSlot" name="appointment_time" class="form-select d-none @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required>
+                                                        <select id="timeSlot" name="appointment_time" class="form-select @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required>
                                                             <option value="">Select doctor & date first</option>
                                                         </select>
-                                                        <div id="slotGridPlaceholder" class="text-muted small">Select doctor & date first</div>
-                                                        <div id="slotGrid" class="slot-grid mt-2" style="display:none;"></div>
-                                                        @error('appointment_time') <div class="invalid-feedback d-none">{{ $message }}</div> @enderror
+                                                        @error('appointment_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                 </div>
                                                 <div class="mb-3" id="doctorScheduleWrap" style="display:none;">
@@ -194,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doctorSelect.addEventListener('change', fetchAvailability);
         dateInput.addEventListener('change', fetchAvailability);
 
-        function resetAvailability(){ dayInput.value=''; scheduleWrap.style.display='none'; scheduleInfo.innerHTML=''; resetSelect(slotSelect,'Select doctor & date first'); }
+    function resetAvailability(){ dayInput.value=''; scheduleWrap.style.display='none'; scheduleInfo.innerHTML=''; resetSelect(slotSelect,'Select doctor & date first'); }
         async function fetchAvailability(){
             const cid=clinicSelect.value, did=doctorSelect.value, dateVal=dateInput.value; if(!cid||!did||!dateVal){ resetAvailability(); return; }
             resetSelect(slotSelect,'Loading...');
@@ -206,27 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 dayInput.value = data.weekday || '';
                 scheduleWrap.style.display='block';
                 scheduleInfo.innerHTML = renderSchedule(data);
-                // Build grid similar to patient UI
-                const slotGrid = document.getElementById('slotGrid');
-                const slotGridPh = document.getElementById('slotGridPlaceholder');
+                // Build dropdown only
                 resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
-                slotGrid.innerHTML='';
-                if (data.slots.length) {
-                    slotGridPh.style.display='none';
-                    slotGrid.style.display='grid';
-                    slotGrid.style.gridTemplateColumns='repeat(auto-fill,minmax(90px,1fr))';
-                    slotGrid.style.gap='6px';
-                    data.slots.forEach(s => {
-                        const opt = new Option(s.display, s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt);
-                        const btn = document.createElement('button'); btn.type='button'; btn.className='slot-btn btn btn-sm w-100 ' + (s.available? 'btn-outline-primary':'btn-outline-secondary disabled taken'); btn.textContent=s.display; btn.dataset.time=s.time; if(s.available){ btn.addEventListener('click', ()=>{ slotGrid.querySelectorAll('.slot-btn.selected').forEach(el=>el.classList.remove('selected','btn-primary')); btn.classList.add('selected','btn-primary'); btn.classList.remove('btn-outline-primary'); slotSelect.value=s.time; }); } slotGrid.appendChild(btn);
-                    });
-                } else {
-                    slotGridPh.textContent='No slots';
-                    slotGridPh.style.display='block';
-                    slotGrid.style.display='none';
-                }
+                (data.slots||[]).forEach(s => { const opt = new Option(s.display + (s.available?'':' – BOOKED'), s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt); });
                 @if(old('appointment_time'))
-                    if ([...slotSelect.options].some(o=>o.value==="{{ old('appointment_time') }}")) { slotSelect.value = "{{ old('appointment_time') }}"; const b = slotGrid.querySelector(`[data-time='{{ old('appointment_time') }}']`); if(b && !b.classList.contains('taken')) b.click(); }
+                    if ([...slotSelect.options].some(o=>o.value==="{{ old('appointment_time') }}")) { slotSelect.value = "{{ old('appointment_time') }}"; }
                 @endif
             } catch(err){ resetAvailability(); resetSelect(slotSelect,'Error loading availability'); }
         }
@@ -244,12 +226,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data= await res.json();
                 const stillFree = (data.slots||[]).some(s=>s.available && s.time===chosen);
                 if(!stillFree){
-                    // rebuild grid silently
-                    const slotGrid = document.getElementById('slotGrid');
-                    const slotGridPh = document.getElementById('slotGridPlaceholder');
                     resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
-                    slotGrid.innerHTML='';
-                    data.slots.forEach(s=>{ const opt = new Option(s.display, s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt); const btn=document.createElement('button'); btn.type='button'; btn.className='slot-btn btn btn-sm w-100 ' + (s.available? 'btn-outline-primary':'btn-outline-secondary disabled taken'); btn.textContent=s.display; btn.dataset.time=s.time; if(s.available){ btn.addEventListener('click',()=>{ slotGrid.querySelectorAll('.slot-btn.selected').forEach(el=>el.classList.remove('selected','btn-primary')); btn.classList.add('selected','btn-primary'); btn.classList.remove('btn-outline-primary'); slotSelect.value=s.time; }); } slotGrid.appendChild(btn); });
+                    (data.slots||[]).forEach(s=>{ const opt=new Option(s.display + (s.available?'':' – BOOKED'), s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt); });
                     slotSelect.value='';
                     submitBtn.disabled=false; submitBtn.innerHTML=original; return; }
                 submitBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
@@ -282,9 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 @push('styles')
 <style>
-    .slot-grid .slot-btn { font-size:.75rem; line-height:1.1rem; white-space:nowrap; }
-    .slot-grid .slot-btn.taken { pointer-events:none; opacity:.55; text-decoration:line-through; }
-    .slot-grid .slot-btn.selected { font-weight:600; }
+    #timeSlot option[disabled] { text-decoration: line-through; color:#6c757d; font-style: italic; }
 </style>
 @endpush
 @endsection

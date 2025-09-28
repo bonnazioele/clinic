@@ -68,13 +68,11 @@
         </div>
         <div class="col-md-4">
           <label class="form-label fw-semibold mb-0"><i class="bi bi-clock-history me-1"></i>Available Time Slot <span class="text-danger">*</span></label>
-          <!-- Hidden select kept for form submission & server-side validation compatibility -->
-          <select id="timeSlot" name="appointment_time" class="form-select d-none @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required>
+          <select id="timeSlot" name="appointment_time" class="form-select @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required>
             <option value="">Select doctor & date first</option>
           </select>
-          <div id="slotGridPlaceholder" class="text-muted small">Select doctor & date first</div>
-          <div id="slotGrid" class="slot-grid mt-2" style="display:none;"></div>
-          @error('appointment_time') <div class="invalid-feedback d-none">{{ $message }}</div> @enderror
+          <div class="form-text small" id="slotHelp">Choose a starting time.</div>
+          @error('appointment_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
       </div>
       <div class="mb-3" id="doctorScheduleWrap" style="display:none;">
@@ -111,8 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const dateInput     = document.getElementById('apptDate');
   const dayInput      = document.getElementById('apptDay');
   const slotSelect    = document.getElementById('timeSlot');
-  const slotGrid      = document.getElementById('slotGrid');
-  const slotGridPh    = document.getElementById('slotGridPlaceholder');
   const scheduleWrap  = document.getElementById('doctorScheduleWrap');
   const scheduleInfo  = document.getElementById('doctorScheduleInfo');
 
@@ -175,9 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
     scheduleWrap.style.display = 'none';
     scheduleInfo.innerHTML = '';
     resetSelect(slotSelect, 'Select doctor & date first');
-    slotGrid.innerHTML='';
-    slotGrid.style.display='none';
-    slotGridPh.style.display='block';
     slotSelect.value='';
   }
 
@@ -195,49 +188,18 @@ document.addEventListener('DOMContentLoaded', () => {
       dayInput.value = data.weekday || '';
       scheduleWrap.style.display = 'block';
       scheduleInfo.innerHTML = renderSchedule(data);
-      // Build hidden select with all slots (even booked) for race re-check logic
+      // Build select with all slots (booked disabled)
       resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
-      slotGrid.innerHTML='';
-      if (data.slots.length) {
-        slotGridPh.style.display='none';
-        slotGrid.style.display='grid';
-        slotGrid.style.gridTemplateColumns='repeat(auto-fill,minmax(90px,1fr))';
-        slotGrid.style.gap='6px';
-        data.slots.forEach(s => {
-          // add to select (value set only if available to avoid accidental submission of booked time)
-          const opt = new Option(s.display, s.time, false, false);
-          if(!s.available) opt.disabled = true;
-          slotSelect.add(opt);
-          const btn = document.createElement('button');
-          btn.type='button';
-          btn.className = 'slot-btn btn btn-sm w-100 ' + (s.available ? 'btn-outline-primary' : 'btn-outline-secondary disabled taken');
-          btn.textContent = s.display;
-          btn.dataset.time = s.time;
-          if(!s.available){ btn.setAttribute('aria-disabled','true'); }
-          btn.addEventListener('click', () => {
-            if(!s.available) return; // ignore booked
-            // deselect previous
-            slotGrid.querySelectorAll('.slot-btn.selected').forEach(el=> el.classList.remove('selected','btn-primary'));
-            // mark selected
-            btn.classList.add('selected','btn-primary');
-            btn.classList.remove('btn-outline-primary');
-            slotSelect.value = s.time; // ensure form submission
-          });
-          slotGrid.appendChild(btn);
-        });
-      } else {
-        slotGridPh.textContent = 'No slots';
-        slotGridPh.style.display='block';
-        slotGrid.style.display='none';
-      }
-      // Removed slot meta display per request
-      // Restore old() selection if applicable (only if slot still in list)
+      (data.slots||[]).forEach(s => {
+        const label = s.display + (s.available ? '' : ' – BOOKED');
+        const opt = new Option(label, s.time);
+        if(!s.available) { opt.disabled = true; opt.setAttribute('data-booked','1'); }
+        slotSelect.add(opt);
+      });
+      // Restore old() selection if applicable
       @if(old('appointment_time'))
         if ([...slotSelect.options].some(o => o.value === "{{ old('appointment_time') }}")) {
           slotSelect.value = "{{ old('appointment_time') }}";
-          // highlight on grid
-          const btn = slotGrid.querySelector(`[data-time='{{ old('appointment_time') }}']`);
-          if(btn && !btn.classList.contains('taken')) { btn.click(); }
         }
       @endif
     } catch (e) {
@@ -299,35 +261,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitBtn = document.getElementById('bookSubmit');
   form.addEventListener('submit', async (e) => {
     const chosen = slotSelect.value;
-    if (!chosen) return; // let HTML5 required handle
-    // quick re-fetch to ensure slot still free
+    if (!chosen) return; // required handles
     e.preventDefault();
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking...';
     try {
       const params = new URLSearchParams({ clinic_id: clinicSelect.value, doctor_id: doctorSelect.value, date: dateInput.value, service_id: serviceSelect.value || '' });
       const res = await fetch(`{{ route('appointments.availability') }}?${params.toString()}`, { headers: { 'Accept':'application/json' } });
-      if(!res.ok) throw new Error('Fetch failed');
+      if(!res.ok) throw new Error();
       const data = await res.json();
       const stillAvailable = (data.slots||[]).some(s => s.available && s.time === chosen);
-      if (!stillAvailable) {
-        // silently rebuild grid
+      if(!stillAvailable) {
         resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
-        slotGrid.innerHTML='';
-        data.slots.forEach(s=>{
-          const opt = new Option(s.display, s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt);
-          const btn = document.createElement('button'); btn.type='button'; btn.className='slot-btn btn btn-sm w-100 ' + (s.available? 'btn-outline-primary':'btn-outline-secondary disabled taken'); btn.textContent=s.display; btn.dataset.time=s.time; if(s.available){ btn.addEventListener('click',()=>{ slotGrid.querySelectorAll('.slot-btn.selected').forEach(el=>el.classList.remove('selected','btn-primary')); btn.classList.add('selected','btn-primary'); btn.classList.remove('btn-outline-primary'); slotSelect.value=s.time; }); } slotGrid.appendChild(btn);
-        });
+        (data.slots||[]).forEach(s=>{ const opt=new Option(s.display + (s.available?'':' – BOOKED'), s.time); if(!s.available) opt.disabled=true; slotSelect.add(opt); });
         slotSelect.value='';
-        submitBtn.disabled = false;
+        submitBtn.disabled=false;
         submitBtn.innerHTML = '<i class="bi bi-calendar-check-fill me-2"></i>Book Now';
-        return; // no visible error message per request
+        return;
       }
-      // slot still free; proceed
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Booking...';
       form.submit();
-    } catch(err) {
-      submitBtn.disabled = false;
+    } catch(err){
+      submitBtn.disabled=false;
       submitBtn.innerHTML = '<i class="bi bi-calendar-check-fill me-2"></i>Book Now';
     }
   });
@@ -364,8 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 @push('styles')
 <style>
-  .slot-grid .slot-btn { font-size: .75rem; line-height: 1.1rem; white-space: nowrap; }
-  .slot-grid .slot-btn.taken { pointer-events: none; opacity: .55; text-decoration: line-through; }
-  .slot-grid .slot-btn.selected { font-weight: 600; }
+  /* Disabled (booked) options styling */
+  #timeSlot option[disabled] { text-decoration: line-through; color: #6c757d; font-style: italic; }
 </style>
 @endpush

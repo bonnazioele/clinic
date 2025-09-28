@@ -42,7 +42,7 @@
           </select>
           <div class="small mt-2">
             <strong>1. First-Come, First-Served (FCFS):</strong> Patients are served strictly in order of arrival, regardless of any priority flags. This ignores priority patients.<br>
-            <strong>2. Priority-Aware Queue</strong> <span class="text-muted">(sometimes called <em>Priority Scheduling</em> or <em>Triage Queueing</em>)</span>:<br>
+            <strong>2. Priority-Aware Queue (PAQ):</strong><br>
             The system adjusts the order dynamically, allowing patients with designated priority flags (senior, PWD, pregnant, emergency) to <em>override the queue</em> and be served earlier.
           </div>
         </div>

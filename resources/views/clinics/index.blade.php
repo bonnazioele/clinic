@@ -189,6 +189,9 @@
             </div>
 
             <div class="d-grid gap-2">
+              <button type="button" class="btn btn-outline-primary" onclick="showClinicDetails({{ $clinic->id }})">
+                <i class="bi bi-info-circle me-2"></i>View Details
+              </button>
               <a href="{{ route('appointments.create', ['clinic_id' => $clinic->id]) }}" class="btn btn-primary">
                 <i class="bi bi-calendar-plus me-2"></i>Book Appointment
               </a>
@@ -338,5 +341,78 @@
   }
 
   function showClinicDetails(clinicId) { /* reserved for future modal content load */ }
+  function showClinicDetails(clinicId) {
+    const modalEl = document.getElementById('clinicDetailsModal');
+    const bodyEl = document.getElementById('clinicDetailsContent');
+    if(!modalEl || !bodyEl) return;
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    bodyEl.innerHTML = `
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary mb-3"></div>
+        <p class="text-muted mb-0">Loading clinic details...</p>
+      </div>`;
+    modal.show();
+
+    fetch(`{{ url('/clinics') }}/${clinicId}` , { headers: { 'Accept':'application/json' }})
+      .then(async r => {
+        if(!r.ok) throw new Error('Failed to load clinic details');
+        return r.json();
+      })
+      .then(data => {
+        bodyEl.innerHTML = renderClinicDetails(data);
+      })
+      .catch(err => {
+        console.error(err);
+        bodyEl.innerHTML = `<div class="alert alert-danger mb-0">Unable to load clinic details. Please try again later.</div>`;
+      });
+  }
+
+  function renderClinicDetails(data) {
+    const services = (data.services || []).map(s => `<span class="badge bg-info text-dark me-1 mb-1">${escapeHtml(s.name)}</span>`).join('') || '<span class="text-muted">No services listed.</span>';
+    const doctors = (data.doctors || []).map(d => `<li class="list-group-item py-1"><i class="bi bi-person-badge me-2"></i>${escapeHtml(d.name)}</li>`).join('');
+    const doctorsBlock = doctors ? `<ul class="list-group small">${doctors}</ul>` : '<p class="text-muted mb-0">No doctors associated.</p>';
+
+    const editBtn = data.can_edit && data.edit_url ? `<a href="${data.edit_url}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Edit Clinic</a>` : '';
+
+    return `
+      <div class="clinic-details-content">
+        ${data.cover_image_url ? `<div class="mb-3"><img src="${data.cover_image_url}" alt="Cover" class="img-fluid rounded"></div>` : ''}
+        <div class="d-flex align-items-start mb-3">
+          <div class="me-3">
+            ${data.logo_url ? `<img src="${data.logo_url}" alt="Logo" style="width:80px;height:80px;object-fit:cover;" class="rounded">` : `<div class="bg-primary text-white d-flex align-items-center justify-content-center rounded" style="width:80px;height:80px;font-size:1.5rem;">${escapeHtml(data.name.charAt(0) || 'C')}</div>`}
+          </div>
+          <div class="flex-grow-1">
+            <h5 class="fw-bold text-primary mb-1">${escapeHtml(data.name)}</h5>
+            <p class="mb-1 small"><i class="bi bi-geo-alt me-1"></i>${escapeHtml(data.address || 'Unknown address')}</p>
+            <p class="mb-1 small"><i class="bi bi-telephone me-1"></i>${escapeHtml(data.contact_number || 'N/A')}</p>
+            <p class="mb-2 small"><i class="bi bi-envelope me-1"></i>${escapeHtml(data.email || 'N/A')}</p>
+            ${editBtn}
+          </div>
+        </div>
+        <div class="mb-3">
+          <h6 class="fw-semibold"><i class="bi bi-info-circle me-1"></i>About</h6>
+          <p class="mb-0">${escapeHtml(data.description || 'No description provided.')}</p>
+        </div>
+        <div class="mb-3">
+          <h6 class="fw-semibold"><i class="bi bi-gear me-1"></i>Services</h6>
+          <div class="d-flex flex-wrap">${services}</div>
+        </div>
+        <div class="mb-2">
+          <h6 class="fw-semibold"><i class="bi bi-person-lines-fill me-1"></i>Doctors</h6>
+          ${doctorsBlock}
+        </div>
+      </div>`;
+  }
+
+  function escapeHtml(str) {
+    if(str == null) return '';
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
   </script>
 @endpush

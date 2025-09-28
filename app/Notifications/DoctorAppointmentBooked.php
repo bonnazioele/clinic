@@ -14,8 +14,8 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
     public function __construct(public Appointment $appointment) {}
     public function via($n){ return ['database','broadcast']; }
     public function toDatabase($n): array
-    { return [
-        'message' => "New patient (".$this->appointment->user?->name.") booked for {$this->appointment->appointment_date} at {$this->appointment->appointment_time}.",
+    { $formatted = $this->formatDateTime(); return [
+        'message' => "New patient (".$this->appointment->user?->name.") booked for {$formatted}.",
         'appointment_id' => $this->appointment->id,
         'role' => 'doctor'
       ]; }
@@ -25,8 +25,8 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
     }
 
     public function toArray($notifiable): array
-    { return [
-        'message' => "New patient (".$this->appointment->user?->name.") booked for {$this->appointment->appointment_date} at {$this->appointment->appointment_time}.",
+    { $formatted = $this->formatDateTime(); return [
+        'message' => "New patient (".$this->appointment->user?->name.") booked for {$formatted}.",
         'appointment_id' => $this->appointment->id,
         'role' => 'doctor'
       ]; }
@@ -38,5 +38,13 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
       return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.' . $doctor->id)];
     }
     return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.unknown')];
+  }
+
+  protected function formatDateTime(): string
+  {
+    $date = \Carbon\Carbon::parse($this->appointment->appointment_date);
+    $time = substr($this->appointment->appointment_time,0,5);
+    $start = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d')." ".$time);
+    return $start->format('g:i A') . ' on ' . $date->format('M d, Y');
   }
 }

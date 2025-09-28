@@ -38,8 +38,21 @@ class DoctorController extends Controller
 
     public function create()
     {
-        $services = Service::all();
+        $user = auth()->user();
         $activeClinicId = session('active_clinic_id');
+        $clinicIds = $user->secretaryClinics()->pluck('clinics.id')->all();
+        // If active clinic set & belongs to secretary, restrict to that clinic's services; else union of all assigned clinics' services
+        $serviceQuery = Service::query();
+        if ($activeClinicId && in_array($activeClinicId, $clinicIds)) {
+            $serviceQuery->whereHas('clinics', function($q) use ($activeClinicId){
+                $q->where('clinics.id',$activeClinicId);
+            });
+        } else {
+            $serviceQuery->whereHas('clinics', function($q) use ($clinicIds){
+                $q->whereIn('clinics.id',$clinicIds);
+            });
+        }
+        $services = $serviceQuery->orderBy('name')->get();
         return view('secretary.doctors.create', compact('services','activeClinicId'));
     }
 
@@ -71,7 +84,12 @@ class DoctorController extends Controller
     } else {
         $doctor->clinics()->sync($secretaryClinicIds);
     }
-    $doctor->services()->sync($data['service_ids'] ?? []);
+    // Filter submitted service IDs to only those allowed (services offered by assigned clinics)
+    $allowedServiceIds = Service::whereHas('clinics', function($q) use ($secretaryClinicIds){
+        $q->whereIn('clinics.id', $secretaryClinicIds);
+    })->pluck('id')->all();
+    $chosen = array_intersect($data['service_ids'] ?? [], $allowedServiceIds);
+    $doctor->services()->sync($chosen);
 
     return redirect()->route('secretary.doctors.index')
                      ->with('status','Doctor added.');
@@ -86,8 +104,21 @@ class DoctorController extends Controller
             abort(403,'Doctor not in your assigned clinics.');
         }
 
-        $services = Service::all();
-        return view('secretary.doctors.edit', compact('doctor','services'));
+        $user = auth()->user();
+        $activeClinicId = session('active_clinic_id');
+        $clinicIds = $user->secretaryClinics()->pluck('clinics.id')->all();
+        $serviceQuery = Service::query();
+        if ($activeClinicId && in_array($activeClinicId, $clinicIds)) {
+            $serviceQuery->whereHas('clinics', function($q) use ($activeClinicId){
+                $q->where('clinics.id',$activeClinicId);
+            });
+        } else {
+            $serviceQuery->whereHas('clinics', function($q) use ($clinicIds){
+                $q->whereIn('clinics.id',$clinicIds);
+            });
+        }
+        $services = $serviceQuery->orderBy('name')->get();
+        return view('secretary.doctors.edit', compact('doctor','services','activeClinicId'));
     }
 
     public function update(Request $req, User $doctor)
@@ -121,7 +152,11 @@ class DoctorController extends Controller
     } else {
         $doctor->clinics()->sync($secretaryClinicIds);
     }
-    $doctor->services()->sync($data['service_ids'] ?? []);
+    $allowedServiceIds = Service::whereHas('clinics', function($q) use ($secretaryClinicIds){
+        $q->whereIn('clinics.id', $secretaryClinicIds);
+    })->pluck('id')->all();
+    $chosen = array_intersect($data['service_ids'] ?? [], $allowedServiceIds);
+    $doctor->services()->sync($chosen);
 
     return redirect()->route('secretary.doctors.index')
                      ->with('status','Doctor updated.');

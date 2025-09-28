@@ -9,7 +9,7 @@
         <div class="d-flex align-items-center justify-content-center mb-3">
           <i class="bi bi-heart-pulse-fill medical-icon me-3" style="font-size: 3rem;"></i>
           <div>
-            <h1 class="mb-1 fw-bold text-primary">Welcome back, {{ auth()->user()->name }}!</h1>
+            <h1 class="mb-1 fw-bold text-primary">Welcome, {{ auth()->user()->name }}!</h1>
             <p class="text-muted mb-0">
               <i class="bi bi-person-badge me-2"></i>Secretary Dashboard
             </p>

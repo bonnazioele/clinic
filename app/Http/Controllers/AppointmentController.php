@@ -111,12 +111,19 @@ class AppointmentController extends Controller
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
-            while ($cursor->copy()->addMinutes($slotMinutes) <= $end) {
+            while ($cursor < $end) { // allow a slot that ends exactly at schedule end
+                $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
+                if ($slotEnd > $end) {
+                    // stop if we do not want partial slot; break to keep previous behavior
+                    // To include partial, uncomment next line. For now we break.
+                    break;
+                }
                 $timeLabel = $cursor->format('H:i');
                 $slots[] = [
-                    'time'      => $timeLabel,
-                    'display'   => $cursor->format('g:i A'),
-                    'available' => !$booked->contains($timeLabel),
+                    'time'       => $timeLabel,
+                    'display'    => $cursor->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
+                    'available'  => !$booked->contains($timeLabel),
+                    'end_time'   => $slotEnd->format('H:i'),
                 ];
                 $cursor->addMinutes($slotMinutes);
             }
@@ -226,6 +233,77 @@ class AppointmentController extends Controller
         return redirect()
             ->route('appointments.index')
             ->with('status', 'Appointment booked successfully.');
+    }
+
+    public function edit(Appointment $appointment)
+    {
+        if ($appointment->user_id !== Auth::id()) {
+            abort(403,'Forbidden');
+        }
+        // Load needed relations
+        $appointment->load(['clinic.services','doctor','service']);
+        // For reassignment we allow choosing among clinic services & doctors
+        $clinic = $appointment->clinic;
+        $clinic->load(['services','doctors']);
+        return view('appointments.edit', [
+            'appointment' => $appointment,
+            'clinic' => $clinic,
+        ]);
+    }
+
+    public function update(Request $request, Appointment $appointment)
+    {
+        if ($appointment->user_id !== Auth::id()) {
+            abort(403,'Forbidden');
+        }
+        if (in_array($appointment->status, ['completed','cancelled'])) {
+            return back()->with('warning','This appointment can no longer be modified.');
+        }
+
+        $data = $request->validate([
+            'service_id'       => 'required|exists:services,id',
+            'doctor_id'        => 'required|exists:users,id',
+            'appointment_date' => 'required|date|after_or_equal:today',
+            'appointment_time' => 'required',
+        ]);
+
+        // Validate doctor schedule & conflicts similar to store
+        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+        $time = $data['appointment_time'];
+        $clinicId = $appointment->clinic_id; // clinic not editable here
+
+        $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
+            ->where('clinic_id', $clinicId)
+            ->where('day_of_week', $day)
+            ->where('is_active', true)
+            ->where('start_time','<=',$time)
+            ->where('end_time','>',$time)
+            ->exists();
+        if(!$hasSchedule) {
+            return back()->withInput()->withErrors(['appointment_time'=>'Doctor not available at that time.']);
+        }
+        $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where('appointment_time', $time)
+            ->where('status','!=','cancelled')
+            ->where('id','!=',$appointment->id)
+            ->exists();
+        if($doctorBusy) {
+            return back()->withInput()->withErrors(['appointment_time'=>'Doctor already booked for that slot.']);
+        }
+        $patientConflict = Appointment::where('user_id', Auth::id())
+            ->whereDate('appointment_date',$data['appointment_date'])
+            ->where('appointment_time',$time)
+            ->where('status','!=','cancelled')
+            ->where('id','!=',$appointment->id)
+            ->exists();
+        if($patientConflict) {
+            return back()->withInput()->withErrors(['appointment_time'=>'You have another appointment at that time.']);
+        }
+
+        $appointment->update($data);
+
+        return redirect()->route('appointments.index')->with('status','Appointment updated.');
     }
 
     public function destroy(Appointment $appointment)

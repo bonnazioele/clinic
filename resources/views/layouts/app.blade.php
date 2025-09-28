@@ -375,6 +375,16 @@
         .medical-card.float-enabled {
             animation: float-sm 7s ease-in-out infinite;
         }
+
+        /* One-time entrance float for forms (no continuous bobbing) */
+        @keyframes float-rise-once {
+            0% { opacity:0; transform: translateY(24px); }
+            60% { opacity:1; transform: translateY(-6px); }
+            100% { opacity:1; transform: translateY(0); }
+        }
+        .float-once {
+            animation: float-rise-once .9s ease-out 1;
+        }
         /* Respect reduced motion preference */
         @media (prefers-reduced-motion: reduce) {
             .float-sm, .float-md, .dashboard-card.float-enabled, .medical-card.float-enabled { animation: none !important; }
@@ -387,20 +397,8 @@
 <div id="app" class="d-flex flex-column min-vh-100">
     @include('partials.navbar')
 
-    <div class="container mt-3">
-        @if(session('warning'))
-            <div class="alert alert-warning d-flex align-items-center mb-3">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                <div>{{ session('warning') }}</div>
-            </div>
-        @endif
-        @if(session('status'))
-            <div class="alert alert-success d-flex align-items-center mb-3">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <div>{{ session('status') }}</div>
-            </div>
-        @endif
-    </div>
+    {{-- Floating toasts (placed just below navbar). Individual pages can override offsets. --}}
+    @include('partials.alerts', ['toastOffsetTop' => '4.5rem'])
 
     <main class="py-4 flex-grow-1">
         <div class="floating-wrapper">

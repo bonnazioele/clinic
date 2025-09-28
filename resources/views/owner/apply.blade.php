@@ -4,7 +4,7 @@
 <div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-lg-9">
-  <div class="card medical-card shadow-sm border-0 float-enabled">
+  <div class="card medical-card shadow-sm border-0 float-once">
         <div class="card-header bg-primary text-white d-flex align-items-center">
           <i class="bi bi-building-add me-2"></i>
           <h5 class="mb-0">Apply to Register Your Clinic</h5>
@@ -14,6 +14,18 @@
             @csrf
 
             <h6 class="text-muted mb-3">Clinic Details</h6>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="owner_first_name" class="form-label"><i class="bi bi-person me-1"></i>Owner First Name <span class="text-danger">*</span></label>
+                <input id="owner_first_name" type="text" name="owner_first_name" class="form-control @error('owner_first_name') is-invalid @enderror" value="{{ old('owner_first_name') }}" maxlength="255" required placeholder="e.g., Juan">
+                @error('owner_first_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="owner_last_name" class="form-label"><i class="bi bi-person me-1"></i>Owner Last Name <span class="text-danger">*</span></label>
+                <input id="owner_last_name" type="text" name="owner_last_name" class="form-control @error('owner_last_name') is-invalid @enderror" value="{{ old('owner_last_name') }}" maxlength="255" required placeholder="e.g., Dela Cruz">
+                @error('owner_last_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+              </div>
+            </div>
             <div class="mb-3">
               <label for="clinic_name" class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>
               <input id="clinic_name" type="text" name="clinic_name" class="form-control @error('clinic_name') is-invalid @enderror" value="{{ old('clinic_name') }}" required maxlength="255" placeholder="Enter clinic name">

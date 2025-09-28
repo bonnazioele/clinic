@@ -44,10 +44,19 @@ class UserController extends Controller
 
         switch ($role) {
             case 'doctor':
-                $query->with(['clinics', 'services']);
+                // Use clinicsAsDoctor relation (original 'clinics' relation duplicates clinic_doctor) for clarity
+                $query->with(['clinicsAsDoctor', 'services']);
                 break;
             case 'secretary':
-                $query->with(['secretaryClinics']);
+                // Only show secretaries that are still linked to at least one non-deleted clinic.
+                // A clinic uses SoftDeletes, so filter out secretaries whose clinics were removed.
+                $query->where('is_secretary', true)
+                      ->whereHas('secretaryClinics', function ($q) {
+                          $q->whereNull('clinics.deleted_at');
+                      })
+                      ->with(['secretaryClinics' => function ($q) {
+                          $q->whereNull('clinics.deleted_at');
+                      }]);
                 break;
             default:
                 break;

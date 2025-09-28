@@ -14,6 +14,10 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    // Consider adding SoftDeletes in future if user records should be restorable.
+    // For now, 'deleted' secretaries appearing likely stem from orphan pivot rows to clinics.
+    // Filtering is handled in the admin UserController when listing secretaries.
+
      protected $fillable = [
         'name','first_name','last_name','email','password',
         'phone','address','medical_document',

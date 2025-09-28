@@ -28,6 +28,8 @@ Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);
 
 Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
+// Public clinic details (AJAX for modal)
+Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
 Route::get('/services/search', [\App\Http\Controllers\PublicServiceController::class, 'search'])->name('services.search');
 
 Route::middleware('guest')->group(function(){

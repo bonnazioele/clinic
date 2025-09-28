@@ -76,8 +76,17 @@
               <td class="py-3">{{ $u->email }}</td>
               @if($current === 'doctor')
                 <td class="py-3">
-                  @if($u->relationLoaded('clinics') && $u->clinics->isNotEmpty())
-                    @foreach($u->clinics as $c)
+                  @php
+                    // prefer clinicsAsDoctor if loaded, fallback to clinics for legacy
+                    $doctorClinics = collect();
+                    if ($u->relationLoaded('clinicsAsDoctor') && $u->clinicsAsDoctor->isNotEmpty()) {
+                        $doctorClinics = $u->clinicsAsDoctor;
+                    } elseif ($u->relationLoaded('clinics') && $u->clinics->isNotEmpty()) {
+                        $doctorClinics = $u->clinics;
+                    }
+                  @endphp
+                  @if($doctorClinics->isNotEmpty())
+                    @foreach($doctorClinics as $c)
                       <span class="badge rounded-pill bg-info text-dark me-1 mb-1">{{ $c->name }}</span>
                     @endforeach
                   @else
@@ -91,7 +100,7 @@
                     <span class="text-muted">—</span>
                   @endif
                 </td>
-                <td class="py-3">{{ $u->phone }}</td>
+                <td class="py-3">{{ $u->phone ?? '—' }}</td>
               @elseif($current === 'secretary')
                 <td class="py-3">
                   @php $sc = $u->relationLoaded('secretaryClinics') ? $u->secretaryClinics : collect(); @endphp
@@ -103,7 +112,18 @@
                     <span class="text-muted">—</span>
                   @endif
                 </td>
-                <td class="py-3">{{ $u->phone }}</td>
+                <td class="py-3">
+                  @php
+                    $phoneDisplay = $u->phone;
+                    if (!$phoneDisplay && ($current === 'secretary') && $u->relationLoaded('secretaryClinics')) {
+                        $firstClinic = $u->secretaryClinics->first();
+                        if ($firstClinic && $firstClinic->contact_number) {
+                            $phoneDisplay = $firstClinic->contact_number;
+                        }
+                    }
+                  @endphp
+                  {{ $phoneDisplay ?? '—' }}
+                </td>
               @elseif($current === 'all')
                 <td class="py-3">
                   @php
@@ -115,7 +135,7 @@
                   @endphp
                   <span class="badge rounded-pill {{ $badgeClass }}">{{ $roleLabel }}</span>
                 </td>
-                <td class="py-3">{{ $u->phone }}</td>
+                <td class="py-3">{{ $u->phone ?? '—' }}</td>
               @else
                 <td class="py-3">{{ $u->phone }}</td>
               @endif

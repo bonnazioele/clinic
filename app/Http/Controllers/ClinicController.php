@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Clinic;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ClinicController extends Controller
 {
@@ -23,6 +24,41 @@ class ClinicController extends Controller
     $clinics = $query->paginate(10);
 
     return view('clinics.index', compact('clinics'));
+    }
+
+    public function show(Request $request, Clinic $clinic)
+    {
+        // Only expose approved/active clinics
+        if(! $clinic->isApprovedLike()) {
+            abort(404);
+        }
+
+        $clinic->load(['services:id,name','doctors:id,first_name,last_name,name']);
+
+        $user = Auth::user();
+        $canEdit = false;
+        if($user) {
+            // Secretary of this clinic can edit
+            $canEdit = $user->is_secretary && $clinic->secretaries()->where('users.id', $user->id)->exists();
+        }
+
+        return response()->json([
+            'id' => $clinic->id,
+            'name' => $clinic->name,
+            'address' => $clinic->address,
+            'contact_number' => $clinic->contact_number,
+            'email' => $clinic->email,
+            'description' => $clinic->description,
+            'logo_url' => $clinic->logo ? asset('storage/'.$clinic->logo) : null,
+            'cover_image_url' => $clinic->cover_image ? asset('storage/'.$clinic->cover_image) : null,
+            'services' => $clinic->services->map(fn($s)=> ['id'=>$s->id,'name'=>$s->name]),
+            'doctors' => $clinic->doctors->map(fn($d)=> [
+                'id'=>$d->id,
+                'name'=>$d->name,
+            ]),
+            'can_edit' => $canEdit,
+            'edit_url' => $canEdit ? route('secretary.clinic.edit', $clinic) : null,
+        ]);
     }
 }
 
