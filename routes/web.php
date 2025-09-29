@@ -172,3 +172,6 @@ Route::prefix('owner')
           Route::post('/staff/attach', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.attach');
           Route::delete('/staff/detach', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.detach');
      });
+
+
+     Broadcast::routes(); // default uses 'web' middleware
