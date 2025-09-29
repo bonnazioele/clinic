@@ -1,35 +1,45 @@
 <?php
 
+// app/Notifications/QueueNotification.php
 namespace App\Notifications;
 
 use App\Models\QueueEntry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 
-class QueueNotification extends Notification implements ShouldQueue
+class QueueNotification extends Notification implements ShouldQueue, ShouldBroadcast
 {
     use Queueable;
 
-    protected $queueEntry;
+    protected $entry;
 
-    public function __construct(QueueEntry $queueEntry)
+    public function __construct(QueueEntry $entry)
     {
-        $this->queueEntry = $queueEntry;
+        $this->entry = $entry;
     }
 
     public function via($notifiable)
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     public function toArray($notifiable)
     {
         return [
-            'message' => "Hi {$notifiable->name}, please prepare to enter. Your queue number is #{$this->queueEntry->queue_number}.",
-            'queue_number' => $this->queueEntry->queue_number,
-            'clinic_id' => $this->queueEntry->clinic_id,
+            'message' => "You're up next at {$this->entry->clinic->name}, Queue #{$this->entry->queue_number}",
+            'role'    => 'patient',
         ];
     }
+
+    public function toBroadcast($notifiable)
+    {
+        return new BroadcastMessage([
+            'message' => "You're up next at {$this->entry->clinic->name}, Queue #{$this->entry->queue_number}",
+            'role'    => 'patient',
+        ]);
+    }
 }
+

@@ -7,6 +7,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\DatabaseMessage;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Notifications\Messages\BroadcastMessage;
+use Carbon\Carbon;
 
 class PatientAppointmentBooked extends Notification implements ShouldBroadcast
 {
@@ -14,44 +17,51 @@ class PatientAppointmentBooked extends Notification implements ShouldBroadcast
 
     public function __construct(public Appointment $appointment) {}
 
-    public function via($notifiable) { return ['database','broadcast']; }
+    public function via($notifiable)
+    {
+        return ['database', 'broadcast'];
+    }
 
     public function toDatabase($notifiable): array
     {
-        $formatted = $this->formatDateTime();
         return [
-            'message' => "Appointment (#{$this->appointment->id}) confirmed for {$formatted}.",
+            'message'        => "Appointment (#{$this->appointment->id}) confirmed for {$this->formatDateTime()}.",
             'appointment_id' => $this->appointment->id,
-            'role' => 'patient'
+            'role'           => 'patient'
         ];
     }
 
     public function toBroadcast($notifiable)
     {
-        return new \Illuminate\Notifications\Messages\BroadcastMessage($this->toArray($notifiable));
+        return new BroadcastMessage($this->toArray($notifiable));
     }
 
     public function toArray($notifiable)
     {
-        $formatted = $this->formatDateTime();
         return [
-            'message' => "Appointment (#{$this->appointment->id}) confirmed for {$formatted}.",
+            'message'        => "Appointment (#{$this->appointment->id}) confirmed for {$this->formatDateTime()}.",
             'appointment_id' => $this->appointment->id,
-            'role' => 'patient'
+            'role'           => 'patient'
         ];
     }
 
     protected function formatDateTime(): string
     {
-        $date = \Carbon\Carbon::parse($this->appointment->appointment_date);
-        $time = substr($this->appointment->appointment_time,0,5);
-        $start = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d')." ".$time);
-        $display = $start->format('g:i A') . ' on ' . $date->format('M d, Y');
-        return $display;
+        // ✅ If appointment_time is a full datetime, just parse it directly
+        if ($this->appointment->appointment_time && strlen($this->appointment->appointment_time) > 5) {
+            $start = Carbon::parse($this->appointment->appointment_time);
+        } else {
+            // ✅ Otherwise merge date + time
+            $date = Carbon::parse($this->appointment->appointment_date)->format('Y-m-d');
+            $time = $this->appointment->appointment_time ?: '00:00:00';
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$time}");
+        }
+
+        return $start->format('g:i A \o\n M d, Y');
     }
 
     public function broadcastOn(): array
     {
-        return [new \Illuminate\Broadcasting\PrivateChannel('user.notifications.' . $this->appointment->user_id)];
+        return [new PrivateChannel('user.notifications.' . $this->appointment->user_id)];
     }
 }

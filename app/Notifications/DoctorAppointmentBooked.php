@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\DatabaseMessage;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Carbon\Carbon;
 
 class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
 {
@@ -41,10 +42,17 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
   }
 
   protected function formatDateTime(): string
-  {
-    $date = \Carbon\Carbon::parse($this->appointment->appointment_date);
-    $time = substr($this->appointment->appointment_time,0,5);
-    $start = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d')." ".$time);
-    return $start->format('g:i A') . ' on ' . $date->format('M d, Y');
-  }
+    {
+        // ✅ If appointment_time is a full datetime, just parse it directly
+        if ($this->appointment->appointment_time && strlen($this->appointment->appointment_time) > 5) {
+            $start = Carbon::parse($this->appointment->appointment_time);
+        } else {
+            // ✅ Otherwise merge date + time
+            $date = Carbon::parse($this->appointment->appointment_date)->format('Y-m-d');
+            $time = $this->appointment->appointment_time ?: '00:00:00';
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$time}");
+        }
+
+        return $start->format('g:i A \o\n M d, Y');
+    }
 }

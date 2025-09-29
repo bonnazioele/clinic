@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+     @auth
+    <meta name="user-id" content="{{ auth()->id() }}">
+    @endauth
 
     <title>@yield('title', config('app.name', 'CliniQ'))</title>
 
@@ -409,9 +412,29 @@
     @include('partials.footer')
 </div>
 
+<!-- 🔔 Global Call Notification Modal -->
+<div class="modal fade" id="queueCallModal" tabindex="-1" aria-labelledby="queueCallModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="queueCallModalLabel">You're Being Called!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <h4 id="queueCallMessage" class="fw-bold text-dark"></h4>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" data-bs-dismiss="modal">Okay</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+@vite(['resources/js/app.js'])
 <!-- Leaflet JS (added) -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -419,6 +442,65 @@
 
 <!-- Choices.js (for enhanced multi-selects) -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("CliniQ layout ready");
+    });
+</script>
+
+<!-- Laravel Echo listener for ALL pages -->
+<!-- Load Pusher and Echo from CDN -->
+<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
+
+<script>
+    // Initialize Echo
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: '{{ env('VITE_PUSHER_APP_KEY') }}',
+        cluster: '{{ env('VITE_PUSHER_APP_CLUSTER', 'mt1') }}',
+        forceTLS: true
+    });
+
+    @auth
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Echo !== 'undefined') {
+            const userId = {{ auth()->id() }};
+            
+            Echo.private('user.notifications.' + userId)
+                .listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (e) => {
+                    console.log('Notification received:', e);
+                    
+                    if (e.notification && e.notification.type === 'queue_next_up') {
+                        // Set modal message
+                        const messageElement = document.getElementById('queueCallMessage');
+                        if (messageElement) {
+                            messageElement.innerText = e.notification.message || 'You are being called!';
+                        }
+
+                        // Play ding sound
+                        const sound = document.getElementById('queueCallSound');
+                        if (sound) {
+                            sound.play().catch(() => {
+                                console.log('Audio play failed or was interrupted');
+                            });
+                        }
+
+                        // Show modal
+                        const modalElement = document.getElementById('queueCallModal');
+                        if (modalElement && typeof bootstrap !== 'undefined') {
+                            const modal = new bootstrap.Modal(modalElement);
+                            modal.show();
+                        }
+                    }
+                });
+        } else {
+            console.error('Echo is not available');
+        }
+    });
+    @endauth
+</script>
 
 <script>
 // Initialize Choices.js on any select with .enhanced-multiselect
@@ -431,8 +513,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 searchPlaceholderValue: 'Type to search…'
             });
         } catch (e) { /* noop */ }
-    });
-});
+        }
+    )});
 </script>
 
 <!-- Enhanced UX scripts -->

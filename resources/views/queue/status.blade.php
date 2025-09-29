@@ -50,6 +50,9 @@
             <div class="progress-bar bg-success" style="width: {{ $progress }}%"></div>
           </div>
         </div>
+
+        <!-- 🔔 Badge for "being called" (initially hidden, toggled via Echo) -->
+        
       @else
         <div class="mb-4">
           <span class="badge bg-success text-white fs-6 px-4 py-3">
@@ -154,19 +157,8 @@
   @endif
 </div>
 
-@if(isset($entry) && $entry->status === 'waiting')
-  @push('scripts')
-  <script>
-    // Auto-refresh queue status every 30 seconds
-    setInterval(function() {
-      location.reload();
-    }, 30000);
+<!-- 📌 Custom Modal -->
 
-  // Placeholder for future live updates (polling/WebSockets)
-  </script>
-  @endpush
-@endif
-@endsection
 
 @push('scripts')
 <script>
@@ -179,3 +171,4 @@ function handleQueueBack(){
 }
 </script>
 @endpush
+@endsection
