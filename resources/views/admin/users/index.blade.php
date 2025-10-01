@@ -72,10 +72,10 @@
           @endphp
           @forelse($users as $u)
             <tr>
-              <td class="py-3">{{ $u->name }}</td>
-              <td class="py-3">{{ $u->email }}</td>
+              <td class="py-3 ps-4">{{ $u->name }}</td>
+              <td class="py-3 ps-4">{{ $u->email }}</td>
               @if($current === 'doctor')
-                <td class="py-3">
+                <td class="py-3 ps-4">
                   @php
                     // prefer clinicsAsDoctor if loaded, fallback to clinics for legacy
                     $doctorClinics = collect();
@@ -93,16 +93,16 @@
                     <span class="text-muted">—</span>
                   @endif
                 </td>
-                <td class="py-3">
+                <td class="py-3 ps-4">
                   @if($u->relationLoaded('services') && $u->services->isNotEmpty())
                     {{ $u->services->pluck('name')->join(', ') }}
                   @else
                     <span class="text-muted">—</span>
                   @endif
                 </td>
-                <td class="py-3">{{ $u->phone ?? '—' }}</td>
+                <td class="py-3 ps-4">{{ $u->phone ?? '—' }}</td>
               @elseif($current === 'secretary')
-                <td class="py-3">
+                <td class="py-3 ps-4">
                   @php $sc = $u->relationLoaded('secretaryClinics') ? $u->secretaryClinics : collect(); @endphp
                   @if($sc->isNotEmpty())
                     @foreach($sc as $c)
@@ -112,7 +112,7 @@
                     <span class="text-muted">—</span>
                   @endif
                 </td>
-                <td class="py-3">
+                <td class="py-3 ps-4">
                   @php
                     $phoneDisplay = $u->phone;
                     if (!$phoneDisplay && ($current === 'secretary') && $u->relationLoaded('secretaryClinics')) {
@@ -125,7 +125,7 @@
                   {{ $phoneDisplay ?? '—' }}
                 </td>
               @elseif($current === 'all')
-                <td class="py-3">
+                <td class="py-3 ps-4">
                   @php
                     $roleLabel = 'Patient';
                     $badgeClass = 'bg-info text-dark'; // Patient: cyan
@@ -135,9 +135,9 @@
                   @endphp
                   <span class="badge rounded-pill {{ $badgeClass }}">{{ $roleLabel }}</span>
                 </td>
-                <td class="py-3">{{ $u->phone ?? '—' }}</td>
+                <td class="py-3 ps-4">{{ $u->phone ?? '—' }}</td>
               @else
-                <td class="py-3">{{ $u->phone }}</td>
+                <td class="py-3 ps-4">{{ $u->phone }}</td>
               @endif
             </tr>
           @empty

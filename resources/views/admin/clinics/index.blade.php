@@ -6,62 +6,65 @@
 
 @section('content')
 <div class="container py-4">
-  <!-- Page Header -->
+  <!-- Clinics Overview (aligned with Users Overview style) -->
   <div class="medical-card p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center">
       <div>
-        <h1 class="h2 fw-bold text-primary mb-2">
-          <i class="bi bi-building-gear medical-icon me-3" style="font-size: 2.5rem;"></i>Clinics Management
-        </h1>
-        <p class="text-muted mb-0 fs-5">Manage and monitor all registered healthcare facilities</p>
+        <h2 class="fw-bold text-primary mb-1">
+          <i class="bi bi-building-fill-gear me-2"></i>Clinics Management
+        </h2>
+        <p class="text-muted mb-0">Manage and monitor all registered healthcare facilities</p>
       </div>
-      <div class="d-flex gap-3">
-        <a href="{{ route('admin.clinics.create') }}" class="btn btn-primary px-4">
+      <div class="d-none d-md-block">
+        <a href="{{ route('admin.clinics.create') }}" class="btn btn-primary">
           <i class="bi bi-plus-circle me-2"></i>New Clinic
         </a>
       </div>
     </div>
-
-
+    <div class="mt-3 d-md-none">
+      <a href="{{ route('admin.clinics.create') }}" class="btn btn-primary w-100">
+        <i class="bi bi-plus-circle me-2"></i>New Clinic
+      </a>
+    </div>
   </div>
 
-  <!-- Search and Filter -->
+  <!-- Search and Filter (aligned with Services Management layout) -->
   <div class="medical-card p-4 mb-4">
-    <h4 class="mb-4">
-      <i class="bi bi-search medical-icon me-2"></i>Search & Filter
-    </h4>
-    <form class="row g-4" method="GET" action="{{ route('admin.clinics.index') }}">
-      <div class="col-lg-4">
-        <label class="form-label fw-semibold"><i class="bi bi-building me-1"></i>Clinic Name</label>
-        <input type="text" name="name" class="form-control form-control-lg"
-               placeholder="Search by clinic name..."
-               value="{{ request('name') }}">
+    <form class="row g-3 align-items-end" method="GET" action="{{ route('admin.clinics.index') }}">
+      <div class="col-md-5 col-lg-4">
+        <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i>Search</label>
+        <input type="text" name="name" class="form-control form-control-lg" placeholder="Search clinic name..." value="{{ request('name') }}">
       </div>
-      <div class="col-lg-3">
-        <label class="form-label fw-semibold"><i class="bi bi-flag me-1"></i>Status</label>
+      <div class="col-md-4 col-lg-3">
+        <label class="form-label fw-semibold"><i class="bi bi-filter me-1"></i>Status</label>
         <select name="status" class="form-select form-select-lg">
           <option value="">All Status</option>
           <option value="active" @selected(request('status') == 'active')>Active</option>
           <option value="inactive" @selected(request('status') == 'inactive')>Inactive</option>
         </select>
       </div>
-      <div class="col-lg-2 d-flex align-items-end">
-        <div class="d-grid w-100">
-          <button type="submit" class="btn btn-primary btn-lg">
-            <i class="bi bi-funnel me-2"></i>Filter
-          </button>
-        </div>
+      <div class="col-md-2 col-lg-2">
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          <i class="bi bi-funnel me-1"></i>Apply
+        </button>
+      </div>
+      <div class="col-md-2 col-lg-2">
+        @if(request()->hasAny(['name','status']) && (request('name') || request('status')))
+          <a href="{{ route('admin.clinics.index') }}" class="btn btn-outline-secondary btn-lg w-100">
+            <i class="bi bi-x-circle me-1"></i>Clear
+          </a>
+        @endif
       </div>
     </form>
   </div>
 
   <!-- Clinics Table -->
   <div class="medical-card p-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h4 class="mb-0">
-        <i class="bi bi-building medical-icon me-2"></i>Registered Clinics
+    <div class="mb-4">
+      <h4 class="mb-0 d-flex align-items-center gap-2">
+        Registered Clinics
+        <span class="badge bg-primary" style="font-size:.75rem;">{{ $clinics->total() }}</span>
       </h4>
-      <span class="badge bg-primary fs-6">{{ $clinics->total() }} Clinics</span>
     </div>
 
     <div class="table-responsive">
@@ -73,49 +76,35 @@
             <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-people me-1"></i>Staff</th>
             <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-calendar-check me-1"></i>Appointments</th>
             <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-geo-alt me-1"></i>Location</th>
-            <th class="border-0 px-4 py-3 fw-semibold" width="180">Actions</th>
+            <th class="border-0 px-4 py-3 fw-semibold" width="160">Actions</th>
           </tr>
         </thead>
         <tbody>
           @forelse($clinics as $clinic)
-          <tr>
-            <td class="px-4 py-4">
+          <tr class="clinic-row" onclick="window.location='{{ route('admin.clinics.show', $clinic) }}'" style="cursor:pointer;">
+            <td class="px-4 py-4 fs-6">
               <div class="d-flex align-items-center">
                 @if($clinic->logo)
                   <img src="{{ asset('storage/' . $clinic->logo) }}" alt="Logo"
-                       class="rounded-3 me-3" style="width:50px;height:50px;object-fit:cover;">
+                       class="rounded-circle me-3" style="width:50px;height:50px;object-fit:cover;">
                 @else
-                  <div class="bg-primary rounded-3 d-flex align-items-center justify-content-center me-3"
+                  <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
                        style="width:50px;height:50px;">
-                    <i class="bi bi-building text-white"></i>
+                    <i class="bi bi-hospital text-white"></i>
                   </div>
                 @endif
                 <div>
                   <h6 class="fw-semibold text-dark mb-2">
-                    <a href="{{ route('admin.clinics.show', $clinic) }}" class="text-decoration-none">{{ $clinic->name }}</a>
+                    <a href="{{ route('admin.clinics.show', $clinic) }}" class="text-decoration-none" onclick="event.stopPropagation();">{{ $clinic->name }}</a>
                   </h6>
-                  <small class="text-muted d-block mb-1">
-                    <i class="bi bi-tag me-1"></i>{{ $clinic->branch_code }}
-                  </small>
+                  <small class="text-muted d-block mb-1">{{ $clinic->branch_code }}</small>
                 </div>
               </div>
             </td>
-            <td class="px-4 py-4">
-              @if($clinic->services->count())
-                <div class="d-flex flex-wrap gap-2 mb-2">
-                  @foreach($clinic->services->take(3) as $service)
-                    <span class="badge bg-info text-dark px-3 py-2">{{ $service->name }}</span>
-                  @endforeach
-                  @if($clinic->services->count() > 3)
-                    <span class="badge bg-secondary px-3 py-2">+{{ $clinic->services->count() - 3 }}</span>
-                  @endif
-                </div>
-                <small class="text-muted d-block">{{ $clinic->services->count() }} service(s) available</small>
-              @else
-                <span class="badge bg-warning text-dark px-3 py-2">No services</span>
-              @endif
+            <td class="px-4 py-4 fs-6">
+              <span class="badge bg-info text-dark px-3 py-2">{{ $clinic->services->count() }}</span>
             </td>
-            <td class="px-4 py-4">
+            <td class="px-4 py-4 fs-6">
               @php
                 $doctors = \App\Models\User::where('is_doctor', true)
                     ->whereHas('clinics', fn($q) => $q->where('clinic_id', $clinic->id))
@@ -123,53 +112,31 @@
                 $secretaries = $clinic->secretaries()->count();
               @endphp
               <div class="small">
-                <div class="d-flex align-items-center mb-2">
-                  <i class="bi bi-person-badge text-primary me-2"></i>
-                  <span class="fw-semibold">{{ $doctors }} Doctor(s)</span>
-                </div>
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-person-gear text-secondary me-2"></i>
-                  <span class="fw-semibold">{{ $secretaries }} Secretary(ies)</span>
-                </div>
+                <div class="mb-2">{{ $doctors }} Doctor(s)</div>
+                <div>{{ $secretaries }} Secretary(ies)</div>
               </div>
             </td>
-            <td class="px-4 py-4">
+            <td class="px-4 py-4 fs-6">
               @php
                 $todayAppointments = \App\Models\Appointment::where('clinic_id', $clinic->id)
                     ->whereDate('appointment_date', \Carbon\Carbon::today())->count();
                 $totalAppointments = \App\Models\Appointment::where('clinic_id', $clinic->id)->count();
               @endphp
               <div class="small">
-                <div class="d-flex align-items-center mb-2">
-                  <i class="bi bi-calendar-day text-success me-2"></i>
-                  <span class="fw-semibold">{{ $todayAppointments }} today</span>
-                </div>
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-calendar-check text-info me-2"></i>
-                  <span class="fw-semibold">{{ $totalAppointments }} total</span>
-                </div>
+                <div class="mb-2">{{ $todayAppointments }} today</div>
+                <div>{{ $totalAppointments }} total</div>
               </div>
             </td>
-            <td class="px-4 py-4">
-              <div class="d-flex align-items-start">
-                <i class="bi bi-geo-alt text-primary me-2"></i>
-                <div class="small fw-semibold">
-                  {{ Str::limit($clinic->address, 70) }}
-                </div>
-              </div>
+            <td class="px-4 py-4 fs-6">
+              <div class="small">{{ Str::limit($clinic->address, 70) }}</div>
             </td>
             <td class="px-4 py-4">
               <div class="d-flex gap-2">
-                <a href="{{ route('admin.clinics.show', $clinic) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
-                  <i class="bi bi-eye me-1"></i>Details
+                <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-primary d-flex align-items-center justify-content-center" style="width:36px;height:36px;" title="Edit" onclick="event.stopPropagation();">
+                  <i class="bi bi-pencil-square"></i>
                 </a>
-                <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-sm btn-outline-primary rounded-pill">
-                  <i class="bi bi-pencil me-1"></i>Edit
-                </a>
-
-                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill w-100"
-                        onclick="deleteClinic({{ $clinic->id }})">
-                  <i class="bi bi-trash me-1"></i>Delete
+                <button type="button" class="btn btn-danger d-flex align-items-center justify-content-center" style="width:36px;height:36px;" title="Delete" onclick="event.stopPropagation(); deleteClinic({{ $clinic->id }})">
+                  <i class="bi bi-trash3"></i>
                 </button>
               </div>
             </td>

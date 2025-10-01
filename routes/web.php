@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Admin\DoctorController as AdminDoctorController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\NotificationsController;
@@ -103,6 +104,9 @@ Route::prefix('admin')
          Route::get('doctors/{doctor}', [AdminDoctorController::class, 'show'])->name('doctors.show');
 
          Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+
+           // Reports (controller based)
+           Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
 
      });
 

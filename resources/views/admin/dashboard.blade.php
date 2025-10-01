@@ -55,11 +55,17 @@
   </div>
 
   <div class="medical-card p-4 mb-4">
-    <h5 class="fw-semibold mb-3"><i class="bi bi-gear me-2"></i>Quick Links</h5>
+    <h5 class="fw-semibold mb-3 d-flex align-items-center gap-2"><i class="bi bi-lightning-charge"></i>Quick Actions</h5>
     <div class="d-flex flex-wrap gap-2">
-      <a href="{{ route('admin.clinics.index') }}" class="btn btn-primary"><i class="bi bi-building me-2"></i>Manage Clinics</a>
-      <a href="{{ route('admin.services.index') }}" class="btn btn-success"><i class="bi bi-gear-wide-connected me-2"></i>Manage Services</a>
-      <a href="{{ route('admin.users.index') }}" class="btn btn-info"><i class="bi bi-people me-2"></i>Users</a>
+      <a href="{{ route('admin.clinics.create') }}" class="btn btn-primary d-flex align-items-center gap-2">
+        <i class="bi bi-plus-circle"></i><span>Add Clinic</span>
+      </a>
+      <a href="{{ route('admin.services.create') }}" class="btn btn-success d-flex align-items-center gap-2">
+        <i class="bi bi-gear-wide-connected"></i><span>Add Service</span>
+      </a>
+      <a href="{{ route('admin.reports.index') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+        <i class="bi bi-graph-up"></i><span>Reports</span>
+      </a>
     </div>
   </div>
 

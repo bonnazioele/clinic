@@ -19,7 +19,7 @@
   <div class="medical-card p-4 mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start align-items-lg-center">
       <div>
-        <h1 class="h2 fw-bold text-primary mb-1">Services Management</h1>
+        <h1 class="h2 fw-bold text-primary mb-1"><i class="bi bi-gear-wide-connected me-2"></i>Services Management</h1>
         <p class="text-muted mb-0">Manage and configure available medical services</p>
       </div>
       <div class="ms-lg-auto">
@@ -35,22 +35,22 @@
     <form method="GET" action="{{ route('admin.services.index') }}" class="row g-3 align-items-end">
       <div class="col-md-5 col-lg-4">
         <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i>Search</label>
-        <input type="text" name="q" value="{{ request('q') }}" class="form-control" placeholder="Search service name..." />
+        <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-lg" placeholder="Search service name..." />
       </div>
       <div class="col-md-4 col-lg-3">
         <label class="form-label fw-semibold"><i class="bi bi-sort-alpha-down me-1"></i>Order</label>
-        <select name="sort" class="form-select">
+        <select name="sort" class="form-select form-select-lg">
           <option value="" @selected(request('sort')===null || request('sort')==='')>Newest First</option>
           <option value="az" @selected(request('sort')==='az')>Name A → Z</option>
           <option value="za" @selected(request('sort')==='za')>Name Z → A</option>
         </select>
       </div>
       <div class="col-md-2 col-lg-2">
-        <button class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Apply</button>
+        <button class="btn btn-primary btn-lg w-100"><i class="bi bi-funnel me-1"></i>Apply</button>
       </div>
       <div class="col-md-2 col-lg-2">
         @if(request()->hasAny(['q','sort']) && (request('q') || request('sort')))
-          <a href="{{ route('admin.services.index') }}" class="btn btn-outline-secondary w-100"><i class="bi bi-x-circle me-1"></i>Clear</a>
+          <a href="{{ route('admin.services.index') }}" class="btn btn-outline-secondary btn-lg w-100"><i class="bi bi-x-circle me-1"></i>Clear</a>
         @endif
       </div>
     </form>
@@ -61,48 +61,45 @@
   {{-- Table --}}
   <div class="medical-card p-4">
     <div class="d-flex flex-wrap align-items-center mb-4 gap-2">
-      <h4 class="mb-0">Available Services</h4>
-      <span class="badge bg-primary">{{ $services->total() }}</span>
+      <h4 class="mb-0">Available Services <span class="badge bg-primary" style="font-size:.75rem;">{{ $services->total() }}</span></h4>
     </div>
 
     <div class="table-responsive">
       <table class="table table-hover">
         <thead>
           <tr class="bg-light">
-            <th class="border-0 px-4 py-3 fw-semibold">
-              <i class="bi bi-gear me-1"></i>Service Name
-            </th>
-            <th class="border-0 px-4 py-3 fw-semibold">
-              <i class="bi bi-building me-1"></i>Clinics Using
-            </th>
+            <th class="border-0 px-4 py-3 fw-semibold">Service Name</th>
+            <th class="border-0 px-4 py-3 fw-semibold">Clinics Using</th>
             <th class="border-0 px-4 py-3 fw-semibold text-end" style="width:140px;">Actions</th>
           </tr>
         </thead>
         <tbody>
           @forelse($services as $service)
             <tr>
-              <td class="px-4 py-4">
-                <h6 class="fw-semibold text-dark mb-0">{{ $service->name }}</h6>
+              <td class="px-4 py-4 fs-6">
+                <span class="fw-semibold text-dark">{{ $service->name }}</span>
               </td>
-              <td class="px-4 py-4">
+              <td class="px-4 py-4 fs-6">
                 <span class="badge bg-info text-dark px-3 py-2">{{ $service->clinics_count }}</span>
               </td>
               <td class="px-4 py-4 text-end">
                 <div class="d-flex gap-2 justify-content-end">
                   <a href="{{ route('admin.services.edit', $service) }}" 
-                     class="btn btn-sm btn-primary action-btn fixed-primary d-flex align-items-center justify-content-center" 
+                     class="btn btn-primary d-flex align-items-center justify-content-center" 
+                     style="width:36px;height:36px;"
                      title="Edit Service">
-                      <i class="bi bi-pencil-fill"></i>
+                      <i class="bi bi-pencil-square"></i>
                   </a>
                   <form method="POST" action="{{ route('admin.services.destroy', $service) }}" class="d-inline service-delete-form" id="delete-service-{{ $service->id }}">
           @csrf
           @method('DELETE')
           <button type="button"
-              class="btn btn-sm btn-danger action-btn fixed-danger d-flex align-items-center justify-content-center btn-delete-service"
+              class="btn btn-danger d-flex align-items-center justify-content-center btn-delete-service"
+              style="width:36px;height:36px;"
               data-service-name="{{ $service->name }}"
                             data-delete-form-id="delete-service-{{ $service->id }}"
               title="Delete Service">
-            <i class="bi bi-trash-fill"></i>
+            <i class="bi bi-trash3"></i>
           </button>
           </form>
                 </div>
