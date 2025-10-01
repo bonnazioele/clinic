@@ -19,9 +19,27 @@ class ServiceController extends Controller
         });
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $services = Service::latest()->paginate(10);
+        $query = Service::query()->withCount('clinics');
+
+        // Search by name or description
+        if ($request->filled('q')) {
+            $term = trim($request->input('q'));
+            $query->where('name','like',"%{$term}%");
+        }
+
+        // Sorting: default newest, az, za
+        $sort = $request->input('sort');
+        if ($sort === 'az') {
+            $query->orderBy('name','asc');
+        } elseif ($sort === 'za') {
+            $query->orderBy('name','desc');
+        } else {
+            $query->latest();
+        }
+
+        $services = $query->paginate(10)->withQueryString();
         return view('admin.services.index', compact('services'));
     }
 
@@ -64,12 +82,20 @@ class ServiceController extends Controller
             'description' => $data['description'],
         ]);
 
-        return back()->with('status','Service updated successfully.');
+        return redirect()->route('admin.services.index')
+            ->with('status','Service updated');
     }
 
-    public function destroy(Service $service)
-    {
-        $service->delete();
-        return back()->with('status','Service removed.');
-    }
+        public function destroy(Service $service)
+        {
+            if ($service->clinics()->exists()) {
+                return redirect()->route('admin.services.index')
+                    ->with('error', 'Service cannot be deleted because one or more clinics are using it');
+            }
+
+            $service->delete();
+
+            return redirect()->route('admin.services.index')
+                ->with('status','Service removed successfully.');
+        }
 }

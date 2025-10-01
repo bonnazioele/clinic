@@ -2,6 +2,7 @@
 
 @section('content')
 <div class="container py-4">
+  {{-- Removed hover styling per request --}}
   <!-- Unified Welcome Header -->
   <div class="row mb-4">
     <div class="col-12">
@@ -17,28 +18,36 @@
         </div>
         <div class="row g-3 text-start">
           <div class="col-md-3">
-            <div class="p-4 rounded text-white" style="background:#1976ff;">
-              <div class="fs-3 fw-bold">{{ $registeredClinics }}</div>
-              <div class="mt-1">Total Registered Clinics</div>
-            </div>
+            <a href="{{ route('admin.clinics.index') }}" class="text-decoration-none d-block" style="outline:0;">
+              <div class="p-4 rounded text-white" style="background:#1976ff;">
+                <div class="fs-3 fw-bold">{{ $registeredClinics }}</div>
+                <div class="mt-1">Total Registered Clinics</div>
+              </div>
+            </a>
           </div>
           <div class="col-md-3">
-            <div class="p-4 rounded text-white" style="background:#1f7f56;">
-              <div class="fs-3 fw-bold">{{ $services }}</div>
-              <div class="mt-1">Total Services</div>
-            </div>
+            <a href="{{ route('admin.services.index') }}" class="text-decoration-none d-block" style="outline:0;">
+              <div class="p-4 rounded text-white" style="background:#1f7f56;">
+                <div class="fs-3 fw-bold">{{ $services }}</div>
+                <div class="mt-1">Total Services</div>
+              </div>
+            </a>
           </div>
           <div class="col-md-3">
-            <div class="p-4 rounded" style="background:#ffc107;">
-              <div class="fs-3 fw-bold">{{ $users }}</div>
-              <div class="mt-1">Total Users</div>
-            </div>
+            <a href="{{ route('admin.users.index') }}" class="text-decoration-none d-block" style="outline:0;">
+              <div class="p-4 rounded" style="background:#ffc107; color:#212529;">
+                <div class="fs-3 fw-bold">{{ $users }}</div>
+                <div class="mt-1">Total Users</div>
+              </div>
+            </a>
           </div>
           <div class="col-md-3">
-            <div class="p-4 rounded text-white" style="background:#6c757d;">
-              <div class="fs-3 fw-bold">{{ $pendingCount }}</div>
-              <div class="mt-1">Total Pending Clinics</div>
-            </div>
+            <a href="#pending-clinic-applicants" class="text-decoration-none d-block" style="outline:0;">
+              <div class="p-4 rounded text-white" style="background:#6c757d;">
+                <div class="fs-3 fw-bold">{{ $pendingCount }}</div>
+                <div class="mt-1">Total Pending Clinics</div>
+              </div>
+            </a>
           </div>
         </div>
       </div>
@@ -55,10 +64,9 @@
   </div>
 
   {{-- Pending Clinic Applicants --}}
-  <div class="medical-card p-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h5 class="mb-0"><i class="bi bi-inbox me-2"></i>Pending Clinic Applicants</h5>
-      <span class="badge bg-primary">{{ $pendingCount }}</span>
+  <div class="medical-card p-4" id="pending-clinic-applicants">
+    <div class="d-flex align-items-center mb-3">
+      <h5 class="mb-0"><i class="bi bi-inbox me-2"></i>Pending Clinic Applicants <span class="badge bg-primary ms-2">{{ $pendingCount }}</span></h5>
     </div>
     @if(($pendingClinics ?? collect())->isEmpty())
       <div class="text-center text-muted py-3">

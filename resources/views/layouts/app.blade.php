@@ -604,5 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 @stack('scripts')
+@stack('modals')
 </body>
 </html>
