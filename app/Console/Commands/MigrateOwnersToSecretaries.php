@@ -40,7 +40,7 @@ class MigrateOwnersToSecretaries extends Command
         $promoted = 0; $pending = 0; $skipped = 0;
         $query->chunkById(100, function($users) use (&$promoted, &$pending, &$skipped, $dry) {
             foreach ($users as $user) {
-                $clinic = Clinic::where('user_id', $user->id)
+                $clinic = Clinic::where('created_by_user_id', $user->id)
                     ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
                     ->orderByDesc('id')
                     ->first();

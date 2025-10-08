@@ -14,14 +14,14 @@ class ClinicFactory extends Factory
     {
         $name = $this->faker->company().' Clinic';
         return [
-            'user_id' => null,
+            'created_by_user_id' => null,
             'name' => $name,
             'branch_code' => strtoupper(Str::random(6)),
             'address' => $this->faker->address(),
             'contact_number' => $this->faker->phoneNumber(),
             'email' => $this->faker->unique()->safeEmail(),
-            'owner_first_name' => null,
-            'owner_last_name' => null,
+            'contact_first_name' => null,
+            'contact_last_name' => null,
             'logo' => null,
             'cover_image' => null,
             'description' => $this->faker->sentence(),

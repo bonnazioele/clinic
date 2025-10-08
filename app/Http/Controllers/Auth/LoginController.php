@@ -24,7 +24,7 @@ class LoginController extends Controller
         if ($user->is_admin) {
             return redirect()->route('admin.dashboard');
         }
-        $clinic = Clinic::where('user_id', $user->id)
+        $clinic = Clinic::where('created_by_user_id', $user->id)
             ->orderByRaw("CASE WHEN status IN ('approved','active') THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();

@@ -8,7 +8,7 @@
         if($u->is_admin){
           $homeRoute = 'admin.dashboard';
         } elseif($u->is_owner){
-          $clinic = \App\Models\Clinic::where('user_id',$u->id)
+          $clinic = \App\Models\Clinic::where('created_by_user_id',$u->id)
             ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();

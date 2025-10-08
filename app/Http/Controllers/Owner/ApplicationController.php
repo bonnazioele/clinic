@@ -29,8 +29,8 @@ class ApplicationController extends Controller
             'clinic_contact' => ['required','string','max:50'],
             'branch_code'   => ['required','string','max:255', Rule::unique('clinics','branch_code')->whereNull('deleted_at')],
             'clinic_email'  => ['required','email','max:255', Rule::unique('clinics','email')->whereNull('deleted_at')],
-            'owner_first_name' => ['required','string','max:255'],
-            'owner_last_name'  => ['required','string','max:255'],
+            'contact_first_name' => ['required','string','max:255'],
+            'contact_last_name'  => ['required','string','max:255'],
             'latitude'      => ['nullable','numeric','between:-90,90'],
             'longitude'     => ['nullable','numeric','between:-180,180'],
             'logo'          => ['nullable','image','mimes:jpeg,png,jpg,gif,svg','max:2048'],
@@ -47,14 +47,14 @@ class ApplicationController extends Controller
         }
 
         $clinic = Clinic::create([
-            'user_id' => null,
+            'created_by_user_id' => null,
             'name' => $data['clinic_name'],
             'address' => $data['clinic_address'],
             'contact_number' => $data['clinic_contact'],
             'description' => null,
             'email' => $clinicEmail,
-            'owner_first_name' => $data['owner_first_name'],
-            'owner_last_name' => $data['owner_last_name'],
+            'contact_first_name' => $data['contact_first_name'],
+            'contact_last_name' => $data['contact_last_name'],
             'branch_code' => $branchCode,
             'logo' => $logoPath,
             'gps_latitude' => $data['latitude'] ?? null,

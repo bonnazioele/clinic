@@ -13,19 +13,25 @@
           <form method="POST" action="{{ route('owner.apply.store') }}" enctype="multipart/form-data">
             @csrf
 
-            <h6 class="text-muted mb-3">Clinic Details</h6>
+            <h6 class="text-muted mb-3">Contact Person Details</h6>
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-1"></i>
+              <small>The contact person must be the official clinic admin or an authorized representative of the clinic.</small>
+            </div>
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="owner_first_name" class="form-label"><i class="bi bi-person me-1"></i>Owner First Name <span class="text-danger">*</span></label>
-                <input id="owner_first_name" type="text" name="owner_first_name" class="form-control @error('owner_first_name') is-invalid @enderror" value="{{ old('owner_first_name') }}" maxlength="255" required placeholder="e.g., Juan">
-                @error('owner_first_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                <label for="contact_first_name" class="form-label"><i class="bi bi-person me-1"></i>First Name <span class="text-danger">*</span></label>
+                <input id="contact_first_name" type="text" name="contact_first_name" class="form-control @error('contact_first_name') is-invalid @enderror" value="{{ old('contact_first_name') }}" maxlength="255" required placeholder="e.g., Juan">
+                @error('contact_first_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
               </div>
               <div class="col-md-6 mb-3">
-                <label for="owner_last_name" class="form-label"><i class="bi bi-person me-1"></i>Owner Last Name <span class="text-danger">*</span></label>
-                <input id="owner_last_name" type="text" name="owner_last_name" class="form-control @error('owner_last_name') is-invalid @enderror" value="{{ old('owner_last_name') }}" maxlength="255" required placeholder="e.g., Dela Cruz">
-                @error('owner_last_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                <label for="contact_last_name" class="form-label"><i class="bi bi-person me-1"></i>Last Name <span class="text-danger">*</span></label>
+                <input id="contact_last_name" type="text" name="contact_last_name" class="form-control @error('contact_last_name') is-invalid @enderror" value="{{ old('contact_last_name') }}" maxlength="255" required placeholder="e.g., Dela Cruz">
+                @error('contact_last_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
               </div>
             </div>
+
+            <h6 class="text-muted mb-3 mt-4">Clinic Details</h6>
             <div class="mb-3">
               <label for="clinic_name" class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>
               <input id="clinic_name" type="text" name="clinic_name" class="form-control @error('clinic_name') is-invalid @enderror" value="{{ old('clinic_name') }}" required maxlength="255" placeholder="Enter clinic name">

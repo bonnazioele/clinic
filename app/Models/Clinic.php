@@ -16,14 +16,14 @@ class Clinic extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id',
+        'created_by_user_id',
         'name',
         'branch_code',
         'address',
         'contact_number',
         'email',
-        'owner_first_name',
-        'owner_last_name',
+        'contact_first_name',
+        'contact_last_name',
         'logo',
         'cover_image',
         'description',
@@ -39,7 +39,7 @@ class Clinic extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
     public function services(): BelongsToMany

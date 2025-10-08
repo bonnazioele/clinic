@@ -113,9 +113,9 @@ class ClinicController extends Controller
             if (!$owner) {
                 $tempPasswordPlain = method_exists(Str::class, 'password') ? Str::password(12) : Str::random(12);
                 $owner = User::create([
-                    'name'     => trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: 'Clinic Owner',
-                    'first_name' => $clinic->owner_first_name,
-                    'last_name'  => $clinic->owner_last_name,
+                    'name'     => trim(($clinic->contact_first_name ?? '') . ' ' . ($clinic->contact_last_name ?? '')) ?: 'Clinic Owner',
+                    'first_name' => $clinic->contact_first_name,
+                    'last_name'  => $clinic->contact_last_name,
                     'email'    => $clinic->email,
                     'phone'    => $clinic->contact_number, // propagate clinic contact number to owner user
                     'password' => $tempPasswordPlain,
@@ -123,7 +123,7 @@ class ClinicController extends Controller
                 ]);
             }
 
-            $clinic->user_id = $owner->id;
+            $clinic->created_by_user_id = $owner->id;
             $clinic->save();
             $clinic->secretaries()->syncWithoutDetaching([$owner->id]);
 
@@ -131,7 +131,7 @@ class ClinicController extends Controller
             try {
                 Mail::to($clinic->email)->send(new ClinicApprovedMail(
                     clinicName: $clinic->name,
-                    name: trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: $owner->name,
+                    name: trim(($clinic->contact_first_name ?? '') . ' ' . ($clinic->contact_last_name ?? '')) ?: $owner->name,
                     email: $owner->email,
                     password: $tempPasswordPlain,
                     loginUrl: $loginUrl
@@ -246,9 +246,9 @@ class ClinicController extends Controller
 
             if (!$owner) {
                 $owner = User::create([
-                    'name'        => trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: 'Clinic Owner',
-                    'first_name'  => $clinic->owner_first_name,
-                    'last_name'   => $clinic->owner_last_name,
+                    'name'        => trim(($clinic->contact_first_name ?? '') . ' ' . ($clinic->contact_last_name ?? '')) ?: 'Clinic Owner',
+                    'first_name'  => $clinic->contact_first_name,
+                    'last_name'   => $clinic->contact_last_name,
                     'email'       => $clinic->email,
                     'phone'       => $clinic->contact_number, // set phone from clinic
                     'password'    => $tempPasswordPlain,
@@ -268,14 +268,14 @@ class ClinicController extends Controller
                 $owner->save();
             }
 
-            $clinic->user_id = $owner->id;
+            $clinic->created_by_user_id = $owner->id;
             $clinic->save();
             $clinic->secretaries()->syncWithoutDetaching([$owner->id]);
         });
 
         $loginUrl = route('login');
         try {
-            $emailName = trim(($clinic->owner_first_name ?? '') . ' ' . ($clinic->owner_last_name ?? '')) ?: (optional($clinic->user)->name ?: 'Clinic Owner');
+            $emailName = trim(($clinic->contact_first_name ?? '') . ' ' . ($clinic->contact_last_name ?? '')) ?: (optional($clinic->user)->name ?: 'Clinic Owner');
             Mail::to($clinic->email)->send(new ClinicApprovedMail(
                 clinicName: $clinic->name,
                 name: $emailName,
