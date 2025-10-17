@@ -184,15 +184,7 @@
                 <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($appointment->appointment_time)->format('h:i A') }}</small>
               </td>
               <td class="px-4 py-3">
-                @if($appointment->status === 'scheduled')
-                  <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Scheduled</span>
-                @elseif($appointment->status === 'completed')
-                  <span class="badge bg-success text-white"><i class="bi bi-check-circle me-1"></i>Completed</span>
-                @elseif($appointment->status === 'cancelled')
-                  <span class="badge bg-danger text-white"><i class="bi bi-x-circle me-1"></i>Cancelled</span>
-                @else
-                  <span class="badge bg-secondary text-white"><i class="bi bi-question-circle me-1"></i>{{ ucfirst($appointment->status) }}</span>
-                @endif
+                <span class="badge {{ $appointment->status_badge_class }}">{{ $appointment->status_label }}</span>
               </td>
               <td class="px-4 py-3">
                 @if($appointment->medical_document)
@@ -284,13 +276,7 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center">
-              @if($appointment->status === 'scheduled')
-                <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Scheduled</span>
-              @elseif($appointment->status === 'completed')
-                <span class="badge bg-success text-white"><i class="bi bi-check-circle me-1"></i>Completed</span>
-              @elseif($appointment->status === 'cancelled')
-                <span class="badge bg-danger text-white"><i class="bi bi-x-circle me-1"></i>Cancelled</span>
-              @endif
+              <span class="badge {{ $appointment->status_badge_class }}">{{ $appointment->status_label }}</span>
               <a href="{{ route('secretary.appointments.edit', $appointment) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
             </div>
           </div>

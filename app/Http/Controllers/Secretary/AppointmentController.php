@@ -97,7 +97,7 @@ class AppointmentController extends Controller
             'doctor_id'        => 'nullable|exists:users,id',
             'appointment_date' => 'required|date',
             'appointment_time' => 'required',
-            'status'           => 'required|in:scheduled,completed,cancelled',
+            'status'           => 'required|in:scheduled,completed,cancelled,no_show',
         ]);
 
         $allowedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
@@ -121,7 +121,7 @@ class AppointmentController extends Controller
             $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
                 ->whereDate('appointment_date', $data['appointment_date'])
                 ->where('appointment_time', $time)
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled','no_show'])
                 ->where('id', '!=', $appointment->id)
                 ->exists();
             if ($doctorBusy) {
@@ -131,7 +131,7 @@ class AppointmentController extends Controller
             $patientConflict = Appointment::where('user_id', $appointment->user_id)
                 ->whereDate('appointment_date', $data['appointment_date'])
                 ->where('appointment_time', $data['appointment_time'])
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled','no_show'])
                 ->where('id','!=',$appointment->id)
                 ->exists();
             if ($patientConflict) {
@@ -187,7 +187,7 @@ class AppointmentController extends Controller
             ->where('clinic_id', $data['clinic_id'])
             ->where('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $data['appointment_time'])
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled','no_show'])
             ->exists();
         if ($exists) {
             return back()
@@ -198,7 +198,7 @@ class AppointmentController extends Controller
         $globalConflict = Appointment::where('user_id', $data['user_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $data['appointment_time'])
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled','no_show'])
             ->exists();
         if ($globalConflict) {
             return back()
@@ -221,7 +221,7 @@ class AppointmentController extends Controller
         $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $time)
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled','no_show'])
             ->exists();
         if ($doctorBusy) {
             return back()->withInput()->withErrors(['appointment_time' => 'Doctor already booked for that timeslot.']);

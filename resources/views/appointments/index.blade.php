@@ -86,10 +86,8 @@
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
                   <td>
-                    <span class="badge rounded-pill
-                      {{ $a->status === 'scheduled' ? 'bg-warning text-dark' :
-                         ($a->status === 'completed' ? 'bg-success' : 'bg-secondary') }}">
-                      {{ ucfirst($a->status) }}
+                    <span class="badge rounded-pill {{ $a->status_badge_class }}">
+                      {{ $a->status_label }}
                     </span>
                   </td>
                   <td>
@@ -167,10 +165,8 @@
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
                   <td>
-                    <span class="badge rounded-pill
-                      {{ $a->status === 'scheduled' ? 'bg-warning text-dark' :
-                         ($a->status === 'completed' ? 'bg-success' : 'bg-secondary') }}">
-                      {{ ucfirst($a->status) }}
+                    <span class="badge rounded-pill {{ $a->status_badge_class }}">
+                      {{ $a->status_label }}
                     </span>
                   </td>
                 </tr>

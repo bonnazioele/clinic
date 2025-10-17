@@ -133,7 +133,8 @@ Route::prefix('secretary')
          Route::get('/clinics/{clinic}/queue', [\App\Http\Controllers\Secretary\QueueController::class,'queue'])->name('queue.index');
         Route::post('/{clinic}/{entry}/call', [\App\Http\Controllers\Secretary\QueueController::class, 'call'])->name('queue.call');
         Route::post('/{clinic}/{entry}/reschedule', [\App\Http\Controllers\Secretary\QueueController::class, 'reschedule'])->name('queue.reschedule');
-        Route::post('/{clinic}/{entry}/cancel', [\App\Http\Controllers\Secretary\QueueController::class, 'cancel'])->name('queue.cancel');
+         Route::post('/{clinic}/{entry}/cancel', [\App\Http\Controllers\Secretary\QueueController::class, 'cancel'])->name('queue.cancel');
+         Route::post('/{clinic}/{entry}/no-show', [\App\Http\Controllers\Secretary\QueueController::class, 'noShow'])->name('queue.no_show');
 
          Route::resource('doctors', SecDoctor::class);
 

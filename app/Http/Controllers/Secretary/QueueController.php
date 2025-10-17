@@ -179,4 +179,38 @@ class QueueController extends Controller
 
         return back()->with('status', "Cancelled queue #{$entry->queue_number}.");
     }
+
+    /**
+     * NO-SHOW action — mark a waiting/called/rescheduled entry as no_show.
+     * Does NOT serve the entry; keeps audit trail and optionally updates appointment status.
+     */
+    public function noShow(Clinic $clinic, QueueEntry $entry)
+    {
+        if ($entry->clinic_id !== $clinic->id) {
+            abort(403,'Queue entry does not belong to this clinic.');
+        }
+        if (! in_array($entry->status, ['waiting','called','rescheduled'])) {
+            return back()->with('error','Only waiting/called/rescheduled entries can be marked no-show.');
+        }
+
+        DB::transaction(function() use ($entry) {
+            $entry->update(['status' => 'no_show']);
+            if ($entry->appointment && $entry->appointment->status !== 'completed') {
+                // Track on appointment side if desired; using 'cancelled' vs distinct 'no_show'
+                if ($entry->appointment->status !== 'cancelled') {
+                    $entry->appointment->update(['status' => 'cancelled']);
+                    if ($entry->appointment->user) {
+                        $entry->appointment->user->notify(new AppointmentStatusChanged($entry->appointment));
+                    }
+                }
+            }
+        });
+
+        event(new QueueUpdated($entry->fresh(),'no_show'));
+
+        // Advance next patient automatically (optional). We will not auto-advance to avoid surprise;
+        // if you want auto-call next, you can implement here.
+
+        return back()->with('status', "Marked queue #{$entry->queue_number} as no-show.");
+    }
 }

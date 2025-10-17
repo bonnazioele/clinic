@@ -65,5 +65,27 @@ class Appointment extends Model
         }
         return Carbon::parse($value);
     }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'scheduled' => 'Scheduled',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'no_show'   => 'No Show',
+            default     => ucfirst(str_replace('_',' ',$this->status ?? 'Unknown')),
+        };
+    }
+
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match($this->status) {
+            'scheduled' => 'bg-warning text-dark',
+            'completed' => 'bg-success',
+            'cancelled' => 'bg-secondary',
+            'no_show'   => 'bg-secondary',
+            default     => 'bg-light text-dark',
+        };
+    }
 }
 

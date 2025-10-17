@@ -27,6 +27,7 @@
             <th>Queue #</th>
             <th>Patient</th>
             <th>Appointment</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -47,12 +48,23 @@
                 @endif
               </td>
               <td>
+                <span class="badge bg-{{ $queueEntry->status_badge_class }}">{{ $queueEntry->status_label }}</span>
+              </td>
+              <td>
                 <div class="d-flex gap-2">
                   <!-- Call -->
                   <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
                     @csrf
                     <button class="btn btn-sm btn-primary">
                       <i class="bi bi-megaphone me-1"></i>Call
+                    </button>
+                  </form>
+
+                  <!-- No-Show -->
+                  <form method="POST" action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}" onsubmit="return confirm('Mark this patient as NO-SHOW?');">
+                    @csrf
+                    <button class="btn btn-sm btn-outline-secondary">
+                      <i class="bi bi-person-x me-1"></i>No-Show
                     </button>
                   </form>
 

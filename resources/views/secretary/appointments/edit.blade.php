@@ -85,10 +85,10 @@
       <label class="form-label">Status</label>
       <select name="status"
               class="form-select @error('status') is-invalid @enderror">
-        @foreach(['scheduled','completed','cancelled'] as $st)
+        @foreach(['scheduled','completed','cancelled','no_show'] as $st)
           <option value="{{ $st }}"
             @selected(old('status',$appointment->status)==$st)>
-            {{ ucfirst($st) }}
+            {{ ucwords(str_replace('_',' ',$st)) }}
           </option>
         @endforeach
       </select>
