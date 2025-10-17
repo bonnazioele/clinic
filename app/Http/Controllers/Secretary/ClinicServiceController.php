@@ -119,9 +119,9 @@ class ClinicServiceController extends Controller
             return back()->with('error','Service not attached to clinic.');
         }
 
-        $inUse = Appointment::where('clinic_id',$clinic->id)
-            ->where('service_id',$service->id)
-            ->where('status','!=','cancelled')
+        $inUse = Appointment::where('clinic_id', $clinic->id)
+            ->where('service_id', $service->id)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
             ->exists();
         if ($inUse) {
             return back()->with('error','Cannot remove: service already used in appointments.');
@@ -132,8 +132,8 @@ class ClinicServiceController extends Controller
 
     public function destroy(Service $service)
     {
-        $inUse = Appointment::where('service_id',$service->id)
-            ->where('status','!=','cancelled')
+        $inUse = Appointment::where('service_id', $service->id)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
             ->exists();
         if ($inUse) {
             return back()->with('error','Cannot delete: service used in appointments.');
