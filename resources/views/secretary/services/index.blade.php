@@ -92,26 +92,20 @@
             <form method="POST" action="{{ route('secretary.services.attach',$clinic) }}">
               @csrf
               <div class="mb-3">
-                <label for="serviceSelect" class="form-label fw-semibold">Select Services</label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-list-check"></i></span>
-                  <select id="serviceSelect"
-                          name="service_ids[]"
-                          class="form-select @error('service_ids') is-invalid @enderror"
-                          multiple required>
-                    @foreach($availableServices as $svc)
-                      <option value="{{ $svc->id }}">{{ $svc->name }}</option>
-                    @endforeach
-                  </select>
-                </div>
+                <label for="serviceSelect" class="form-label fw-semibold"><i class="bi bi-list-check me-1"></i> Select Services</label>
+                <select id="serviceSelect"
+                        name="service_ids[]"
+                        class="form-select @error('service_ids') is-invalid @enderror"
+                        multiple required>
+                  @foreach($availableServices as $svc)
+                    <option value="{{ $svc->id }}">{{ $svc->name }}</option>
+                  @endforeach
+                </select>
                 @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
               </div>
               <div class="mb-3">
-                <label for="duration_minutes" class="form-label fw-semibold">Default Duration (minutes)</label>
-                <div class="input-group">
-                  <span class="input-group-text"><i class="bi bi-stopwatch"></i></span>
-                  <input id="duration_minutes" type="number" name="duration_minutes" value="30" min="5" max="480" class="form-control @error('duration_minutes') is-invalid @enderror">
-                </div>
+                <label for="duration_minutes" class="form-label fw-semibold"><i class="bi bi-stopwatch me-1"></i> Default Duration (minutes)</label>
+                <input id="duration_minutes" type="number" name="duration_minutes" value="30" min="5" max="480" class="form-control @error('duration_minutes') is-invalid @enderror">
                 @error('duration_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
               </div>
               <div class="d-flex gap-2">
