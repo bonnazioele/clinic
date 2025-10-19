@@ -16,7 +16,7 @@
         action="{{ route('secretary.appointments.update',$appointment) }}">
     @csrf @method('PATCH')
 
-    {{-- Clinic --}}
+    
     <div class="mb-3">
       <label class="form-label">Clinic</label>
       <select name="clinic_id"
@@ -31,7 +31,7 @@
       @error('clinic_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Service --}}
+    
     <div class="mb-3">
       <label class="form-label">Service</label>
       <select name="service_id"
@@ -46,7 +46,7 @@
       @error('service_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Doctor --}}
+    
     <div class="mb-3">
       <label class="form-label">Assign Doctor</label>
       <select name="doctor_id"
@@ -62,7 +62,7 @@
       @error('doctor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Date/Time --}}
+    
     <div class="row g-3 mb-3">
       <div class="col">
         <label class="form-label">Date</label>
@@ -80,7 +80,7 @@
       </div>
     </div>
 
-    {{-- Status --}}
+    
     <div class="mb-3">
       <label class="form-label">Status</label>
       <select name="status"

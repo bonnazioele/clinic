@@ -22,9 +22,9 @@
   <form method="POST" action="{{ route('admin.clinics.store') }}" enctype="multipart/form-data">
     @csrf
 
-    {{-- Name --}}
+    
     <div class="mb-3">
-  <label class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label> <!-- icon already present; kept for consistency -->
+  <label class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label> 
       <input type="text" name="name"
              class="form-control @error('name') is-invalid @enderror"
              value="{{ old('name') }}" required maxlength="255"
@@ -32,7 +32,7 @@
       @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Branch Code --}}
+    
     <div class="mb-3">
   <label class="form-label"><i class="bi bi-tag me-1"></i>Branch Code <span class="text-danger">*</span></label>
       <input type="text" name="branch_code"
@@ -43,7 +43,7 @@
       <div class="form-text">Unique identifier for this clinic branch.</div>
     </div>
 
-    {{-- Address --}}
+    
     <div class="mb-3">
   <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Address <span class="text-danger">*</span></label>
       <textarea name="address"
@@ -53,7 +53,7 @@
       @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Contact / Email --}}
+    
     <div class="row">
       <div class="col-md-6">
         <div class="mb-3">
@@ -77,7 +77,7 @@
       </div>
     </div>
 
-    {{-- Services Offered --}}
+    
     <div class="mb-3">
       <label class="form-label"><i class="bi bi-gear me-1"></i>Services Offered</label>
       <div class="dropdown">
@@ -103,7 +103,7 @@
       <div id="selected-services" class="mt-2"></div>
     </div>
 
-    {{-- Logo Upload --}}
+    
     <div class="mb-3">
       <label class="form-label"><i class="bi bi-image me-1"></i>Clinic Logo <small class="text-muted">(optional)</small></label>
       <input type="file" name="logo" id="logoInput"
@@ -112,7 +112,7 @@
       @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
       <div class="form-text">Accepted formats: JPEG, PNG, JPG, GIF. Maximum size: 2MB.</div>
 
-      {{-- Logo Preview --}}
+      
       <div id="logoPreview" class="mt-2" style="display:none;">
         <img id="previewImage" src="" alt="Logo Preview" class="img-thumbnail" style="max-width:150px; max-height:150px;">
         <div class="mt-1">
@@ -121,14 +121,14 @@
       </div>
     </div>
 
-    {{-- Map --}}
+    
     <div class="mb-3">
       <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Location <span class="text-danger">*</span></label>
       <div class="form-text mb-2">Click on the map or drag the marker to set the clinic location.</div>
       <div id="mapPicker" class="map-picker"></div>
     </div>
 
-    {{-- Lat/Lng --}}
+    
     <div class="row">
       <div class="col">
   <label class="form-label"><i class="bi bi-compass me-1"></i>Latitude <span class="text-danger">*</span></label>
@@ -146,7 +146,7 @@
       </div>
     </div>
 
-    {{-- Secretary Credentials Section --}}
+    
     <hr class="my-4">
     <h6 class="text-primary mb-3"><i class="bi bi-person-badge me-1"></i>Initial Secretary Account</h6>
     <div class="row g-3">

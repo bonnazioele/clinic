@@ -16,7 +16,7 @@
             @csrf
             @method('PATCH')
 
-            <!-- Basic Information -->
+            
             <div class="row mb-3">
               <div class="col-md-8">
                 <label class="form-label">Clinic Name <span class="text-danger">*</span></label>
@@ -39,7 +39,7 @@
               </div>
             </div>
 
-            <!-- Address -->
+            
             <div class="mb-3">
               <label class="form-label">Address <span class="text-danger">*</span></label>
               <textarea name="address"
@@ -49,7 +49,7 @@
               @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            <!-- Contact Information -->
+            
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Contact Number <span class="text-danger">*</span></label>
@@ -73,7 +73,7 @@
               </div>
             </div>
 
-            <!-- Logo Upload -->
+            
             <div class="mb-3">
               <label class="form-label">Clinic Logo <small class="text-muted">(optional)</small></label>
               <input type="file"
@@ -83,7 +83,7 @@
                      accept="image/*">
               @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
 
-              <!-- Current Logo Display -->
+              
               @if($clinic->logo)
                 <div class="mt-2">
                   <small class="text-muted">Current Logo:</small><br>
@@ -94,7 +94,7 @@
                 </div>
               @endif
 
-              <!-- Preview -->
+              
               <div class="mt-2">
                 <img id="logo-preview"
                      src="#"
@@ -108,14 +108,14 @@
               </div>
             </div>
 
-            <!-- Map Picker -->
+            
             <div class="mb-3">
               <label class="form-label">Location <span class="text-danger">*</span></label>
               <small class="text-muted d-block mb-2">Click on the map or drag the marker to set the clinic's location</small>
               <div id="mapPicker" style="height: 300px;" class="border rounded"></div>
             </div>
 
-            <!-- Latitude & Longitude -->
+            
             <div class="row">
               <div class="col">
                 <label class="form-label">Latitude <span class="text-danger">*</span></label>
@@ -141,7 +141,7 @@
               </div>
             </div>
 
-            <!-- Services Offered -->
+            
             <div class="mb-3">
               <label class="form-label">Services Offered <small class="text-muted">(optional)</small></label>
               <div class="dropdown">
@@ -165,7 +165,7 @@
               </div>
               @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
-              <!-- Selected Services Display -->
+              
               <div id="selected-services" class="mt-2"></div>
             </div>
 

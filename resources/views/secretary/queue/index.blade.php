@@ -52,7 +52,7 @@
               </td>
               <td>
                 <div class="d-flex gap-2">
-                  <!-- Call -->
+                  
                   <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
                     @csrf
                     <button class="btn btn-sm btn-primary">
@@ -60,7 +60,7 @@
                     </button>
                   </form>
 
-                  <!-- No-Show -->
+                  
                   <form method="POST" action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}" onsubmit="return confirm('Mark this patient as NO-SHOW?');">
                     @csrf
                     <button class="btn btn-sm btn-outline-secondary">
@@ -68,12 +68,12 @@
                     </button>
                   </form>
 
-                  <!-- Reschedule -->
+                  
                   <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#reschedModal{{ $queueEntry->id }}">
                     <i class="bi bi-calendar-event me-1"></i>Resched
                   </button>
 
-                  <!-- Cancel -->
+                  
                   <form method="POST" action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}">
                     @csrf
                     <button class="btn btn-sm btn-outline-danger">
@@ -82,7 +82,7 @@
                   </form>
                 </div>
 
-                <!-- Reschedule Modal -->
+                
                 <div class="modal fade" id="reschedModal{{ $queueEntry->id }}" tabindex="-1">
                   <div class="modal-dialog">
                     <form method="POST" action="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}" class="modal-content">

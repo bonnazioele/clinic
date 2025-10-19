@@ -1,5 +1,5 @@
-{{-- Secretary Appointments Pane (reusable in dashboard and index) --}}
-<!-- Page Header -->
+
+
 <div class="medical-card p-4 mb-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <!-- Statistics Row -->
+  
   <div class="row g-3">
     <div class="col-md-3">
       <div class="text-center p-3 bg-light rounded-3">
@@ -49,7 +49,7 @@
   </div>
 </div>
 
-<!-- Search and Filter -->
+
 <div class="medical-card p-4 mb-4">
   <h5 class="mb-3">
     <i class="bi bi-search medical-icon me-2"></i>Search & Filter Appointments
@@ -84,7 +84,7 @@
   </form>
 </div>
 
-<!-- Quick Actions -->
+
 <div class="medical-card p-4 mb-4">
   <h5 class="mb-3">
     <i class="bi bi-lightning medical-icon me-2"></i>Quick Actions
@@ -113,7 +113,7 @@
   </div>
 </div>
 
-<!-- Appointments Table -->
+
 <div class="medical-card p-0">
   <div class="d-flex align-items-center justify-content-between p-4 border-bottom">
     <h5 class="mb-0">
@@ -132,7 +132,7 @@
     </div>
   </div>
 
-  <!-- Table View -->
+  
   <div id="tableViewContent">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -228,7 +228,7 @@
     </div>
   </div>
 
-  <!-- Card View (Hidden by default) -->
+  
   <div id="cardViewContent" class="p-4" style="display: none;">
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
       @forelse($appointments as $appointment)
@@ -295,7 +295,7 @@
   </div>
 </div>
 
-<!-- Pagination -->
+
 @if($appointments->hasPages())
   <div class="d-flex justify-content-center mt-4">
     <nav aria-label="Appointments pagination">

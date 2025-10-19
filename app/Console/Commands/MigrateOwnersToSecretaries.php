@@ -47,7 +47,7 @@ class MigrateOwnersToSecretaries extends Command
                 if (! $clinic) { $skipped++; continue; }
                 if ($clinic->isApprovedLike()) {
                     if (! $user->is_secretary) { $user->is_secretary = true; }
-                    $user->is_owner = false; // clear flag
+                    $user->is_owner = false; 
                     if (! $dry) { $user->save(); }
                     $promoted++;
                 } else {

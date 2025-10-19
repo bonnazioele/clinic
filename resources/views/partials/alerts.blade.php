@@ -55,7 +55,7 @@
         </div>
       @endforeach
 
-      {{-- Validation errors details (collapsible) --}}
+      
       @if($errors->any())
   <div class="toast text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
           <div class="toast-header">

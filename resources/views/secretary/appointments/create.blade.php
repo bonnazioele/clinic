@@ -19,7 +19,7 @@
                     <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm" enctype="multipart/form-data">
                         @csrf
 
-                        <!-- Patient Selection -->
+                        
                         <div class="mb-3">
                             <label for="user_id" class="form-label fw-semibold">
                                 <i class="bi bi-person me-1"></i>Patient
@@ -37,7 +37,7 @@
                             @enderror
                         </div>
 
-                        <!-- Clinic Selection -->
+                        
                         <div class="mb-3">
                             <label for="clinic_id" class="form-label fw-semibold">
                                 <i class="bi bi-building me-1"></i>Clinic
@@ -55,7 +55,7 @@
                             @enderror
                         </div>
 
-                        <!-- Service Selection -->
+                        
                         <div class="mb-3">
                             <label for="service_id" class="form-label fw-semibold">
                                 <i class="bi bi-tools me-1"></i>Service
@@ -68,7 +68,7 @@
                             @enderror
                         </div>
 
-                        <!-- Doctor Selection -->
+                        
                         <div class="mb-3">
                             <label for="doctor_id" class="form-label fw-semibold">
                                 <i class="bi bi-person-badge me-1"></i>Doctor
@@ -81,7 +81,7 @@
                             @enderror
                         </div>
 
-                                                <!-- Date / Day / Dynamic Time Slot -->
+                                                
                                                 <div class="row g-3 mb-2">
                                                     <div class="col-md-4">
                                                         <label class="form-label fw-semibold"><i class="bi bi-calendar me-1"></i>Date <span class="text-danger">*</span></label>
@@ -105,7 +105,7 @@
                                                     <div class="border rounded p-2 small" id="doctorScheduleInfo"></div>
                                                 </div>
 
-                        <!-- Notes -->
+                        
                         <div class="mb-3">
                             <label for="notes" class="form-label fw-semibold">
                                 <i class="bi bi-sticky me-1"></i>Notes (Optional)
@@ -120,7 +120,7 @@
                             @enderror
                         </div>
 
-                        <!-- Medical Document (Optional) -->
+                        
                         <div class="mb-3">
                             <label for="medical_document" class="form-label fw-semibold">
                                 <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (Optional)
@@ -132,7 +132,7 @@
                             <div class="form-text">Attach a past prescription, lab result, or relevant file (PDF or image, max 5MB).</div>
                         </div>
 
-                        <!-- Submit Buttons -->
+                        
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary px-4">
                                 <i class="bi bi-check-circle me-2"></i>Create Appointment

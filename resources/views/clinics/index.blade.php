@@ -3,7 +3,7 @@
 @section('title', 'Find Clinics')
 
 @push('styles')
-  {{-- Leaflet CSS --}}
+  
   <link rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -11,10 +11,10 @@
 
 @section('content')
 <div class="container py-4">
-  <!-- Alerts: upper-right, below the header (floating) -->
+  
   @include('partials.alerts', ['toastOffsetTop' => '7rem'])
 
-  <!-- Page Header (centered) -->
+  
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -25,7 +25,7 @@
     </div>
   </div>
 
-  {{-- Enhanced Search & Filter --}}
+  
   <div class="medical-card p-4 mb-4">
     <h5 class="mb-3">
       <i class="bi bi-search medical-icon me-2"></i>Search & Filter Clinics
@@ -69,7 +69,7 @@
     </form>
   </div>
 
-  {{-- Interactive Map --}}
+  
   <div class="medical-card p-4 mb-4">
     <h5 class="mb-3">
       <i class="bi bi-geo-alt medical-icon me-2"></i>Clinic Locations
@@ -83,7 +83,7 @@
     </div>
   </div>
 
-  {{-- Enhanced Clinics Grid --}}
+  
   <div class="medical-card p-4">
     <div class="d-flex align-items-center justify-content-between mb-4">
       <h5 class="mb-0">
@@ -163,7 +163,7 @@
               </div>
             </div>
 
-            <!-- Queue Status -->
+            
             <div class="mb-3">
               <div class="d-flex align-items-center justify-content-between">
                 <h6 class="fw-semibold mb-2">
@@ -217,7 +217,7 @@
       @endforelse
     </div>
 
-    {{-- Pagination --}}
+    
     @if($clinics->hasPages())
       <div class="d-flex justify-content-center mt-4">
         <nav aria-label="Clinics pagination">
@@ -228,7 +228,7 @@
   </div>
 </div>
 
-<!-- Clinic Details Modal -->
+
 <div class="modal fade" id="clinicDetailsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -239,7 +239,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="clinicDetailsContent">
-        <!-- Content will be loaded here -->
+        
       </div>
     </div>
   </div>
@@ -247,7 +247,7 @@
 @endsection
 
 @push('scripts')
-  {{-- Leaflet JS --}}
+  
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 

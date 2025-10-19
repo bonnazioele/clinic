@@ -111,11 +111,11 @@ class AppointmentController extends Controller
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
-            while ($cursor < $end) { // allow a slot that ends exactly at schedule end
+            while ($cursor < $end) { 
                 $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
                 if ($slotEnd > $end) {
-                    // stop if we do not want partial slot; break to keep previous behavior
-                    // To include partial, uncomment next line. For now we break.
+                    
+                    
                     break;
                 }
                 $timeLabel = $cursor->format('H:i');
@@ -240,9 +240,9 @@ class AppointmentController extends Controller
         if ($appointment->user_id !== Auth::id()) {
             abort(403,'Forbidden');
         }
-        // Load needed relations
+        
         $appointment->load(['clinic.services','doctor','service']);
-        // For reassignment we allow choosing among clinic services & doctors
+        
         $clinic = $appointment->clinic;
         $clinic->load(['services','doctors']);
         return view('appointments.edit', [
@@ -267,10 +267,10 @@ class AppointmentController extends Controller
             'appointment_time' => 'required',
         ]);
 
-        // Validate doctor schedule & conflicts similar to store
+        
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $time = $data['appointment_time'];
-        $clinicId = $appointment->clinic_id; // clinic not editable here
+        $clinicId = $appointment->clinic_id; 
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)

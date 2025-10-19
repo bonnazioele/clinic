@@ -45,7 +45,7 @@ class QueueController extends Controller
 {
     $doctor = Auth::user();
 
-    // Ensure doctor belongs to this clinic
+    
     if (! $doctor->clinics()->where('clinics.id', $entry->clinic_id)->exists()) {
         abort(403);
     }
@@ -57,27 +57,27 @@ class QueueController extends Controller
             return;
         }
 
-        // Mark as served (or completed if ENUM doesn't include 'served')
+        
         $fresh->update([
-            'status' => 'completed', // safer if 'served' is not in ENUM
+            'status' => 'completed', 
             'served_at' => now()
         ]);
 
-        // Complete appointment if exists
+        
         if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
             $fresh->appointment->update(['status' => 'completed']);
         }
 
-        // Notify secretaries only
+        
         $clinic = $fresh->clinic;
-        if ($clinic && $fresh->appointment) { // ensure appointment exists
+        if ($clinic && $fresh->appointment) { 
             $secretaries = $clinic->secretaries()->get();
             foreach ($secretaries as $sec) {
                 $sec->notify(new \App\Notifications\DoctorServedQueue($fresh->appointment));
             }
         }
 
-        // Fire event for front-end updates
+        
         event(new QueueUpdated($fresh->fresh(), 'served'));
     });
 

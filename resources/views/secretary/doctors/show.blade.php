@@ -15,7 +15,7 @@
   </div>
 
   <div class="row g-4">
-    <!-- Basic Info -->
+    
     <div class="col-lg-4">
       <div class="medical-card p-4 h-100">
         <h5 class="fw-semibold mb-3"><i class="bi bi-person-lines-fill me-2"></i>Basic Information</h5>
@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <!-- Schedule -->
+    
     <div class="col-lg-8">
       <div class="medical-card p-4 h-100">
         <h5 class="fw-semibold mb-3"><i class="bi bi-calendar-range me-2"></i>Weekly Availability</h5>
@@ -72,7 +72,7 @@
     </div>
   </div>
 
-  <!-- Recent Appointments (optional) -->
+  
   <div class="medical-card p-4 mt-4">
     <h5 class="fw-semibold mb-3"><i class="bi bi-clock-history me-2"></i>Recent Appointments</h5>
     @php

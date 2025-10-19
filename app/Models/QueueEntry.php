@@ -74,9 +74,7 @@ class QueueEntry extends Model
         return \Carbon\Carbon::parse($this->served_at)->format('g:i A');
     }
 
-    /**
-     * Map status to a human-friendly label.
-     */
+    
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
@@ -90,9 +88,7 @@ class QueueEntry extends Model
         };
     }
 
-    /**
-     * Map status to a Bootstrap badge class (without the 'badge-' prefix).
-     */
+    
     public function getStatusBadgeClassAttribute(): string
     {
         return match ($this->status) {

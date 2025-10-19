@@ -2,7 +2,7 @@
 @section('title','Secretary Dashboard')
 @section('content')
 <div class="container py-4">
-  <!-- Unified Welcome Header -->
+  
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -18,7 +18,7 @@
         @php $assignedClinics = auth()->user()->secretaryClinics()->select('clinics.id','clinics.name','clinics.branch_code')->get(); @endphp
         <div class="row g-3 text-start justify-content-center">
           @if($assignedClinics->count())
-          <!-- Assigned Clinics Column -->
+          
           <div class="col-md-3">
             <div class="p-4 rounded text-white h-100" style="background:#0d6efd;">
               @php $firstClinic = $assignedClinics->first(); @endphp
@@ -31,7 +31,7 @@
           </div>
           @endif
 
-          <!-- Today's Appointments -->
+          
           <div class="col-md-3">
             <a href="{{ route('secretary.appointments.index') }}" class="text-decoration-none">
               <div class="p-4 rounded h-100" style="background:#ffc107; color:#000;">
@@ -40,7 +40,7 @@
               </div>
             </a>
           </div>
-          <!-- Doctors -->
+          
           <div class="col-md-3">
             <a href="{{ route('secretary.doctors.index') }}" class="text-decoration-none">
               <div class="p-4 rounded text-white h-100" style="background:#1f7f56;">
@@ -49,7 +49,7 @@
               </div>
             </a>
           </div>
-          <!-- Services -->
+          
           <div class="col-md-3">
             <a href="{{ route('secretary.services.index') }}" class="text-decoration-none">
               <div class="p-4 rounded text-white h-100" style="background:#10c9f4;">
@@ -67,7 +67,7 @@
 
 
 
-  <!-- Appointments Pane embedded in Dashboard -->
+  
   @include('secretary.appointments._pane')
 </div>
 @endsection

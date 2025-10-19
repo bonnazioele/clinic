@@ -1,4 +1,4 @@
-{{-- resources/views/profile/edit.blade.php --}}
+
 @extends('layouts.app')
 
 @section('title','Edit Profile')
@@ -17,7 +17,7 @@
             enctype="multipart/form-data">
         @csrf
 
-        {{-- Name --}}
+        
         <div class="mb-3">
           <label for="name" class="form-label"><i class="bi bi-person me-1"></i>Full Name</label>
           <input
@@ -33,7 +33,7 @@
           @enderror
         </div>
 
-        {{-- Phone --}}
+        
         <div class="mb-3">
           <label for="phone" class="form-label"><i class="bi bi-telephone me-1"></i>Phone</label>
           <input
@@ -48,7 +48,7 @@
           @enderror
         </div>
 
-        {{-- Address --}}
+        
         <div class="mb-3">
           <label for="address" class="form-label"><i class="bi bi-geo-alt me-1"></i>Address</label>
           <textarea
@@ -62,7 +62,7 @@
           @enderror
         </div>
 
-        {{-- Medical Document --}}
+        
         <div class="mb-3">
           <label for="medical_document" class="form-label">
             <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (PDF, DOC)

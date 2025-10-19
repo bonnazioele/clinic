@@ -13,7 +13,7 @@
     </div>
     <div class="card-body">
 
-      {{-- Current Queue Status --}}
+      
       @php
         $activeQueues = auth()->user()->queueEntries()
           ->where('status', 'waiting')
@@ -53,7 +53,7 @@
         </div>
       @endif
 
-      {{-- Upcoming Appointments --}}
+      
       <h5 class="mt-2 mb-3 fw-semibold">
         <i class="bi bi-clock-history me-2"></i>Upcoming Appointments
       </h5>
@@ -134,7 +134,7 @@
         </div>
       @endif
 
-      {{-- Past Appointments --}}
+      
       <h5 class="mt-4 mb-3 fw-semibold">
         <i class="bi bi-archive-fill me-2"></i>Past Appointments
       </h5>

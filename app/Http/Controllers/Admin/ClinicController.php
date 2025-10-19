@@ -117,7 +117,7 @@ class ClinicController extends Controller
                     'first_name' => $clinic->owner_first_name,
                     'last_name'  => $clinic->owner_last_name,
                     'email'    => $clinic->email,
-                    'phone'    => $clinic->contact_number, // propagate clinic contact number to owner user
+                    'phone'    => $clinic->contact_number, 
                     'password' => $tempPasswordPlain,
                     'is_secretary' => true,
                 ]);
@@ -250,7 +250,7 @@ class ClinicController extends Controller
                     'first_name'  => $clinic->owner_first_name,
                     'last_name'   => $clinic->owner_last_name,
                     'email'       => $clinic->email,
-                    'phone'       => $clinic->contact_number, // set phone from clinic
+                    'phone'       => $clinic->contact_number, 
                     'password'    => $tempPasswordPlain,
                     'is_secretary'=> true,
                     'is_initial_login' => true,
@@ -261,7 +261,7 @@ class ClinicController extends Controller
                 if (!$owner->is_secretary) {
                     $owner->is_secretary = true;
                 }
-                // Backfill phone if missing
+                
                 if (empty($owner->phone) && !empty($clinic->contact_number)) {
                     $owner->phone = $clinic->contact_number;
                 }

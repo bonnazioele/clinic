@@ -3,7 +3,7 @@
 @section('title','Welcome to CliniQ')
 
 @section('content')
-<!-- Hero Section -->
+
 <div class="medical-gradient text-white py-5 mb-5">
   <div class="container">
     <div class="row align-items-center">
@@ -35,7 +35,7 @@
   </div>
 </div>
 
-<!-- Features Section -->
+
 <div class="container mb-5">
   <div class="row text-center mb-5">
     <div class="col-12">
@@ -88,7 +88,7 @@
   </div>
 </div>
 
-<!-- Statistics Section -->
+
 <div class="bg-light py-5 mb-5">
   <div class="container">
     <div class="row text-center">
@@ -112,7 +112,7 @@
   </div>
 </div>
 
-<!-- How It Works Section -->
+
 <div class="container mb-5">
   <div class="row text-center mb-5">
     <div class="col-12">
@@ -170,7 +170,7 @@
   </div>
 </div>
 
-<!-- User Types Section -->
+
 <div class="bg-light py-5 mb-5">
   <div class="container">
     <div class="row text-center mb-5">
@@ -234,7 +234,7 @@
   </div>
 </div>
 
-<!-- Call to Action -->
+
 <div class="container text-center mb-5">
   <div class="medical-card p-5">
     <h2 class="fw-bold text-primary mb-3">Ready to Get Started?</h2>

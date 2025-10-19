@@ -1,10 +1,10 @@
-{{-- resources/views/admin/layouts/app.blade.php --}}
+
 @extends('layouts.app')
 
 @section('content')
 <div class="container-fluid">
   <div class="row">
-    {{-- Sidebar --}}
+    
     <nav class="col-md-2 d-none d-md-block bg-light sidebar pt-4">
       <ul class="nav flex-column">
         <li class="nav-item mb-2">
@@ -46,7 +46,7 @@
       </ul>
     </nav>
 
-    {{-- Main Admin Content --}}
+    
     <main class="col-md-10 ms-sm-auto px-4 py-4">
       @yield('content')
     </main>

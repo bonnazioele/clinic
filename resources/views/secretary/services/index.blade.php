@@ -96,7 +96,7 @@
                   <i class="bi bi-list-check"></i>
                   <span>Select Services</span>
                 </label>
-                <!-- Fast visible placeholder to avoid perceived delay -->
+                
                 <div id="serviceSelectSkeleton" class="form-control select-placeholder-skeleton">Choose services...</div>
     <select id="serviceSelect"
       name="service_ids[]"
