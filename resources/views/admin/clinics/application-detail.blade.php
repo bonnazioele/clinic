@@ -302,8 +302,11 @@
                                 <label for="decline_reason" class="form-label fw-semibold">
                                     <i class="bi bi-exclamation-triangle me-1"></i>Reason for Decline
                                 </label>
-                                <textarea class="form-control" id="decline_reason" name="decline_reason" rows="4" 
-                                        placeholder="Please provide a clear reason for declining this application..." required></textarea>
+                                <textarea class="form-control @error('decline_reason') is-invalid @enderror" id="decline_reason" name="decline_reason" rows="4" 
+                                        placeholder="Please provide a clear reason for declining this application..." required>{{ old('decline_reason') }}</textarea>
+                                @error('decline_reason')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                                 <div class="form-text">This reason will be sent to the applicant via email.</div>
                             </div>
                             <div class="d-flex gap-2">
@@ -425,6 +428,12 @@ document.addEventListener('DOMContentLoaded', function() {
             declineBtn.style.display = 'block';
             document.getElementById('decline_reason').value = '';
         });
+
+        // If validation failed previously, keep the decline form open so the user sees the error
+        @if($errors->has('decline_reason') || old('decline_reason'))
+            declineSection.style.display = 'block';
+            declineBtn.style.display = 'none';
+        @endif
     }
     @endif
 

@@ -11,6 +11,8 @@
     overflow-y: visible;
   }
 
+
+
   .clinics-table {
     margin-bottom: 0;
   }
@@ -49,6 +51,8 @@
     transform: translateY(-2px);
     z-index: 5;
   }
+
+
 
   .clinics-table td {
     padding: 0.95rem 1.25rem !important;
@@ -176,44 +180,59 @@
     color: #475569;
   }
 
-  .action-dropdown {
-    position: relative;
-  }
-
-  .action-dropdown .btn-light {
-    border-radius: 12px;
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    color: #475569;
-  }
-
-  .action-dropdown .btn-light:hover {
-    background: #E2E8F0;
-    color: #0F172A;
-  }
-
-  .action-dropdown .dropdown-menu {
-    min-width: 190px;
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-  }
-
-  .action-dropdown .dropdown-item {
-    padding: 0.55rem 1rem;
-    font-size: 0.85rem;
-    display: flex;
+  /* Minimalist Action Buttons */
+  .action-btn {
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: #64748B;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
   }
 
-  .action-dropdown .dropdown-item i {
-    width: 16px;
-    font-size: 0.875rem;
+  .action-btn:hover {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #334155;
   }
 
-  .action-dropdown .dropdown-divider {
-    margin: 0.5rem 0;
+  .action-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.2);
+  }
+
+  .action-btn i {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* Consistent hover states for all action buttons */
+  .action-btn-edit:hover {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #334155;
+  }
+
+  .action-btn-suspend:hover {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #334155;
+  }
+
+  .action-btn-delete:hover {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: #334155;
+  }
+
+  /* Ensure buttons don't inherit link styles */
+  .action-btn:link,
+  .action-btn:visited {
+    color: #64748B;
+    text-decoration: none;
   }
 
   @media (max-width: 992px) {
@@ -425,32 +444,24 @@
               </span>
             </td>
             <td class="pe-4 text-end action-cell" data-label="Actions">
-              <div class="dropdown action-dropdown" onclick="event.stopPropagation();">
-                <button class="btn btn-light btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <i class="bi bi-three-dots"></i>
+              <div class="d-flex gap-2 justify-content-end" onclick="event.stopPropagation();">
+                <a href="{{ route('admin.clinics.edit', $clinic) }}" 
+                   class="action-btn action-btn-edit" 
+                   title="Edit Clinic">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <button type="button" 
+                        class="action-btn action-btn-suspend" 
+                        onclick="suspendClinic({{ $clinic->id }})"
+                        title="Suspend Clinic">
+                  <i class="bi bi-pause"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li>
-                    <a class="dropdown-item" href="{{ route('admin.clinics.edit', $clinic) }}">
-                      <i class="bi bi-pencil"></i>
-                      <span>Edit</span>
-                    </a>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <button class="dropdown-item text-warning" onclick="suspendClinic({{ $clinic->id }})">
-                      <i class="bi bi-pause-circle"></i>
-                      <span>Suspend</span>
-                    </button>
-                  </li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <button class="dropdown-item text-danger" onclick="deleteClinic({{ $clinic->id }})">
-                      <i class="bi bi-trash3"></i>
-                      <span>Delete</span>
-                    </button>
-                  </li>
-                </ul>
+                <button type="button" 
+                        class="action-btn action-btn-delete" 
+                        onclick="deleteClinic({{ $clinic->id }})"
+                        title="Delete Clinic">
+                  <i class="bi bi-trash3"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -490,6 +501,14 @@
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Tooltip initialization for action buttons
+    const actionButtons = document.querySelectorAll('.action-btn[title]');
+    actionButtons.forEach(button => {
+      if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        new bootstrap.Tooltip(button);
+      }
     });
 
     const selectAllCheckbox = document.getElementById('select-all-clinics');
