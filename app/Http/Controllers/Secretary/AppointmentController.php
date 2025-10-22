@@ -184,12 +184,14 @@ class AppointmentController extends Controller
                 $emailSlug = \Illuminate\Support\Str::slug($name) ?: 'patient';
                 $unique = uniqid();
                 $patient = User::create([
-                    'name'     => $name,
-                    'email'    => "walkin+{$emailSlug}+{$unique}@example.local",
-                    'password' => \Illuminate\Support\Str::random(24),
-                    'is_admin' => false,
-                    'is_secretary' => false,
-                    'is_doctor' => false,
+                    'name'        => $name,
+                    'first_name'  => $name,
+                    'last_name'   => $name, 
+                    'email'       => "walkin+{$emailSlug}+{$unique}@example.local",
+                    'password'    => \Illuminate\Support\Str::random(24),
+                    'is_admin'    => false,
+                    'is_secretary'=> false,
+                    'is_doctor'   => false,
                 ]);
             }
 

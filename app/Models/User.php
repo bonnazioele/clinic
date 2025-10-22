@@ -147,7 +147,7 @@ public function queueEntries()
                 }
             }
 
-            // Set defaults only for fields that are not explicitly provided
+            
             if (!array_key_exists('is_active', $user->attributes)) {
                 $user->is_active = true;
             }
