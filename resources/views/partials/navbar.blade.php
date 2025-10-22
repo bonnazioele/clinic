@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-primary shadow-lg">
   <div class="container">
-    
+
     @php
       $homeRoute = 'welcome';
       if(auth()->check()){
@@ -12,7 +12,7 @@
             ->orderByRaw("CASE WHEN status = 'approved' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();
-          $homeRoute = ($clinic && $clinic->status === 'approved') ? 'owner.dashboard' : 'welcome';
+          $homeRoute = ($clinic && $clinic->status === 'approved') ? 'secretary.dashboard' : 'welcome';
         } elseif($u->is_doctor){
           $homeRoute = 'doctor.dashboard';
         } elseif($u->is_secretary){
@@ -38,10 +38,10 @@
     </button>
 
     <div class="collapse navbar-collapse" id="navMenu">
-      
+
       <ul class="navbar-nav me-auto">
         @guest
-          
+
           <li class="nav-item">
             <a class="nav-link @if(request()->routeIs('clinics.*')) active @endif"
                href="{{ route('clinics.index') }}">
@@ -50,7 +50,7 @@
           </li>
         @else
           @if(auth()->user()->is_admin)
-            
+
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('admin.clinics.*')) active @endif"
                  href="{{ route('admin.clinics.index') }}">
@@ -71,7 +71,7 @@
             </li>
 
           @elseif(auth()->user()->is_secretary)
-            
+
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('secretary.doctors.*')) active @endif"
                  href="{{ route('secretary.doctors.index') }}">
@@ -90,18 +90,18 @@
                 <i class="bi bi-people me-1"></i>Queue
               </a>
             </li>
-      
+
 
           @elseif(auth()->user()->is_owner)
-            
+
             <li class="nav-item">
-              <a class="nav-link @if(request()->routeIs('owner.staff.*')) active @endif"
-                 href="{{ route('owner.staff.index') }}">
-                <i class="bi bi-people me-1"></i>Staff
+              <a class="nav-link @if(request()->routeIs('secretary.*')) active @endif"
+                 href="{{ route('secretary.dashboard') }}">
+                <i class="bi bi-speedometer2 me-1"></i>Secretary
               </a>
             </li>
           @elseif(auth()->user()->is_doctor)
-            
+
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('doctor.queue.*')) active @endif"
                  href="{{ route('doctor.queue.index') }}">
@@ -115,7 +115,7 @@
               </a>
             </li>
           @else
-            
+
             <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('clinics.*')) active @endif"
                  href="{{ route('clinics.index') }}">
@@ -138,7 +138,7 @@
         @endguest
       </ul>
 
-      
+
       <ul class="navbar-nav ms-auto align-items-center">
         @guest
           <li class="nav-item">
@@ -157,12 +157,12 @@
             </a>
           </li>
         @else
-          
+
           <li class="nav-item me-2">
             @php
               $dashRoute = 'dashboard';
               if(auth()->user()->is_admin){ $dashRoute = 'admin.dashboard'; }
-              elseif(auth()->user()->is_owner){ $dashRoute = 'owner.dashboard'; }
+              elseif(auth()->user()->is_owner){ $dashRoute = 'secretary.dashboard'; }
               elseif(auth()->user()->is_doctor){ $dashRoute = 'doctor.dashboard'; }
               elseif(auth()->user()->is_secretary){ $dashRoute = 'secretary.dashboard'; }
             @endphp
@@ -171,7 +171,7 @@
             </a>
           </li>
 
-          
+
           <li class="nav-item dropdown me-3">
             @php $unread = auth()->user()->unreadNotifications->count(); @endphp
             <a class="nav-link position-relative"
@@ -227,7 +227,7 @@
             </ul>
           </li>
 
-          
+
           <li class="nav-item dropdown">
             <a id="userDropdown"
                class="nav-link dropdown-toggle d-flex align-items-center"
