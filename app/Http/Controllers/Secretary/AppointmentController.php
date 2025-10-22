@@ -161,7 +161,7 @@ class AppointmentController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'user_id'          => 'required|exists:users,id',
+            'patient_name'     => 'required|string|max:255',
             'clinic_id'        => 'required|exists:clinics,id',
             'service_id'       => 'required|exists:services,id',
             'doctor_id'        => 'required|exists:users,id',
@@ -170,6 +170,28 @@ class AppointmentController extends Controller
             'notes'            => 'nullable|string|max:500',
             'medical_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,gif,webp|max:5120',
         ]);
+
+        $name = trim((string) $data['patient_name']);
+            $existing = User::query()
+                ->where('is_doctor', false)
+                ->where('is_admin', false)
+                ->where('is_secretary', false)
+                ->where('name', $name)
+                ->get();
+            if ($existing->count() === 1) {
+                $patient = $existing->first();
+            } else {
+                $emailSlug = \Illuminate\Support\Str::slug($name) ?: 'patient';
+                $unique = uniqid();
+                $patient = User::create([
+                    'name'     => $name,
+                    'email'    => "walkin+{$emailSlug}+{$unique}@example.local",
+                    'password' => \Illuminate\Support\Str::random(24),
+                    'is_admin' => false,
+                    'is_secretary' => false,
+                    'is_doctor' => false,
+                ]);
+            }
 
         $allowedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
         if (! $allowedClinicIds->contains($data['clinic_id'])) {
@@ -183,7 +205,7 @@ class AppointmentController extends Controller
             return back()->withInput()->withErrors(['doctor_id' => 'Doctor not assigned to this clinic.']);
         }
 
-        $exists = Appointment::where('user_id', $data['user_id'])
+        $exists = Appointment::where('user_id', $patient->id)
             ->where('clinic_id', $data['clinic_id'])
             ->where('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $data['appointment_time'])
@@ -195,7 +217,7 @@ class AppointmentController extends Controller
                 ->withErrors(['appointment_time' => 'This patient already has an appointment for this timeslot.']);
         }
 
-        $globalConflict = Appointment::where('user_id', $data['user_id'])
+        $globalConflict = Appointment::where('user_id', $patient->id)
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $data['appointment_time'])
             ->whereNotIn('status', ['cancelled','no_show'])
@@ -228,7 +250,7 @@ class AppointmentController extends Controller
         }
 
         $appointment = Appointment::create([
-            'user_id'          => $data['user_id'],
+            'user_id'          => $patient->id,
             'clinic_id'        => $data['clinic_id'],
             'service_id'       => $data['service_id'],
             'doctor_id'        => $data['doctor_id'],
@@ -248,7 +270,7 @@ class AppointmentController extends Controller
 
         \App\Models\QueueEntry::create([
             'clinic_id'     => $data['clinic_id'],
-            'user_id'       => $data['user_id'],
+            'user_id'       => $patient->id,
             'appointment_id'=> $appointment->id,
             'queue_number'  => $queueNumber,
             'status'        => 'waiting',
