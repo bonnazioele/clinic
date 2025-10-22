@@ -108,6 +108,8 @@ Route::prefix('admin')
 
      });
 
+     //Secretary Routes
+
 Route::prefix('secretary')
      ->middleware(['auth', 'force.password.change', \App\Http\Middleware\SecretaryMiddleware::class, \App\Http\Middleware\EnsureSelectedClinic::class])
      ->name('secretary.')
