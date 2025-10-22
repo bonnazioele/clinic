@@ -92,6 +92,7 @@ Route::prefix('admin')
          Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
          Route::resource('clinics', AdminClinicController::class);
+         Route::get('clinics/{clinic}/application', [AdminClinicController::class, 'showApplication'])->name('clinics.application');
          Route::post('clinics/{clinic}/approve', [AdminClinicController::class, 'approve'])->name('clinics.approve');
          Route::post('clinics/{clinic}/decline', [AdminClinicController::class, 'decline'])->name('clinics.decline');
 

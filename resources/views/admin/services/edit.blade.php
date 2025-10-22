@@ -4,7 +4,6 @@
 
 @section('content')
   <div class="container py-4">
-    @include('partials.alerts')
 
     <div class="card medical-card shadow-sm">
       <div class="card-header bg-primary text-white d-flex align-items-center">

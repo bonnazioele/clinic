@@ -24,6 +24,7 @@ class Clinic extends Model
         'email',
         'contact_first_name',
         'contact_last_name',
+        'contact_person_email',
         'logo',
         'cover_image',
         'description',
@@ -57,6 +58,11 @@ class Clinic extends Model
     public function queueEntries(): HasMany
     {
         return $this->hasMany(QueueEntry::class, 'clinic_id');
+    }
+
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(ClinicStatusLog::class);
     }
 
     public function doctors(): BelongsToMany

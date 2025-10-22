@@ -4,17 +4,8 @@
 
 @section('content')
 <div class="container py-4">
-  {{-- Inline flash fallback (above header, auto-dismiss in 3s) --}}
-  @if(session('status') || session('error'))
-    <div id="inline-flash-wrapper" class="mb-3">
-      @if(session('status'))
-        <div class="alert alert-success mb-0" role="alert">{{ session('status') }}</div>
-      @endif
-      @if(session('error'))
-        <div class="alert alert-danger mb-0" role="alert">{{ session('error') }}</div>
-      @endif
-    </div>
-  @endif
+
+
   {{-- Header Card --}}
   <div class="medical-card p-4 mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start align-items-lg-center">
@@ -195,18 +186,6 @@
 @push('scripts')
 <script>
   document.addEventListener('DOMContentLoaded', function(){
-    // Auto-dismiss inline flash after 3 seconds with smooth fade out
-    const inlineFlash = document.getElementById('inline-flash-wrapper');
-    if (inlineFlash) {
-      inlineFlash.style.transition = 'opacity 0.4s ease';
-      inlineFlash.style.opacity = '1';
-      setTimeout(() => {
-        inlineFlash.style.opacity = '0';
-        setTimeout(() => {
-          inlineFlash.remove();
-        }, 400);
-      }, 3000);
-    }
     const modalEl = document.getElementById('confirmDeleteServiceModal');
     if(!modalEl) return;
     const nameEl = document.getElementById('deleteServiceName');

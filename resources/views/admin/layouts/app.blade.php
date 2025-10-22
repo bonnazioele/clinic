@@ -1,6 +1,8 @@
 {{-- resources/views/admin/layouts/app.blade.php --}}
 @extends('layouts.app')
 
+
+
 @section('content')
 <div class="container-fluid">
   <div class="row">

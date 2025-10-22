@@ -21,7 +21,7 @@ class User extends Authenticatable
      protected $fillable = [
         'name','first_name','last_name','email','password',
         'phone','address','medical_document',
-        'is_admin','is_secretary','is_doctor','is_initial_login'
+        'is_admin','is_secretary','is_doctor','is_initial_login','is_active'
     ];
 
     protected $hidden = [
@@ -151,16 +151,17 @@ public function queueEntries()
                 }
             }
 
-            if (!isset($user->is_active)) {
+            // Set defaults only for fields that are not explicitly provided
+            if (!array_key_exists('is_active', $user->attributes)) {
                 $user->is_active = true;
             }
-            if (!isset($user->is_admin)) {
+            if (!array_key_exists('is_admin', $user->attributes)) {
                 $user->is_admin = false;
             }
-            if (!isset($user->is_secretary)) {
+            if (!array_key_exists('is_secretary', $user->attributes)) {
                 $user->is_secretary = false;
             }
-            if (!isset($user->is_doctor)) {
+            if (!array_key_exists('is_doctor', $user->attributes)) {
                 $user->is_doctor = false;
             }
         });

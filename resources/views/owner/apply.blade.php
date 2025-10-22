@@ -31,6 +31,13 @@
               </div>
             </div>
 
+            <div class="mb-3">
+              <label for="contact_person_email" class="form-label"><i class="bi bi-envelope me-1"></i>Contact Person Email <span class="text-danger">*</span></label>
+              <input id="contact_person_email" type="email" name="contact_person_email" class="form-control @error('contact_person_email') is-invalid @enderror" value="{{ old('contact_person_email') }}" maxlength="255" required placeholder="contactperson@example.com">
+              @error('contact_person_email') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+              <div class="form-text">This email will be used to send account credentials and communication regarding the application.</div>
+            </div>
+
             <h6 class="text-muted mb-3 mt-4">Clinic Details</h6>
             <div class="mb-3">
               <label for="clinic_name" class="form-label"><i class="bi bi-building me-1"></i>Clinic Name <span class="text-danger">*</span></label>

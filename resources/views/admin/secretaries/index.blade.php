@@ -2,7 +2,6 @@
 
 @section('content')
 <div class="container py-4">
-  @include('partials.alerts')
 
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center">

@@ -31,6 +31,7 @@ class ApplicationController extends Controller
             'clinic_email'  => ['required','email','max:255', Rule::unique('clinics','email')->whereNull('deleted_at')],
             'contact_first_name' => ['required','string','max:255'],
             'contact_last_name'  => ['required','string','max:255'],
+            'contact_person_email' => ['required','email','max:255', Rule::unique('users','email')],
             'latitude'      => ['nullable','numeric','between:-90,90'],
             'longitude'     => ['nullable','numeric','between:-180,180'],
             'logo'          => ['nullable','image','mimes:jpeg,png,jpg,gif,svg','max:2048'],
@@ -55,6 +56,7 @@ class ApplicationController extends Controller
             'email' => $clinicEmail,
             'contact_first_name' => $data['contact_first_name'],
             'contact_last_name' => $data['contact_last_name'],
+            'contact_person_email' => $data['contact_person_email'],
             'branch_code' => $branchCode,
             'logo' => $logoPath,
             'gps_latitude' => $data['latitude'] ?? null,
@@ -66,7 +68,6 @@ class ApplicationController extends Controller
             $clinic->services()->attach($request->input('service_ids'));
         }
 
-        return redirect()->route('owner.apply.thanks')
-            ->with('success', 'Application submitted! We\'ve emailed you a confirmation. You will receive credentials once your clinic is approved.');
+        return redirect()->route('owner.apply.thanks');
     }
 }

@@ -15,9 +15,6 @@
   if (session('info')) {
     $toasts[] = ['type' => 'info', 'message' => session('info')];
   }
-  if ($errors->any()) {
-    $toasts[] = ['type' => 'danger', 'message' => 'Please fix the highlighted errors.'];
-  }
 @endphp
 
 @if(!empty($toasts))
@@ -30,7 +27,7 @@
       @foreach($toasts as $i => $t)
         @php
           $bg = match($t['type']) {
-            'success' => 'text-bg-success',
+            'success' => 'toast-success-custom',
             'danger'  => 'text-bg-danger',
             'warning' => 'text-bg-warning',
             'info'    => 'text-bg-info',
@@ -45,36 +42,28 @@
           };
         @endphp
   <div class="toast align-items-center {{ $bg }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
-          <div class="d-flex">
-            <div class="toast-body d-flex align-items-center gap-2">
-              <i class="bi {{ $icon }}"></i>
-              <span>{{ $t['message'] }}</span>
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          <div class="toast-body d-flex align-items-center gap-2">
+            <i class="bi {{ $icon }}"></i>
+            <span>{{ $t['message'] }}</span>
           </div>
         </div>
       @endforeach
-
-      {{-- Validation errors details (collapsible) --}}
-      @if($errors->any())
-  <div class="toast text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
-          <div class="toast-header">
-            <i class="bi bi-bug-fill text-danger me-2"></i>
-            <strong class="me-auto">Form Errors</strong>
-            <small>now</small>
-            <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
-          </div>
-          <div class="toast-body">
-            <ul class="mb-0 ps-3">
-              @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-              @endforeach
-            </ul>
-          </div>
-        </div>
-      @endif
     </div>
   </div>
+
+  <style>
+    /* Custom toast styling for success messages to match clinic approved alert colors */
+    .toast.toast-success-custom {
+        background-color: #0c7a5bff !important;
+        border: 1px solid #0c7a5bff !important;
+        color: #a7f3d0 !important;
+    }
+
+    .toast.toast-success-custom .toast-body {
+        color: white !important;
+        font-weight: 500 !important;
+    }
+  </style>
 
   @push('scripts')
   <script>

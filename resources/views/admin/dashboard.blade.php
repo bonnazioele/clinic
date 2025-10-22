@@ -93,23 +93,31 @@
           </thead>
           <tbody>
             @foreach($pendingClinics as $pc)
-              <tr>
-                <td>{{ $pc->name }}</td>
+              <tr class="cursor-pointer" onclick="window.location='{{ route('admin.clinics.application', $pc) }}'" style="cursor: pointer;">
                 <td>
-                  <div class="small text-muted">{{ $pc->email }}</div>
-                  <div class="small text-muted">{{ $pc->contact_number }}</div>
+                  <strong>{{ $pc->name }}</strong>
+                  @if($pc->branch_code)
+                    <div class="small text-muted">{{ $pc->branch_code }}</div>
+                  @endif
                 </td>
-                <td class="small">{{ $pc->address }}</td>
+                <td>
+                  @if($pc->contact_first_name || $pc->contact_last_name)
+                    <div class="fw-semibold">{{ trim(($pc->contact_first_name ?? '') . ' ' . ($pc->contact_last_name ?? '')) }}</div>
+                  @endif
+                  @if($pc->contact_person_email)
+                    <div class="small text-primary">{{ $pc->contact_person_email }} <i class="bi bi-person-check"></i></div>
+                  @endif
+                  <div class="small text-muted">{{ $pc->email }}</div>
+                  @if($pc->contact_number)
+                    <div class="small text-muted">{{ $pc->contact_number }}</div>
+                  @endif
+                </td>
+                <td class="small">{{ Str::limit($pc->address, 50) }}</td>
                 <td class="small text-muted">{{ $pc->created_at->diffForHumans() }}</td>
                 <td class="text-end">
-                  <form action="{{ route('admin.clinics.approve', $pc) }}" method="POST" class="d-inline">
-                    @csrf
-                    <button class="btn btn-sm btn-success"><i class="bi bi-check2 me-1"></i>Approve</button>
-                  </form>
-                  <form action="{{ route('admin.clinics.decline', $pc) }}" method="POST" class="d-inline ms-1">
-                    @csrf
-                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x me-1"></i>Decline</button>
-                  </form>
+                  <a href="{{ route('admin.clinics.application', $pc) }}" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">
+                    <i class="bi bi-eye me-1"></i>Review
+                  </a>
                 </td>
               </tr>
             @endforeach

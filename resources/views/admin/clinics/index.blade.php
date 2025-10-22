@@ -2,6 +2,263 @@
 @section('title','Clinics')
 
 @push('styles')
+<style>
+  .clinics-table-wrapper {
+    border-radius: 18px;
+    border: 1px solid #E2E8F0;
+    background: #ffffff;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .clinics-table {
+    margin-bottom: 0;
+  }
+
+  .clinics-table thead th {
+    background: #F1F5F9;
+    border: none;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #475569;
+    font-weight: 600;
+    padding: 0.9rem 1.25rem;
+  }
+
+  .clinics-table thead th:first-child {
+    width: 54px;
+  }
+
+  .clinics-table tbody tr {
+    background: #ffffff;
+    border-bottom: 1px solid #E2E8F0;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    position: relative;
+    z-index: 0;
+  }
+
+  .clinics-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .clinics-table tbody tr:hover {
+    background: #F8FAFC;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px);
+    z-index: 5;
+  }
+
+  .clinics-table td {
+    padding: 0.95rem 1.25rem !important;
+    vertical-align: middle;
+  }
+
+  .select-cell {
+    padding-left: 1.5rem !important;
+  }
+
+  .clinic-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 6px;
+    border-color: #CBD5F5;
+  }
+
+  .clinic-checkbox:focus {
+    box-shadow: none;
+  }
+
+  .clinic-cell {
+    min-width: 220px;
+  }
+
+  .clinic-avatar,
+  .clinic-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .clinic-avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #E0F2FE;
+    color: #0284C7;
+    font-size: 1.25rem;
+  }
+
+  .clinic-meta .clinic-name {
+    font-size: 0.975rem;
+    font-weight: 600;
+    color: #0F172A;
+    margin-bottom: 0.1rem;
+  }
+
+  .clinic-meta .clinic-branch {
+    font-size: 0.75rem;
+    color: #64748B;
+  }
+
+  .clinic-meta .clinic-subtext {
+    font-size: 0.7rem;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .count-value {
+    font-weight: 600;
+    color: #0F172A;
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+
+  .count-label {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94A3B8;
+  }
+
+  .location-text {
+    font-size: 0.8rem;
+    color: #475569;
+  }
+
+  .location-secondary {
+    font-size: 0.7rem;
+    color: #94A3B8;
+    margin-top: 0.2rem;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.85rem;
+    line-height: 1;
+  }
+
+  .status-pill .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.7;
+  }
+
+  .status-success {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  .status-warning {
+    background: #FEF9C3;
+    color: #B45309;
+  }
+
+  .status-danger {
+    background: #FEE2E2;
+    color: #B91C1C;
+  }
+
+  .status-neutral {
+    background: #E2E8F0;
+    color: #475569;
+  }
+
+  .action-dropdown {
+    position: relative;
+  }
+
+  .action-dropdown .btn-light {
+    border-radius: 12px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    color: #475569;
+  }
+
+  .action-dropdown .btn-light:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+  }
+
+  .action-dropdown .dropdown-menu {
+    min-width: 190px;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+  }
+
+  .action-dropdown .dropdown-item {
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .action-dropdown .dropdown-item i {
+    width: 16px;
+    font-size: 0.875rem;
+  }
+
+  .action-dropdown .dropdown-divider {
+    margin: 0.5rem 0;
+  }
+
+  @media (max-width: 992px) {
+    .clinics-table thead {
+      display: none;
+    }
+
+    .clinics-table tbody tr {
+      display: block;
+      border-radius: 16px;
+      margin-bottom: 1rem;
+      padding: 1rem;
+    }
+
+    .clinics-table td {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.35rem 0 !important;
+      border-bottom: none;
+    }
+
+    .clinics-table td::before {
+      content: attr(data-label);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94A3B8;
+    }
+
+    .select-cell,
+    .action-cell {
+      justify-content: flex-start;
+    }
+
+    .clinic-cell {
+      flex-direction: column;
+      align-items: flex-start !important;
+    }
+
+    .clinics-table-wrapper {
+      border: none;
+    }
+  }
+</style>
 @endpush
 
 @section('content')
@@ -67,83 +324,139 @@
       </h4>
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-hover">
+    <div class="table-responsive clinics-table-wrapper">
+      <table class="table clinics-table align-middle">
         <thead>
-          <tr class="bg-light">
-            <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-building me-1"></i>Clinic</th>
-            <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-gear me-1"></i>Services</th>
-            <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-people me-1"></i>Staff</th>
-            <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-calendar-check me-1"></i>Appointments</th>
-            <th class="border-0 px-4 py-3 fw-semibold"><i class="bi bi-geo-alt me-1"></i>Location</th>
-            <th class="border-0 px-4 py-3 fw-semibold" width="160">Actions</th>
+          <tr>
+            <th class="ps-4">
+              <input type="checkbox" class="form-check-input clinic-checkbox" id="select-all-clinics">
+            </th>
+            <th>Clinic</th>
+            <th class="text-center">Staff</th>
+            <th class="text-center">Doctors</th>
+            <th class="text-center">Services</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th class="pe-4 text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
           @forelse($clinics as $clinic)
-          <tr class="clinic-row" onclick="window.location='{{ route('admin.clinics.show', $clinic) }}'" style="cursor:pointer;">
-            <td class="px-4 py-4 fs-6">
-              <div class="d-flex align-items-center">
+          <tr class="clinic-row" onclick="window.location='{{ route('admin.clinics.show', $clinic) }}'">
+            <td class="select-cell" data-label="Select">
+              <input type="checkbox" class="form-check-input clinic-checkbox row-checkbox" onclick="event.stopPropagation();">
+            </td>
+            <td class="clinic-cell" data-label="Clinic">
+              <div class="d-flex align-items-center gap-3">
                 @if($clinic->logo)
-                  <img src="{{ asset('storage/' . $clinic->logo) }}" alt="Logo"
-                       class="rounded-circle me-3" style="width:50px;height:50px;object-fit:cover;">
+                  <img src="{{ asset('storage/' . $clinic->logo) }}" alt="Clinic logo" class="clinic-avatar">
                 @else
-                  <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
-                       style="width:50px;height:50px;">
-                    <i class="bi bi-hospital text-white"></i>
+                  <div class="clinic-avatar-placeholder">
+                    <i class="bi bi-hospital"></i>
                   </div>
                 @endif
-                <div>
-                  <h6 class="fw-semibold text-dark mb-2">
-                    <a href="{{ route('admin.clinics.show', $clinic) }}" class="text-decoration-none" onclick="event.stopPropagation();">{{ $clinic->name }}</a>
-                  </h6>
-                  <small class="text-muted d-block mb-1">{{ $clinic->branch_code }}</small>
+                <div class="clinic-meta">
+                  <div class="clinic-name">
+                    <a href="{{ route('admin.clinics.show', $clinic) }}" class="text-decoration-none text-reset" onclick="event.stopPropagation();">{{ $clinic->name }}</a>
+                  </div>
+                  @if($clinic->branch_code)
+                    <div class="clinic-branch">{{ $clinic->branch_code }}</div>
+                  @endif
+                  @if($clinic->contact_email)
+                    <div class="clinic-subtext">{{ Str::limit($clinic->contact_email, 28) }}</div>
+                  @endif
                 </div>
               </div>
             </td>
-            <td class="px-4 py-4 fs-6">
-              <span class="badge bg-info text-dark px-3 py-2">{{ $clinic->services->count() }}</span>
+            <td class="text-center" data-label="Staff">
+              <div class="count-value">{{ $clinic->secretary_count }}</div>
+              <span class="count-label">{{ Str::plural('Staff', $clinic->secretary_count) }}</span>
             </td>
-            <td class="px-4 py-4 fs-6">
+            <td class="text-center" data-label="Doctors">
+              <div class="count-value">{{ $clinic->doctor_count }}</div>
+              <span class="count-label">{{ Str::plural('Doctor', $clinic->doctor_count) }}</span>
+            </td>
+            <td class="text-center" data-label="Services">
+              @php $servicesCount = $clinic->services->count(); @endphp
+              <div class="count-value">{{ $servicesCount }}</div>
+              <span class="count-label">{{ Str::plural('Service', $servicesCount) }}</span>
+            </td>
+            <td data-label="Location">
+              <div class="location-text">{{ Str::limit($clinic->address, 60) }}</div>
+              <div class="location-secondary">Registered {{ $clinic->created_at->format('M d, Y') }}</div>
+            </td>
+            <td data-label="Status">
               @php
-                $doctors = \App\Models\User::where('is_doctor', true)
-                    ->whereHas('clinics', fn($q) => $q->where('clinic_id', $clinic->id))
-                    ->count();
-                $secretaries = $clinic->secretaries()->count();
+                $rawStatus = strtolower((string)($clinic->status ?? ''));
+                switch ($rawStatus) {
+                  case 'active':
+                    $statusLabel = 'Active';
+                    $statusClass = 'status-success';
+                    break;
+                  case 'approved':
+                    $statusLabel = 'Approved';
+                    // Approved but not yet activated by first login
+                    $statusClass = 'status-warning';
+                    break;
+                  case 'pending':
+                    $statusLabel = 'Pending';
+                    $statusClass = 'status-warning';
+                    break;
+                  case 'rejected':
+                    $statusLabel = 'Rejected';
+                    $statusClass = 'status-danger';
+                    break;
+                  case 'suspended':
+                    $statusLabel = 'Suspended';
+                    $statusClass = 'status-danger';
+                    break;
+                  case 'deleted':
+                    $statusLabel = 'Deleted';
+                    $statusClass = 'status-danger';
+                    break;
+                  default:
+                    $statusLabel = $clinic->status ? ucfirst((string)$clinic->status) : 'Unknown';
+                    $statusClass = 'status-neutral';
+                }
               @endphp
-              <div class="small">
-                <div class="mb-2">{{ $doctors }} Doctor(s)</div>
-                <div>{{ $secretaries }} Secretary(ies)</div>
-              </div>
+              <span class="status-pill {{ $statusClass }}">
+                <span class="status-dot"></span>
+                {{ $statusLabel }}
+              </span>
             </td>
-            <td class="px-4 py-4 fs-6">
-              @php
-                $todayAppointments = \App\Models\Appointment::where('clinic_id', $clinic->id)
-                    ->whereDate('appointment_date', \Carbon\Carbon::today())->count();
-                $totalAppointments = \App\Models\Appointment::where('clinic_id', $clinic->id)->count();
-              @endphp
-              <div class="small">
-                <div class="mb-2">{{ $todayAppointments }} today</div>
-                <div>{{ $totalAppointments }} total</div>
-              </div>
-            </td>
-            <td class="px-4 py-4 fs-6">
-              <div class="small">{{ Str::limit($clinic->address, 70) }}</div>
-            </td>
-            <td class="px-4 py-4">
-              <div class="d-flex gap-2">
-                <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-primary d-flex align-items-center justify-content-center" style="width:36px;height:36px;" title="Edit" onclick="event.stopPropagation();">
-                  <i class="bi bi-pencil-square"></i>
-                </a>
-                <button type="button" class="btn btn-danger d-flex align-items-center justify-content-center" style="width:36px;height:36px;" title="Delete" onclick="event.stopPropagation(); deleteClinic({{ $clinic->id }})">
-                  <i class="bi bi-trash3"></i>
+            <td class="pe-4 text-end action-cell" data-label="Actions">
+              <div class="dropdown action-dropdown" onclick="event.stopPropagation();">
+                <button class="btn btn-light btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-three-dots"></i>
                 </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="{{ route('admin.clinics.edit', $clinic) }}">
+                      <i class="bi bi-pencil"></i>
+                      <span>Edit</span>
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <button class="dropdown-item text-warning" onclick="suspendClinic({{ $clinic->id }})">
+                      <i class="bi bi-pause-circle"></i>
+                      <span>Suspend</span>
+                    </button>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <button class="dropdown-item text-danger" onclick="deleteClinic({{ $clinic->id }})">
+                      <i class="bi bi-trash3"></i>
+                      <span>Delete</span>
+                    </button>
+                  </li>
+                </ul>
               </div>
             </td>
           </tr>
           @empty
           <tr>
-            <td colspan="6" class="text-center py-5">
+            <td colspan="8" class="text-center py-5">
               <div class="medical-card p-4 mt-4">
                 <i class="bi bi-building-x display-4 text-muted mb-3"></i>
                 <h5 class="text-muted mb-3">No Clinics Found</h5>
@@ -166,102 +479,47 @@
     @endif
   </div>
 
-  <!-- Interactive Map -->
-  <div class="medical-card p-4 mt-4">
-    <h5 class="mb-3">
-      <i class="bi bi-geo-alt medical-icon me-2"></i>Clinic Locations Overview
-    </h5>
-    <div id="map" class="rounded-3 shadow-sm" style="height:400px;"></div>
-    <div class="text-center mt-2">
-      <small class="text-muted">
-        <i class="bi bi-info-circle me-1"></i>
-        Click markers for details; use the action buttons above to focus specific locations.
-      </small>
-    </div>
-  </div>
+  
 </div>
 @endsection
 
 @push('scripts')
   <script>
-  let map, markers = [];
-
-  // Build mapping data in PHP first to avoid complex inline collection/closure syntax that produced a parse error.
-  @php
-    $sourceClinics = isset($clinicsWithCoords) ? $clinicsWithCoords : $clinics;
-    $mapClinics = $sourceClinics->map(function($c){
-        return [
-          'id' => $c->id,
-          'name' => $c->name,
-          'address' => $c->address,
-          'lat' => (float) ($c->gps_latitude ?? $c->latitude),
-          'lng' => (float) ($c->gps_longitude ?? $c->longitude),
-          'showUrl' => route('admin.clinics.show', $c),
-          'editUrl' => route('admin.clinics.edit', $c),
-        ];
-    })->filter(function($c){
-        return !is_null($c['lat']) && !is_null($c['lng']);
-    })->values();
-  @endphp
-  const clinicsData = @json($mapClinics);
-
-  document.addEventListener('DOMContentLoaded', () => tryInitMap());
-
-  function tryInitMap(attempt = 0) {
-    const el = document.getElementById('map');
-    if (!el || typeof L === 'undefined') {
-      if (attempt < 30) return setTimeout(() => tryInitMap(attempt + 1), 100);
-      return;
-    }
-    initializeMap();
-  }
-
-  function initializeMap() {
-    const el = document.getElementById('map');
-    if (!el) return;
-
-    map = L.map(el).setView([10.3157, 123.8854], 10); // Cebu default
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    const bounds = L.latLngBounds();
-    clinicsData.forEach(c => {
-      if (isFinite(c.lat) && isFinite(c.lng)) {
-        const marker = L.marker([c.lat, c.lng]).addTo(map).bindPopup(
-          `<div class="text-center">
-             <h6 class="fw-bold text-primary">${escapeHtml(c.name)}</h6>
-             <p class="mb-2">${escapeHtml(c.address ?? '')}</p>
-             <div class="d-grid gap-1">
-               <a href="${c.showUrl}" class="btn btn-sm btn-outline-secondary">
-                 <i class="bi bi-eye me-1"></i>View Details
-               </a>
-               <a href="${c.editUrl}" class="btn btn-sm btn-outline-primary">
-                 <i class="bi bi-pencil me-1"></i>Edit Clinic
-               </a>
-             </div>
-           </div>`
-        );
-        markers.push({ id: c.id, marker, lat: c.lat, lng: c.lng });
-        bounds.extend([c.lat, c.lng]);
-      }
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    if (bounds.isValid()) {
-      map.fitBounds(bounds.pad(0.1));
+    const selectAllCheckbox = document.getElementById('select-all-clinics');
+    const rowCheckboxes = Array.from(document.querySelectorAll('.row-checkbox'));
+
+    if (selectAllCheckbox && rowCheckboxes.length) {
+      selectAllCheckbox.addEventListener('change', (event) => {
+        rowCheckboxes.forEach(cb => {
+          cb.checked = event.target.checked;
+        });
+      });
+
+      rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (!cb.checked) {
+            selectAllCheckbox.checked = false;
+            return;
+          }
+
+          const allChecked = rowCheckboxes.every(item => item.checked);
+          selectAllCheckbox.checked = allChecked;
+        });
+      });
     }
-    setTimeout(() => map.invalidateSize(), 200);
-  }
+  });
 
-  function escapeHtml(str){
-    return String(str ?? '').replace(/[&<>"'`]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;','`':'&#96;'}[s]));
-  }
-
-  function focusOnMap(lat, lng) {
-    if (!map) return;
-    map.setView([lat, lng], 15);
-    markers.forEach(m => { if (m.lat === lat && m.lng === lng) m.marker.openPopup(); });
+  function suspendClinic(clinicId) {
+    if (!confirm('Are you sure you want to suspend this clinic? The clinic will be temporarily disabled.')) return;
+    // TODO: Implement suspend functionality
+    alert('Suspend functionality to be implemented. Clinic ID: ' + clinicId);
   }
 
   function deleteClinic(clinicId) {

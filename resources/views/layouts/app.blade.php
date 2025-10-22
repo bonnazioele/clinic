@@ -358,6 +358,58 @@
             text-align: center;
         }
 
+        /* ===== APPLICATION-DETAIL STYLES ===== */
+        /* Admin toast positioning for clinic application approval/decline */
+        @media (min-width: 768px) {
+            /* Position toasts in the top-right of main content area */
+            .position-fixed[style*="top:"] {
+                top: 5rem !important; /* Below navbar */
+                right: 2rem !important;
+                left: auto !important; /* Remove left positioning */
+                width: 400px !important; /* Fixed width */
+                max-width: 400px !important;
+                z-index: 9999 !important;
+            }
+        }
+
+        @media (max-width: 767px) {
+            /* Mobile: center with proper margins */
+            .position-fixed[style*="top:"] {
+                top: 5rem !important;
+                right: 1rem !important;
+                left: 1rem !important;
+                width: auto !important;
+                max-width: none !important;
+            }
+        }
+
+        /* Ensure toasts appear above all content */
+        .toast-container {
+            z-index: 9999 !important;
+        }
+
+        /* Consistent toast styling for application-detail */
+        .toast {
+            min-width: 320px !important;
+            max-width: 400px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            border: none !important;
+            margin-bottom: 0.75rem !important;
+            border-radius: 8px !important;
+        }
+
+        /* Better visibility and styling */
+        .toast-body {
+            padding: 1rem !important;
+            font-size: 0.9rem !important;
+            font-weight: 500 !important;
+        }
+
+        .toast .btn-close {
+            margin: 0.5rem !important;
+        }
+        /* ===== END APPLICATION-DETAIL STYLES ===== */
+
         /* Floating / subtle motion utilities */
         @keyframes float-sm {
             0%, 100% { transform: translateY(0); }
@@ -527,7 +579,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (btn) {
                 btn.classList.add('loading');
                 btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+                const loadingText = btn.getAttribute('data-loading-text') || 'Processing...';
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + loadingText;
             }
         });
     });
