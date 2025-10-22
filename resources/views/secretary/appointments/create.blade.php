@@ -19,25 +19,23 @@
                     <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm" enctype="multipart/form-data">
                         @csrf
 
-                        
+
                         <div class="mb-3">
-                            <label for="user_id" class="form-label fw-semibold">
-                                <i class="bi bi-person me-1"></i>Patient
+                            <label for="patient_name" class="form-label fw-semibold">
+                                <i class="bi bi-person me-1"></i>Patient Name
                             </label>
-                            <select name="user_id" id="user_id" class="form-select @error('user_id') is-invalid @enderror" required>
-                                <option value="">Select Patient</option>
-                                @foreach(\App\Models\User::where('is_doctor', false)->where('is_admin', false)->where('is_secretary', false)->get() as $user)
-                                    <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
-                                        {{ $user->name }} ({{ $user->email }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('user_id')
+                            <input type="text"
+                                   name="patient_name"
+                                   id="patient_name"
+                                   class="form-control @error('patient_name') is-invalid @enderror"
+                                   value="{{ old('patient_name') }}"
+                                   placeholder="Enter patient's full name"
+                                   required>
+                            @error('patient_name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        
                         <div class="mb-3">
                             <label for="clinic_id" class="form-label fw-semibold">
                                 <i class="bi bi-building me-1"></i>Clinic
@@ -55,7 +53,7 @@
                             @enderror
                         </div>
 
-                        
+
                         <div class="mb-3">
                             <label for="service_id" class="form-label fw-semibold">
                                 <i class="bi bi-tools me-1"></i>Service
@@ -68,7 +66,7 @@
                             @enderror
                         </div>
 
-                        
+
                         <div class="mb-3">
                             <label for="doctor_id" class="form-label fw-semibold">
                                 <i class="bi bi-person-badge me-1"></i>Doctor
@@ -81,7 +79,7 @@
                             @enderror
                         </div>
 
-                                                
+
                                                 <div class="row g-3 mb-2">
                                                     <div class="col-md-4">
                                                         <label class="form-label fw-semibold"><i class="bi bi-calendar me-1"></i>Date <span class="text-danger">*</span></label>
@@ -105,7 +103,7 @@
                                                     <div class="border rounded p-2 small" id="doctorScheduleInfo"></div>
                                                 </div>
 
-                        
+
                         <div class="mb-3">
                             <label for="notes" class="form-label fw-semibold">
                                 <i class="bi bi-sticky me-1"></i>Notes (Optional)
@@ -120,7 +118,7 @@
                             @enderror
                         </div>
 
-                        
+
                         <div class="mb-3">
                             <label for="medical_document" class="form-label fw-semibold">
                                 <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (Optional)
@@ -132,7 +130,7 @@
                             <div class="form-text">Attach a past prescription, lab result, or relevant file (PDF or image, max 5MB).</div>
                         </div>
 
-                        
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary px-4">
                                 <i class="bi bi-check-circle me-2"></i>Create Appointment
