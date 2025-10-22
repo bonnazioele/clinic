@@ -1,6 +1,6 @@
 # CliniQ MVC map (one page)
 
-This diagram maps key user flows from Routes → Controllers → Models → Views. It’s sized for a single-page print (landscape recommended).
+This diagram maps key user flows from Routes → Controllers → Models → Views. Print landscape for best fit.
 
 ```mermaid
 flowchart LR
@@ -19,20 +19,20 @@ flowchart LR
     C_dash[DashboardController]
     C_appt_public[AppointmentController]
     C_queue_public[QueueController]
-    C_sec_appt[Secretary\\AppointmentController]
-    C_sec_queue[Secretary\\QueueController]
-    C_sec_services[Secretary\\ClinicServiceController]
-    C_doc_queue[Doctor\\QueueController]
-    C_admin_clinic[Admin\\ClinicController]
-    C_admin_service[Admin\\ServiceController]
+    C_sec_appt[Secretary/AppointmentController]
+    C_sec_queue[Secretary/QueueController]
+    C_sec_services[Secretary/ClinicServiceController]
+    C_doc_queue[Doctor/QueueController]
+    C_admin_clinic[Admin/ClinicController]
+    C_admin_service[Admin/ServiceController]
   end
 
   subgraph M[Models]
     M_user[User]
     M_clinic[Clinic]
     M_service[Service]
-    M_appt[Appointment\n(status: scheduled/completed/cancelled/no_show)]
-    M_queue[QueueEntry\n(status: waiting/called/served/cancelled/no_show)]
+    M_appt[Appointment\nstatus: scheduled/completed/cancelled/no_show]
+    M_queue[QueueEntry\nstatus: waiting/called/served/cancelled/no_show]
     M_schedule[DoctorSchedule]
   end
 
@@ -72,7 +72,7 @@ flowchart LR
   C_sec_appt --> M_user
   C_doc_queue --> M_appt
 
-  %% Controllers → Views (returned responses)
+  %% Controllers → Views
   C_appt_public --> V_patient_appts
   C_queue_public --> V_patient_queue
   C_sec_services --> V_secretary_services
@@ -81,7 +81,7 @@ flowchart LR
   C_admin_clinic --> V_admin_clinics
   C_doc_queue --> V_doctor_queue
 
-  %% Shared layout
+  %% Shared layout wraps all views
   V_layout -. wraps .- V_patient_appts
   V_layout -. wraps .- V_patient_queue
   V_layout -. wraps .- V_secretary_services
@@ -91,22 +91,14 @@ flowchart LR
   V_layout -. wraps .- V_doctor_queue
 ```
 
-## File index (exact paths)
+## File index (paths)
 - Routes: `routes/web.php`
-- Controllers:
-  - Public: `app/Http/Controllers/AppointmentController.php`, `QueueController.php`, `DashboardController.php`
-  - Secretary: `app/Http/Controllers/Secretary/AppointmentController.php`, `Secretary/ClinicServiceController.php`, `Secretary/QueueController.php`
-  - Doctor: `app/Http/Controllers/Doctor/QueueController.php`, `Doctor/ScheduleController.php`
-  - Admin: `app/Http/Controllers/Admin/ClinicController.php`, `Admin/ServiceController.php`, `Admin/DashboardController.php`
+- Controllers: `app/Http/Controllers/...`
+  - Public: `AppointmentController.php`, `QueueController.php`, `DashboardController.php`
+  - Secretary: `Secretary/AppointmentController.php`, `Secretary/ClinicServiceController.php`, `Secretary/QueueController.php`
+  - Doctor: `Doctor/QueueController.php`, `Doctor/ScheduleController.php`
+  - Admin: `Admin/ClinicController.php`, `Admin/ServiceController.php`, `Admin/DashboardController.php`
 - Models: `app/Models/Appointment.php`, `QueueEntry.php`, `Clinic.php`, `Service.php`, `User.php`, `DoctorSchedule.php`
-- Views:
-  - Patient: `resources/views/appointments/*.blade.php`, `resources/views/queue/status.blade.php`
-  - Secretary: `resources/views/secretary/services/index.blade.php`, `resources/views/secretary/appointments/*.blade.php`, `resources/views/secretary/queue/index.blade.php`
-  - Doctor: `resources/views/doctor/*`
-  - Admin: `resources/views/admin/*`
-  - Layout: `resources/views/layouts/app.blade.php`
+- Views: `resources/views/...` (see diagram)
 
-## Notes
-- Real-time: `layouts/app.blade.php` initializes Echo + Pusher and subscribes to private notification channels (e.g., `user.notifications.{id}`).
-- Status presentation: `Appointment` and `QueueEntry` expose `status_label` and `status_badge_class` so views render “No Show” (not `no_show`).
-- Business rules: service detach/delete blocks only if appointments are in active use (ignores `cancelled`, `no_show`).
+Notes: Real-time via Echo + Pusher in `layouts/app.blade.php`; status labels/badges provided by model accessors; service detach/delete guarded by appointment usage (ignores `cancelled`, `no_show`).
