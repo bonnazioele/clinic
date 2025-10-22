@@ -1,6 +1,6 @@
 <?php
 
-// app/Notifications/QueueNotification.php
+
 namespace App\Notifications;
 
 use App\Models\QueueEntry;

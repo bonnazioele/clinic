@@ -54,11 +54,11 @@ class SecretaryAppointmentBooked extends Notification implements ShouldBroadcast
 
     protected function formatDateTime(): string
     {
-        // ✅ If appointment_time is a full datetime, just parse it directly
+        
         if ($this->appointment->appointment_time && strlen($this->appointment->appointment_time) > 5) {
             $start = Carbon::parse($this->appointment->appointment_time);
         } else {
-            // ✅ Otherwise merge date + time
+            
             $date = Carbon::parse($this->appointment->appointment_date)->format('Y-m-d');
             $time = $this->appointment->appointment_time ?: '00:00:00';
             $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$time}");

@@ -21,7 +21,7 @@
     </div>
   </div>
 
-  {{-- Search / Filter Card --}}
+  
   <div class="medical-card p-4 mb-4">
     <form method="GET" action="{{ route('admin.services.index') }}" class="row g-3 align-items-end">
       <div class="col-md-5 col-lg-4">
@@ -47,9 +47,9 @@
     </form>
   </div>
 
-  {{-- Flash toasts are rendered globally in layout --}}
+  
 
-  {{-- Table --}}
+  
   <div class="medical-card p-4">
     <div class="d-flex flex-wrap align-items-center mb-4 gap-2">
       <h4 class="mb-0">Available Services <span class="badge bg-primary" style="font-size:.75rem;">{{ $services->total() }}</span></h4>
@@ -114,7 +114,7 @@
       </table>
     </div>
 
-    <!-- Pagination -->
+    
     @if($services->hasPages())
       <div class="d-flex justify-content-between align-items-center flex-column flex-md-row gap-3 p-3 border-top small">
         <div class="text-muted order-2 order-md-1">Showing
@@ -156,7 +156,7 @@
 @endsection
 
 @push('modals')
-<!-- Delete Confirmation Modal -->
+
 <div class="modal fade" id="confirmDeleteServiceModal" tabindex="-1" aria-labelledby="confirmDeleteServiceLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

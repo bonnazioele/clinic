@@ -23,7 +23,7 @@ class ServiceSyncCommand extends Command
             return self::SUCCESS;
         }
 
-        $existing = Service::query()->pluck('id','name'); // name => id
+        $existing = Service::query()->pluck('id','name'); 
         $dry = $this->option('dry-run');
         $prune = $this->option('prune');
 
@@ -62,7 +62,7 @@ class ServiceSyncCommand extends Command
             }
         }
 
-        // Summary
+        
         $summary = [
             'added' => $insertCount,
             'pruned' => count($removed),

@@ -16,7 +16,7 @@ class QueueActionNotification extends Notification implements ShouldBroadcast
 
     public function __construct(
         public QueueEntry $entry,
-        public string $action // "call", "resched", "done"
+        public string $action 
     ) {}
 
     public function via(object $notifiable): array

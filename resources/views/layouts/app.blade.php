@@ -10,26 +10,26 @@
 
     <title>@yield('title', config('app.name', 'CliniQ'))</title>
 
-    <!-- Fonts -->
+    
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
-    <!-- Bootstrap CSS -->
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Bootstrap Icons -->
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
-    <!-- Leaflet CSS (added) -->
+    
     <link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
 
-    <!-- Choices.js CSS (for enhanced multi-selects) -->
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
-    <!-- Custom CSS -->
+    
     <style>
         :root {
             --primary-color: #0d6efd;
@@ -452,7 +452,7 @@
 <div id="app" class="d-flex flex-column min-vh-100">
     @include('partials.navbar')
 
-    {{-- Floating toasts (placed just below navbar). Individual pages can override offsets. --}}
+    
     @include('partials.alerts', ['toastOffsetTop' => '4.5rem'])
 
     <main class="py-4 flex-grow-1">
@@ -464,7 +464,7 @@
     @include('partials.footer')
 </div>
 
-<!-- 🔔 Global Call Notification Modal -->
+
 <div class="modal fade" id="queueCallModal" tabindex="-1" aria-labelledby="queueCallModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -483,16 +483,16 @@
 </div>
 
 
-<!-- Bootstrap JS -->
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 @vite(['resources/js/app.js'])
-<!-- Leaflet JS (added) -->
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 
-<!-- Choices.js (for enhanced multi-selects) -->
+
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
 <script>
@@ -501,8 +501,8 @@
     });
 </script>
 
-<!-- Laravel Echo listener for ALL pages -->
-<!-- Load Pusher and Echo from CDN -->
+
+
 <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
 
@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function() {
     )});
 </script>
 
-<!-- Enhanced UX scripts -->
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Form loading state

@@ -6,7 +6,7 @@
   @include('partials.alerts')
 
   @if(isset($entry))
-    <!-- Specific Queue Entry Status -->
+    
     <div class="medical-card p-4 text-center position-relative">
       <div class="position-absolute" style="right:1rem; top:1rem;">
         <button type="button" class="btn btn-outline-secondary px-3 py-2" style="font-weight:500;" onclick="handleQueueBack()">
@@ -26,7 +26,7 @@
           </span>
         </div>
 
-        <!-- Estimated Wait Time -->
+        
         @php
           $estimatedMinutes = $ahead * 15; // 15 minutes per person
           $estimatedTime = now()->addMinutes($estimatedMinutes);
@@ -37,7 +37,7 @@
           <small class="text-muted">Expected to be called around {{ $estimatedTime->format('g:i A') }}</small>
         </div>
 
-        <!-- Progress Bar -->
+        
         <div class="mb-4">
           <div class="d-flex justify-content-between mb-2">
             <small class="text-muted">Queue Progress</small>
@@ -51,7 +51,7 @@
           </div>
         </div>
 
-        <!-- 🔔 Badge for "being called" (initially hidden, toggled via Echo) -->
+        
         
       @else
         <div class="mb-4">
@@ -78,7 +78,7 @@
         </div>
       @endif
 
-      <!-- Actions -->
+      
       <div class="mt-4">
         @if($entry->status === 'waiting')
           <form method="POST" action="{{ route('queue.leave', $entry) }}" class="d-inline me-2">
@@ -98,7 +98,7 @@
       </div>
     </div>
   @elseif(isset($userQueues) && $userQueues->count() > 0)
-    <!-- General Queue Status - Multiple Entries -->
+    
     <div class="medical-card p-4 mb-4">
       <h3 class="text-center mb-4">
         <i class="bi bi-people medical-icon me-2"></i>Your Queue Status
@@ -136,7 +136,7 @@
       </div>
     </div>
   @else
-    <!-- No Active Queues -->
+    
     <div class="medical-card p-4 text-center">
       <div class="mb-4">
         <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
@@ -157,7 +157,7 @@
   @endif
 </div>
 
-<!-- 📌 Custom Modal -->
+
 
 
 @push('scripts')

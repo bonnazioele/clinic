@@ -29,7 +29,6 @@ Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);
 
 Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
-// Public clinic details (AJAX for modal)
 Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
 Route::get('/services/search', [\App\Http\Controllers\PublicServiceController::class, 'search'])->name('services.search');
 
@@ -106,7 +105,6 @@ Route::prefix('admin')
 
          Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
 
-           // Reports (controller based)
            Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
 
      });
@@ -134,7 +132,8 @@ Route::prefix('secretary')
          Route::get('/clinics/{clinic}/queue', [\App\Http\Controllers\Secretary\QueueController::class,'queue'])->name('queue.index');
         Route::post('/{clinic}/{entry}/call', [\App\Http\Controllers\Secretary\QueueController::class, 'call'])->name('queue.call');
         Route::post('/{clinic}/{entry}/reschedule', [\App\Http\Controllers\Secretary\QueueController::class, 'reschedule'])->name('queue.reschedule');
-        Route::post('/{clinic}/{entry}/cancel', [\App\Http\Controllers\Secretary\QueueController::class, 'cancel'])->name('queue.cancel');
+         Route::post('/{clinic}/{entry}/cancel', [\App\Http\Controllers\Secretary\QueueController::class, 'cancel'])->name('queue.cancel');
+         Route::post('/{clinic}/{entry}/no-show', [\App\Http\Controllers\Secretary\QueueController::class, 'noShow'])->name('queue.no_show');
 
          Route::resource('doctors', SecDoctor::class);
 
@@ -166,17 +165,4 @@ Route::prefix('doctor')
       });
 
 
-//Owner Routes
-
-Route::prefix('owner')
-     ->middleware(['auth'])
-     ->name('owner.')
-     ->group(function(){
-          Route::get('/dashboard', function(){ return redirect()->route('secretary.dashboard'); })->name('dashboard');
-          Route::get('/staff', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.index');
-          Route::post('/staff/attach', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.attach');
-          Route::delete('/staff/detach', function(){ return redirect()->route('secretary.dashboard'); })->name('staff.detach');
-     });
-
-
-     Broadcast::routes(); // default uses 'web' middleware
+Broadcast::routes();

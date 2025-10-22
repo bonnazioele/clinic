@@ -23,13 +23,13 @@ class ServiceController extends Controller
     {
         $query = Service::query()->withCount('clinics');
 
-        // Search by name or description
+        
         if ($request->filled('q')) {
             $term = trim($request->input('q'));
             $query->where('name','like',"%{$term}%");
         }
 
-        // Sorting: default newest, az, za
+        
         $sort = $request->input('sort');
         if ($sort === 'az') {
             $query->orderBy('name','asc');

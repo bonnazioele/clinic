@@ -263,7 +263,7 @@
 
 @section('content')
 <div class="container py-4">
-  <!-- Clinics Overview (aligned with Users Overview style) -->
+  
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center">
       <div>
@@ -285,7 +285,7 @@
     </div>
   </div>
 
-  <!-- Search and Filter (aligned with Services Management layout) -->
+  
   <div class="medical-card p-4 mb-4">
     <form class="row g-3 align-items-end" method="GET" action="{{ route('admin.clinics.index') }}">
       <div class="col-md-5 col-lg-4">
@@ -315,7 +315,7 @@
     </form>
   </div>
 
-  <!-- Clinics Table -->
+  
   <div class="medical-card p-4">
     <div class="mb-4">
       <h4 class="mb-0 d-flex align-items-center gap-2">

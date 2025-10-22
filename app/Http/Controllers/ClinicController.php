@@ -28,7 +28,7 @@ class ClinicController extends Controller
 
     public function show(Request $request, Clinic $clinic)
     {
-        // Only expose approved/active clinics
+        
         if(! $clinic->isApprovedLike()) {
             abort(404);
         }
@@ -38,7 +38,7 @@ class ClinicController extends Controller
         $user = Auth::user();
         $canEdit = false;
         if($user) {
-            // Secretary of this clinic can edit
+            
             $canEdit = $user->is_secretary && $clinic->secretaries()->where('users.id', $user->id)->exists();
         }
 

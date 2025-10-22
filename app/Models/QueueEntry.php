@@ -73,4 +73,32 @@ class QueueEntry extends Model
         }
         return \Carbon\Carbon::parse($this->served_at)->format('g:i A');
     }
+
+    
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'waiting' => 'Waiting',
+            'called' => 'Called',
+            'rescheduled' => 'Rescheduled',
+            'no_show' => 'No Show',
+            'cancelled' => 'Cancelled',
+            'served' => 'Served',
+            default => ucfirst(str_replace('_',' ', $this->status ?? 'Unknown')),
+        };
+    }
+
+    
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->status) {
+            'waiting' => 'secondary',
+            'called' => 'info',
+            'rescheduled' => 'warning',
+            'no_show' => 'dark',
+            'cancelled' => 'danger',
+            'served' => 'success',
+            default => 'light',
+        };
+    }
 }

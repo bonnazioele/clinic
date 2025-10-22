@@ -16,7 +16,7 @@
   <form method="POST" action="{{ route('appointments.store') }}" enctype="multipart/form-data">
       @csrf
 
-      {{-- Clinic --}}
+      
       <div class="mb-3">
         <label class="form-label fw-semibold">
           <i class="bi bi-building me-1"></i>Clinic <span class="text-danger">*</span>
@@ -33,7 +33,7 @@
         @error('clinic_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
       </div>
 
-      {{-- Service --}}
+      
       <div class="mb-3">
         <label class="form-label fw-semibold">
           <i class="bi bi-scissors me-1"></i>Service <span class="text-danger">*</span>
@@ -44,7 +44,7 @@
         @error('service_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
       </div>
 
-      {{-- Doctor --}}
+      
       <div class="mb-3">
         <label class="form-label fw-semibold">
           <i class="bi bi-person-badge me-1"></i>Doctor <span class="text-danger">*</span>
@@ -55,7 +55,7 @@
         @error('doctor_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
       </div>
 
-      {{-- Date, Day & Time (dynamic availability) --}}
+      
       <div class="row g-3 mb-3">
         <div class="col-md-4">
           <label class="form-label fw-semibold"><i class="bi bi-calendar me-1"></i>Date <span class="text-danger">*</span></label>
@@ -80,7 +80,7 @@
         <div class="border rounded p-2 small" id="doctorScheduleInfo"></div>
       </div>
 
-      {{-- Optional Medical Document --}}
+      
       <div class="mb-3">
         <label class="form-label fw-semibold">
           <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (optional)

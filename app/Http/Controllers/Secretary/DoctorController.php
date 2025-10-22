@@ -41,7 +41,7 @@ class DoctorController extends Controller
         $user = auth()->user();
         $activeClinicId = session('active_clinic_id');
         $clinicIds = $user->secretaryClinics()->pluck('clinics.id')->all();
-        // If active clinic set & belongs to secretary, restrict to that clinic's services; else union of all assigned clinics' services
+        
         $serviceQuery = Service::query();
         if ($activeClinicId && in_array($activeClinicId, $clinicIds)) {
             $serviceQuery->whereHas('clinics', function($q) use ($activeClinicId){
@@ -84,7 +84,7 @@ class DoctorController extends Controller
     } else {
         $doctor->clinics()->sync($secretaryClinicIds);
     }
-    // Filter submitted service IDs to only those allowed (services offered by assigned clinics)
+    
     $allowedServiceIds = Service::whereHas('clinics', function($q) use ($secretaryClinicIds){
         $q->whereIn('clinics.id', $secretaryClinicIds);
     })->pluck('id')->all();

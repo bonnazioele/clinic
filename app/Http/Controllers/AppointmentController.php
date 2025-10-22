@@ -111,11 +111,9 @@ class AppointmentController extends Controller
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
-            while ($cursor < $end) { // allow a slot that ends exactly at schedule end
+            while ($cursor < $end) { 
                 $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
                 if ($slotEnd > $end) {
-                    // stop if we do not want partial slot; break to keep previous behavior
-                    // To include partial, uncomment next line. For now we break.
                     break;
                 }
                 $timeLabel = $cursor->format('H:i');
@@ -191,6 +189,18 @@ class AppointmentController extends Controller
             ]);
         }
 
+        
+        $sameClinicConflict = Appointment::where('user_id', Auth::id())
+            ->where('clinic_id', $data['clinic_id'])
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+        if ($sameClinicConflict) {
+            return back()->withInput()->withErrors([
+                'appointment_date' => 'You already have an appointment in this clinic for that date.'
+            ]);
+        }
+
         $appointment = Auth::user()
                            ->appointments()
                            ->create([
@@ -211,14 +221,14 @@ class AppointmentController extends Controller
         $queueNumber = $queueService->getNextNumber($data['clinic_id']);
 
         \App\Models\QueueEntry::create([
-            'clinic_id'     => $data['clinic_id'],
-            'user_id'       => Auth::id(),
-            'appointment_id'=> $appointment->id,
-            'queue_number'  => $queueNumber,
-            'status'        => 'waiting',
+            'clinic_id'      => $data['clinic_id'],
+            'user_id'        => Auth::id(),
+            'appointment_id' => $appointment->id,
+            'queue_number'   => $queueNumber,
+            'status'         => 'waiting',
         ]);
 
-    Auth::user()->notify(new PatientAppointmentBooked($appointment));
+        Auth::user()->notify(new PatientAppointmentBooked($appointment));
 
         if ($appointment->clinic) {
             $appointment->clinic->secretaries()->each(function($sec) use ($appointment) {
@@ -240,9 +250,9 @@ class AppointmentController extends Controller
         if ($appointment->user_id !== Auth::id()) {
             abort(403,'Forbidden');
         }
-        // Load needed relations
+        
         $appointment->load(['clinic.services','doctor','service']);
-        // For reassignment we allow choosing among clinic services & doctors
+        
         $clinic = $appointment->clinic;
         $clinic->load(['services','doctors']);
         return view('appointments.edit', [
@@ -267,10 +277,9 @@ class AppointmentController extends Controller
             'appointment_time' => 'required',
         ]);
 
-        // Validate doctor schedule & conflicts similar to store
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $time = $data['appointment_time'];
-        $clinicId = $appointment->clinic_id; // clinic not editable here
+        $clinicId = $appointment->clinic_id; 
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)

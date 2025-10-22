@@ -13,7 +13,7 @@
     </div>
     <div class="card-body">
 
-      {{-- Current Queue Status --}}
+      
       @php
         $activeQueues = auth()->user()->queueEntries()
           ->where('status', 'waiting')
@@ -53,7 +53,7 @@
         </div>
       @endif
 
-      {{-- Upcoming Appointments --}}
+      
       <h5 class="mt-2 mb-3 fw-semibold">
         <i class="bi bi-clock-history me-2"></i>Upcoming Appointments
       </h5>
@@ -86,10 +86,8 @@
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
                   <td>
-                    <span class="badge rounded-pill
-                      {{ $a->status === 'scheduled' ? 'bg-warning text-dark' :
-                         ($a->status === 'completed' ? 'bg-success' : 'bg-secondary') }}">
-                      {{ ucfirst($a->status) }}
+                    <span class="badge rounded-pill {{ $a->status_badge_class }}">
+                      {{ $a->status_label }}
                     </span>
                   </td>
                   <td>
@@ -136,7 +134,7 @@
         </div>
       @endif
 
-      {{-- Past Appointments --}}
+      
       <h5 class="mt-4 mb-3 fw-semibold">
         <i class="bi bi-archive-fill me-2"></i>Past Appointments
       </h5>
@@ -167,10 +165,8 @@
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
                   <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
                   <td>
-                    <span class="badge rounded-pill
-                      {{ $a->status === 'scheduled' ? 'bg-warning text-dark' :
-                         ($a->status === 'completed' ? 'bg-success' : 'bg-secondary') }}">
-                      {{ ucfirst($a->status) }}
+                    <span class="badge rounded-pill {{ $a->status_badge_class }}">
+                      {{ $a->status_label }}
                     </span>
                   </td>
                 </tr>

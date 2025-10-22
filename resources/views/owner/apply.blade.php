@@ -75,7 +75,7 @@
               </div>
             </div>
 
-            {{-- Services Offered --}}
+            
             <div class="mb-3">
               <label class="form-label"><i class="bi bi-gear me-1"></i>Services Offered</label>
               <div class="dropdown">
@@ -83,13 +83,13 @@
                   Select Services
                 </button>
                 <ul class="dropdown-menu w-100 p-2" aria-labelledby="servicesDropdown" style="max-height: 250px; overflow-y: auto;">
-                  {{-- Search box --}}
+                  
                   <li class="mb-2">
                     <input type="text" id="serviceSearch" class="form-control form-control-sm" placeholder="Search services...">
                   </li>
                   <li><hr class="dropdown-divider"></li>
 
-                  {{-- Service list --}}
+                  
                   <div id="servicesList">
                     @foreach(($services ?? []) as $service)
                       <li>
@@ -106,7 +106,7 @@
               <div id="selected-services" class="mt-2"></div>
             </div>
 
-            {{-- Logo Upload --}}
+            
             <div class="mb-3">
               <label class="form-label"><i class="bi bi-image me-1"></i>Clinic Logo <small class="text-muted">(optional)</small></label>
               <input type="file" name="logo" id="logoInput" class="form-control @error('logo') is-invalid @enderror" accept="image/jpeg,image/png,image/jpg,image/gif">
@@ -120,14 +120,14 @@
               </div>
             </div>
 
-            {{-- Map Picker --}}
+            
             <div class="mb-3">
               <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Location</label>
               <div class="form-text mb-2">Click on the map or drag the marker to set the clinic location.</div>
               <div id="mapPicker" style="height: 300px;" class="border rounded"></div>
             </div>
 
-            {{-- Lat/Lng --}}
+            
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-compass me-1"></i>Latitude</label>
@@ -141,7 +141,7 @@
               </div>
             </div>
 
-            <!-- Removed legacy secondary clinic account & email fields. Clinic email above is now the sole email captured. -->
+            
 
             <div class="mt-4 d-flex justify-content-end gap-2">
               <a href="{{ route('welcome') }}" class="btn btn-light">Cancel</a>

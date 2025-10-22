@@ -13,17 +13,13 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
 
     public function __construct(public Appointment $appointment) {}
 
-    /**
-     * Notification channels
-     */
+    
     public function via($notifiable)
     {
         return ['database', 'broadcast'];
     }
 
-    /**
-     * Store in database
-     */
+    
     public function toDatabase($notifiable): array
     {
         return [
@@ -33,17 +29,13 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
         ];
     }
 
-    /**
-     * Broadcast data
-     */
+    
     public function toBroadcast($notifiable)
     {
         return new \Illuminate\Notifications\Messages\BroadcastMessage($this->toArray($notifiable));
     }
 
-    /**
-     * Array format
-     */
+    
     public function toArray($notifiable): array
     {
         return [
@@ -53,9 +45,7 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
         ];
     }
 
-    /**
-     * Broadcast channel (secretary only)
-     */
+    
     public function broadcastOn(): array
     {
         return [

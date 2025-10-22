@@ -2,8 +2,8 @@
 
 @section('content')
 <div class="container py-4">
-  {{-- Removed hover styling per request --}}
-  <!-- Unified Welcome Header -->
+  
+  
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -69,7 +69,7 @@
     </div>
   </div>
 
-  {{-- Pending Clinic Applicants --}}
+  
   <div class="medical-card p-4" id="pending-clinic-applicants">
     <div class="d-flex align-items-center mb-3">
       <h5 class="mb-0"><i class="bi bi-inbox me-2"></i>Pending Clinic Applicants <span class="badge bg-primary ms-2">{{ $pendingCount }}</span></h5>

@@ -6,7 +6,7 @@
 @section('content')
 <div class="container py-4">
   @include('partials.alerts')
-  <!-- Welcome Header -->
+  
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -88,7 +88,7 @@
   </div>
 
   <div class="row g-4">
-    {{-- Upcoming Appointments --}}
+    
     <div class="col-lg-6">
       <div class="dashboard-card">
         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -147,7 +147,7 @@
       </div>
     </div>
 
-    {{-- Quick Actions --}}
+    
     <div class="col-lg-6">
       <div class="dashboard-card">
         <h5 class="mb-3">
@@ -188,7 +188,7 @@
         </div>
       </div>
 
-      {{-- Queue Status for Patients --}}
+      
       @if(!Auth::user()->is_admin && !Auth::user()->is_secretary)
         @php
           $activeQueues = Auth::user()->queueEntries()
@@ -238,7 +238,7 @@
             </div>
           </div>
         @else
-          {{-- Queue Information Card --}}
+          
           <div class="dashboard-card mt-4">
             <div class="alert alert-info border-0 mb-0">
               <h6 class="fw-semibold mb-2">
@@ -269,7 +269,7 @@
         @endif
       @endif
 
-      <!-- Recent Activity -->
+      
       <div class="dashboard-card mt-4">
         <h5 class="mb-3">
           <i class="bi bi-activity medical-icon me-2"></i>Recent Activity
@@ -292,7 +292,7 @@
       </div>
     </div>
 
-    {{-- Past Appointments/Recent Visits --}}
+    
     <div class="col-12">
       <div class="dashboard-card">
         <div class="d-flex align-items-center justify-content-between mb-3">

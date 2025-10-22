@@ -2,7 +2,7 @@
 @section('title','Doctor Dashboard')
 @section('content')
 <div class="container py-4">
-  <!-- Unified Welcome Header -->
+  
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">

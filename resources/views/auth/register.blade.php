@@ -7,7 +7,7 @@
   @include('partials.alerts', ['toastOffsetTop' => '6rem', 'toastOffsetRight' => '1.25rem'])
   <div class="row justify-content-center align-items-center min-vh-100">
 
-    {{-- Left: Welcome Text --}}
+    
     <div class="col-md-6 mb-5 mb-md-0">
       <h1 class="fw-bold text-primary display-5">Join CliniQ Today!</h1>
       <p class="text-muted fs-6 mt-3">
@@ -15,7 +15,7 @@
       </p>
     </div>
 
-    {{-- Right: Registration Form --}}
+    
     <div class="col-md-6">
       <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body p-4">
@@ -26,7 +26,7 @@
           <form method="POST" action="{{ route('register') }}">
             @csrf
 
-            {{-- First Name --}}
+            
             <div class="mb-3">
               <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
               <input id="first_name" type="text"
@@ -37,7 +37,7 @@
               @enderror
             </div>
 
-            {{-- Last Name --}}
+            
             <div class="mb-3">
               <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
               <input id="last_name" type="text"
@@ -48,7 +48,7 @@
               @enderror
             </div>
 
-            {{-- Email --}}
+            
             <div class="mb-3">
               <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
               <input id="email" type="email"
@@ -59,7 +59,7 @@
               @enderror
             </div>
 
-            {{-- Phone --}}
+            
             <div class="mb-3">
               <label for="phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
               <input id="phone" type="tel"
@@ -71,7 +71,7 @@
               @enderror
             </div>
 
-            {{-- Birthdate --}}
+            
             <div class="mb-3">
               <label for="birthdate" class="form-label">Birth Date <span class="text-danger">*</span></label>
               <input id="birthdate" type="date"
@@ -82,7 +82,7 @@
               @enderror
             </div>
 
-            {{-- Address --}}
+            
             <div class="mb-3">
               <label for="address" class="form-label">Address <small class="text-muted">(optional)</small></label>
               <textarea id="address" name="address" class="form-control @error('address') is-invalid @enderror"
@@ -92,7 +92,7 @@
               @enderror
             </div>
 
-            {{-- Password --}}
+            
             <div class="mb-3">
               <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
               <div class="input-group">
@@ -108,7 +108,7 @@
               @enderror
             </div>
 
-            {{-- Confirm Password --}}
+            
             <div class="mb-4">
               <label for="password_confirmation" class="form-label">Confirm Password <span class="text-danger">*</span></label>
               <div class="input-group">
