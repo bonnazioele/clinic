@@ -218,10 +218,7 @@
     color: #334155;
   }
 
-  .action-btn-suspend:hover {
-    background-color: rgba(100, 116, 139, 0.1);
-    color: #334155;
-  }
+  
 
   .action-btn-delete:hover {
     background-color: rgba(100, 116, 139, 0.1);
@@ -315,8 +312,10 @@
         <label class="form-label fw-semibold"><i class="bi bi-filter me-1"></i>Status</label>
         <select name="status" class="form-select form-select-lg">
           <option value="">All Status</option>
+          <option value="approved" @selected(request('status') == 'approved')>Approved</option>
           <option value="active" @selected(request('status') == 'active')>Active</option>
-          <option value="inactive" @selected(request('status') == 'inactive')>Inactive</option>
+          <option value="rejected" @selected(request('status') == 'rejected')>Rejected</option>
+          <option value="suspended" @selected(request('status') == 'suspended')>Suspended</option>
         </select>
       </div>
       <div class="col-md-2 col-lg-2">
@@ -450,12 +449,7 @@
                    title="Edit Clinic">
                   <i class="bi bi-pencil"></i>
                 </a>
-                <button type="button" 
-                        class="action-btn action-btn-suspend" 
-                        onclick="suspendClinic({{ $clinic->id }})"
-                        title="Suspend Clinic">
-                  <i class="bi bi-pause"></i>
-                </button>
+                
                 <button type="button" 
                         class="action-btn action-btn-delete" 
                         onclick="deleteClinic({{ $clinic->id }})"
@@ -535,11 +529,7 @@
     }
   });
 
-  function suspendClinic(clinicId) {
-    if (!confirm('Are you sure you want to suspend this clinic? The clinic will be temporarily disabled.')) return;
-    // TODO: Implement suspend functionality
-    alert('Suspend functionality to be implemented. Clinic ID: ' + clinicId);
-  }
+  
 
   function deleteClinic(clinicId) {
     if (!confirm('Are you sure you want to delete this clinic? This action cannot be undone.')) return;

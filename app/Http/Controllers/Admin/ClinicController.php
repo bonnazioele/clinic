@@ -22,14 +22,16 @@ class ClinicController extends Controller
 
     public function index(Request $request)
     {
-        $query = Clinic::with(['services', 'secretaries'])->whereIn('status', ['approved','active']);
+        // Show all clinics by default; filter by status if provided
+        $query = Clinic::with(['services', 'secretaries']);
 
         if ($request->filled('name')) {
             $name = trim((string) $request->input('name'));
             $query->where('name', 'like', "%{$name}%");
         }
         if ($request->filled('status')) {
-            $query->where('status', (string) $request->input('status'));
+            $status = strtolower((string) $request->input('status'));
+            $query->where('status', $status);
         }
 
         $clinics = $query->latest()->paginate(10)->withQueryString();
