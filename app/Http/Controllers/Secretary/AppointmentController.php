@@ -31,6 +31,7 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
         $clinics = $user->secretaryClinics()
+            ->where('status', 'active')
             ->with(['services','doctors.services'])
             ->get();
 
