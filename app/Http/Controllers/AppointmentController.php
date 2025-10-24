@@ -43,7 +43,9 @@ class AppointmentController extends Controller
 
     public function create()
     {
-        $clinics = Clinic::with(['services','doctors.services'])->get();
+        $clinics = Clinic::with(['services','doctors.services'])
+            ->where('status', 'active')
+            ->get();
         return view('appointments.create', compact('clinics'));
     }
 

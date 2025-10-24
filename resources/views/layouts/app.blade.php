@@ -54,7 +54,6 @@
             --shadow-hover: 0 0.5rem 1rem rgba(0,0,0,.15);
         }
 
-        /* Global Styles */
         body {
             font-family: 'Figtree', sans-serif;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -63,7 +62,6 @@
             min-height: 100vh;
         }
 
-        /* Medical Theme Enhancements */
         .medical-gradient {
             background: linear-gradient(135deg, var(--medical-blue) 0%, var(--primary-color) 100%);
         }
@@ -82,7 +80,6 @@
             border-color: rgba(30, 136, 229, 0.3);
         }
 
-        /* Navbar Enhancements */
         .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
@@ -111,7 +108,6 @@
             border: 1px solid rgba(255,255,255,.3);
         }
 
-        /* Avatar Circle */
         .avatar-circle {
             width: 32px;
             height: 32px;
@@ -124,7 +120,6 @@
             font-size: 0.9rem;
         }
 
-        /* Enhanced Cards */
         .clinic-card {
             transition: var(--transition);
             border-radius: var(--border-radius);
@@ -140,7 +135,6 @@
             border-color: rgba(30, 136, 229, 0.3);
         }
 
-        /* Enhanced Buttons */
         .btn {
             border-radius: var(--border-radius-sm);
             font-weight: 500;
@@ -168,7 +162,6 @@
             background: linear-gradient(135deg, var(--warning-color) 0%, var(--medical-orange) 100%);
         }
 
-        /* Enhanced Forms */
         .form-control, .form-select {
             border-radius: var(--border-radius-sm);
             border: 2px solid #e9ecef;
@@ -183,7 +176,6 @@
             background: #fff;
         }
 
-        /* Enhanced Tables */
         .table {
             border-radius: var(--border-radius);
             overflow: hidden;
@@ -206,14 +198,12 @@
             transform: scale(1.01);
         }
 
-        /* Enhanced Badges */
         .badge {
             border-radius: 1rem;
             font-weight: 500;
             padding: .5rem 1rem;
         }
 
-        /* Enhanced Alerts */
         .alert {
             border-radius: var(--border-radius);
             border: none;
@@ -237,7 +227,6 @@
             background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
         }
 
-        /* Medical Icons */
         .medical-icon {
             color: var(--medical-blue);
             font-size: 1.2rem;
@@ -255,7 +244,6 @@
             color: var(--medical-red);
         }
 
-        /* Animations */
         .animate-pulse {
             animation: pulse 2s infinite;
         }
@@ -274,7 +262,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Enhanced Accessibility */
         .sr-only {
             position: absolute;
             width:1px;
@@ -294,13 +281,11 @@
             outline-offset: 2px;
         }
 
-        /* Loading States */
         .btn.loading {
             pointer-events: none;
             opacity: 0.8;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .container { padding-left: 1rem; padding-right: 1rem; }
             .btn { width: 100%; margin-bottom: .5rem; }
@@ -308,7 +293,6 @@
             .navbar-nav .nav-link { text-align: center; margin: 0.25rem 0; }
         }
 
-        /* Footer Enhancements */
         footer {
             margin-top: auto;
         }
@@ -319,7 +303,6 @@
             transition: var(--transition);
         }
 
-        /* Dashboard Cards */
         .dashboard-card {
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border: 1px solid rgba(30, 136, 229, 0.1);
@@ -342,7 +325,6 @@
             color: var(--medical-blue);
         }
 
-        /* Queue Status Enhancements */
         .queue-status {
             background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
             border: 1px solid var(--medical-blue);
@@ -358,15 +340,12 @@
             text-align: center;
         }
 
-        /* ===== APPLICATION-DETAIL STYLES ===== */
-        /* Admin toast positioning for clinic application approval/decline */
         @media (min-width: 768px) {
-            /* Position toasts in the top-right of main content area */
             .position-fixed[style*="top:"] {
-                top: 5rem !important; /* Below navbar */
+                top: 5rem !important;
                 right: 2rem !important;
-                left: auto !important; /* Remove left positioning */
-                width: 400px !important; /* Fixed width */
+                left: auto !important;
+                width: 400px !important;
                 max-width: 400px !important;
                 z-index: 9999 !important;
             }
@@ -383,12 +362,10 @@
             }
         }
 
-        /* Ensure toasts appear above all content */
         .toast-container {
             z-index: 9999 !important;
         }
 
-        /* Consistent toast styling for application-detail */
         .toast {
             min-width: 320px !important;
             max-width: 400px !important;
@@ -398,7 +375,6 @@
             border-radius: 8px !important;
         }
 
-        /* Better visibility and styling */
         .toast-body {
             padding: 1rem !important;
             font-size: 0.9rem !important;
@@ -408,9 +384,6 @@
         .toast .btn-close {
             margin: 0.5rem !important;
         }
-        /* ===== END APPLICATION-DETAIL STYLES ===== */
-
-        /* Floating / subtle motion utilities */
         @keyframes float-sm {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-4px); }
@@ -425,13 +398,11 @@
         .float-delay-2 { animation-delay: 2s; }
         .float-hover-pause:hover { animation-play-state: paused; }
 
-        /* Apply default floating to key dashboard visual elements */
         .dashboard-card.float-enabled,
         .medical-card.float-enabled {
             animation: float-sm 7s ease-in-out infinite;
         }
 
-        /* One-time entrance float for forms (no continuous bobbing) */
         @keyframes float-rise-once {
             0% { opacity:0; transform: translateY(24px); }
             60% { opacity:1; transform: translateY(-6px); }
@@ -440,7 +411,6 @@
         .float-once {
             animation: float-rise-once .9s ease-out 1;
         }
-        /* Respect reduced motion preference */
         @media (prefers-reduced-motion: reduce) {
             .float-sm, .float-md, .dashboard-card.float-enabled, .medical-card.float-enabled { animation: none !important; }
         }
@@ -507,7 +477,6 @@
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
 
 <script>
-    // Initialize Echo
     window.Echo = new Echo({
         broadcaster: 'pusher',
         key: '{{ env('VITE_PUSHER_APP_KEY') }}',
@@ -525,13 +494,11 @@
                     console.log('Notification received:', e);
                     
                     if (e.notification && e.notification.type === 'queue_next_up') {
-                        // Set modal message
                         const messageElement = document.getElementById('queueCallMessage');
                         if (messageElement) {
                             messageElement.innerText = e.notification.message || 'You are being called!';
                         }
 
-                        // Play ding sound
                         const sound = document.getElementById('queueCallSound');
                         if (sound) {
                             sound.play().catch(() => {
@@ -539,7 +506,6 @@
                             });
                         }
 
-                        // Show modal
                         const modalElement = document.getElementById('queueCallModal');
                         if (modalElement && typeof bootstrap !== 'undefined') {
                             const modal = new bootstrap.Modal(modalElement);
@@ -555,7 +521,6 @@
 </script>
 
 <script>
-// Initialize Choices.js on any select with .enhanced-multiselect
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('select.enhanced-multiselect[multiple]')?.forEach((el) => {
         try {
@@ -564,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 shouldSort: false,
                 searchPlaceholderValue: 'Type to search…'
             });
-        } catch (e) { /* noop */ }
+        } catch (e) { }
         }
     )});
 </script>
@@ -585,7 +550,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Clickable table rows
     document.querySelectorAll('tbody tr').forEach(row => {
         row.addEventListener('click', function() {
             const link = this.querySelector('a[href]');
@@ -595,7 +559,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Scroll to top button
     const scrollToTopBtn = document.createElement('button');
     scrollToTopBtn.innerHTML = '<i class="bi bi-arrow-up"></i>';
     scrollToTopBtn.className = 'btn btn-primary rounded-circle position-fixed shadow';
@@ -617,7 +580,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.addEventListener('mousedown', () => document.body.classList.remove('keyboard-navigation'));
 
-    // Enhanced notifications
     const notificationBadges = document.querySelectorAll('.badge.animate-pulse');
     notificationBadges.forEach(badge => {
         badge.addEventListener('click', function(e) {
@@ -625,7 +587,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add fade-in animation to cards
     const cards = document.querySelectorAll('.clinic-card, .dashboard-card, .medical-card');
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -637,7 +598,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     cards.forEach(card => observer.observe(card));
 
-    // Password visibility toggles
     document.querySelectorAll('.password-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
             const targetSelector = btn.getAttribute('data-target');

@@ -20,20 +20,6 @@
         <a href="{{ route('admin.clinics.edit', $clinic) }}" class="btn btn-outline-primary">
           <i class="bi bi-pencil me-1"></i>Edit Clinic
         </a>
-        @if(strtolower($clinic->status) !== 'approved')
-          <form action="{{ route('admin.clinics.approve', $clinic) }}" method="POST" onsubmit="return confirm('Approve this clinic?');">
-            @csrf
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-check2-circle me-1"></i>Approve
-            </button>
-          </form>
-          <form action="{{ route('admin.clinics.decline', $clinic) }}" method="POST" onsubmit="return confirm('Decline this clinic?');">
-            @csrf
-            <button type="submit" class="btn btn-outline-danger">
-              <i class="bi bi-x-circle me-1"></i>Decline
-            </button>
-          </form>
-        @endif
         <a href="{{ route('admin.clinics.index') }}" class="btn btn-light">
           <i class="bi bi-arrow-left me-1"></i>Back to list
         </a>
