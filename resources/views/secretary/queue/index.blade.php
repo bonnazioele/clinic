@@ -52,7 +52,7 @@
               </td>
               <td>
                 <div class="d-flex gap-2">
-                  
+
                   <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
                     @csrf
                     <button class="btn btn-sm btn-primary">
@@ -60,7 +60,7 @@
                     </button>
                   </form>
 
-                  
+
                   <form method="POST" action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}" onsubmit="return confirm('Mark this patient as NO-SHOW?');">
                     @csrf
                     <button class="btn btn-sm btn-outline-secondary">
@@ -68,45 +68,22 @@
                     </button>
                   </form>
 
-                  
-                  <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#reschedModal{{ $queueEntry->id }}">
+
+                  <button type="button"
+                          class="btn btn-sm btn-warning"
+                          data-bs-toggle="modal"
+                          data-bs-target="#reschedModal"
+                          data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
                     <i class="bi bi-calendar-event me-1"></i>Resched
                   </button>
 
-                  
+
                   <form method="POST" action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}">
                     @csrf
                     <button class="btn btn-sm btn-outline-danger">
                       <i class="bi bi-x-circle me-1"></i>Cancel
                     </button>
                   </form>
-                </div>
-
-                
-                <div class="modal fade" id="reschedModal{{ $queueEntry->id }}" tabindex="-1">
-                  <div class="modal-dialog">
-                    <form method="POST" action="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}" class="modal-content">
-                      @csrf
-                      <div class="modal-header">
-                        <h5 class="modal-title">Reschedule Appointment</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div class="modal-body">
-                        <div class="mb-3">
-                          <label>New Date</label>
-                          <input type="date" name="new_date" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                          <label>New Time</label>
-                          <input type="time" name="new_time" class="form-control" required>
-                        </div>
-                      </div>
-                      <div class="modal-footer">
-                        <button class="btn btn-primary">Save</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                      </div>
-                    </form>
-                  </div>
                 </div>
               </td>
             </tr>
@@ -120,6 +97,35 @@
 
 @push('scripts')
 <script>
+// Single reschedule modal logic to avoid multiple modal instances and overflow issues
+document.addEventListener('DOMContentLoaded', function() {
+  const reschedModalEl = document.getElementById('reschedModal');
+  if (!reschedModalEl) return;
+  const reschedModal = new bootstrap.Modal(reschedModalEl);
+  // Persist last clicked action URL so we can restore after validation redirect
+  document.querySelectorAll('[data-bs-target="#reschedModal"][data-action-url]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.getAttribute('data-action-url');
+      if (url) try { localStorage.setItem('lastReschedActionUrl', url); } catch(e) {}
+    });
+  });
+  reschedModalEl.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    if (!button) return;
+    const actionUrl = button.getAttribute('data-action-url');
+    const form = reschedModalEl.querySelector('form');
+    form.setAttribute('action', actionUrl);
+  });
+  // If there were validation errors for reschedule, auto-open the modal and restore last action
+  const hasErrors = reschedModalEl.querySelector('.text-danger');
+  if (hasErrors) {
+    const stored = (() => { try { return localStorage.getItem('lastReschedActionUrl'); } catch(e) { return null; }})();
+    const form = reschedModalEl.querySelector('form');
+    if (stored && form) form.setAttribute('action', stored);
+    reschedModal.show();
+  }
+});
+
   Echo.private('user.notifications.{{ auth()->id() }}')
     .listen('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (e) => {
       if(e.notification.role === 'secretary') {
@@ -134,3 +140,38 @@
 </script>
 @endpush
 @endsection
+
+@push('modals')
+<!-- Global Reschedule Modal placed outside table to prevent clipping within .table-responsive -->
+<div class="modal fade" id="reschedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="#" class="modal-content" id="reschedForm">
+      @csrf
+      <div class="modal-header">
+        <h5 class="modal-title">Reschedule Appointment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">New Date</label>
+          <input type="date" name="new_date" class="form-control" value="{{ old('new_date') }}" required>
+          @error('new_date')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="mb-3">
+          <label class="form-label">New Time</label>
+          <input type="time" name="new_time" class="form-control" value="{{ old('new_time') }}" required>
+          @error('new_time')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+          @enderror
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+@endpush

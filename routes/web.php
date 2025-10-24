@@ -111,7 +111,7 @@ Route::prefix('admin')
 
      //Secretary Routes
 
-Route::prefix('secretary')
+        Route::prefix('secretary')
      ->middleware(['auth', 'force.password.change', \App\Http\Middleware\SecretaryMiddleware::class, \App\Http\Middleware\EnsureSelectedClinic::class])
      ->name('secretary.')
      ->group(function(){
@@ -119,6 +119,12 @@ Route::prefix('secretary')
               ->name('auth.password.force.show');
          Route::put('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'update'])
               ->name('auth.password.force.update');
+
+        Route::prefix('secretary')
+           ->name('secretary.')
+           ->group(function () {
+               Route::post('/queue/{entry}/call', [SecretaryQueueController::class, 'call'])->name('queue.call');
+           });
 
          Route::get('/dashboard', [\App\Http\Controllers\Secretary\DashboardController::class,'index'])->name('dashboard');
          Route::post('/active-clinic', [\App\Http\Controllers\Secretary\ActiveClinicController::class,'update'])->name('active-clinic.update');

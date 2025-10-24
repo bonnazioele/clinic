@@ -74,11 +74,12 @@ class QueueEntry extends Model
         return \Carbon\Carbon::parse($this->served_at)->format('g:i A');
     }
 
-    
+
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
             'waiting' => 'Waiting',
+            'now_serving' => 'Now Serving',
             'called' => 'Called',
             'rescheduled' => 'Rescheduled',
             'no_show' => 'No Show',
@@ -88,11 +89,11 @@ class QueueEntry extends Model
         };
     }
 
-    
     public function getStatusBadgeClassAttribute(): string
     {
         return match ($this->status) {
             'waiting' => 'secondary',
+            'now_serving' => 'primary',
             'called' => 'info',
             'rescheduled' => 'warning',
             'no_show' => 'dark',
