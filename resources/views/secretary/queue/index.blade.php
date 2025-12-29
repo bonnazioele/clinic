@@ -97,12 +97,12 @@
 
 @push('scripts')
 <script>
-// Single reschedule modal logic to avoid multiple modal instances and overflow issues
+
 document.addEventListener('DOMContentLoaded', function() {
   const reschedModalEl = document.getElementById('reschedModal');
   if (!reschedModalEl) return;
   const reschedModal = new bootstrap.Modal(reschedModalEl);
-  // Persist last clicked action URL so we can restore after validation redirect
+  
   document.querySelectorAll('[data-bs-target="#reschedModal"][data-action-url]').forEach(btn => {
     btn.addEventListener('click', () => {
       const url = btn.getAttribute('data-action-url');
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = reschedModalEl.querySelector('form');
     form.setAttribute('action', actionUrl);
   });
-  // If there were validation errors for reschedule, auto-open the modal and restore last action
+  
   const hasErrors = reschedModalEl.querySelector('.text-danger');
   if (hasErrors) {
     const stored = (() => { try { return localStorage.getItem('lastReschedActionUrl'); } catch(e) { return null; }})();
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
 @endsection
 
 @push('modals')
-<!-- Global Reschedule Modal placed outside table to prevent clipping within .table-responsive -->
+
 <div class="modal fade" id="reschedModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form method="POST" action="#" class="modal-content" id="reschedForm">

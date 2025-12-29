@@ -85,9 +85,8 @@
         },
         "platform": {
       "php": "8.1.20"
-    },
-    "optimize-autoloader": true,
-    "sort-packages": true
+    }
+    
         
     },
     "minimum-stability": "stable",

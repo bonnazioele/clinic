@@ -9,7 +9,7 @@ return new class extends Migration
     public function up()
 {
     Schema::table('queue_entries', function (Blueprint $table) {
-        $table->enum('status', ['waiting','in_progress','completed','served'])
+        $table->enum('status', ['waiting','in_progress','completed','rescheduled','served'])
               ->default('waiting')
               ->change();
     });
