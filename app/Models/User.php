@@ -185,4 +185,9 @@ public function queueEntries()
             }
         });
     }
+
+    public function patientHistories()
+{
+    return $this->hasMany(PatientHistory::class);
+}
 }

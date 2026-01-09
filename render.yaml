@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: cliniq-web
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
