@@ -52,3 +52,55 @@ if (! function_exists('active_clinic')) {
         return $cache[$id];
     }
 }
+
+if (! function_exists('mask_string')) {
+
+    function mask_string(?string $value, int $visibleStart = 1, int $visibleEnd = 1): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        $length = mb_strlen($value);
+        $visibleStart = max(0, min($visibleStart, $length));
+        $visibleEnd = max(0, min($visibleEnd, $length - $visibleStart));
+        if ($length <= $visibleStart + $visibleEnd) {
+            return str_repeat('*', $length);
+        }
+        $maskedLength = $length - ($visibleStart + $visibleEnd);
+        return mb_substr($value, 0, $visibleStart)
+            . str_repeat('*', max($maskedLength, 1))
+            . mb_substr($value, $length - $visibleEnd, $visibleEnd);
+    }
+}
+
+if (! function_exists('mask_email')) {
+
+    function mask_email(?string $email): string
+    {
+        if (!$email || !str_contains($email, '@')) {
+            return $email ?? '';
+        }
+        [$local, $domain] = explode('@', $email, 2);
+        $domainParts = explode('.', $domain);
+        $primaryDomain = array_shift($domainParts) ?? '';
+        $tld = implode('.', $domainParts);
+        $maskedDomain = mask_string($primaryDomain, 1, 1);
+        $rebuiltDomain = $maskedDomain . ($tld ? '.'.$tld : '');
+        return mask_string($local, 1, 1) . '@' . $rebuiltDomain;
+    }
+}
+
+if (! function_exists('mask_person')) {
+
+    function mask_person(?string $name): string
+    {
+        if (!$name) {
+            return '';
+        }
+        $parts = preg_split('/\s+/', trim($name));
+        $maskedParts = array_map(function ($part) {
+            return mask_string($part, 1, 1);
+        }, array_filter($parts));
+        return implode(' ', $maskedParts);
+    }
+}

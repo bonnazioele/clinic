@@ -39,7 +39,7 @@ class ClinicController extends Controller
         foreach ($clinics as $clinic) {
             $clinic->doctor_count = User::where('is_doctor', true)->whereHas('clinics', fn($q) => $q->where('clinic_id', $clinic->id))->count();
             $clinic->secretary_count = $clinic->secretaries()->count();
-    
+
             $clinic->contact_name = trim(($clinic->contact_first_name ?? '') . ' ' . ($clinic->contact_last_name ?? ''));
             $clinic->contact_email = $clinic->contact_person_email ?: $clinic->email;
             $user = User::where('email', $clinic->contact_email)->first();
@@ -125,28 +125,34 @@ class ClinicController extends Controller
 
     public function show(Clinic $clinic)
     {
-        $clinic->load(['services', 'secretaries:id,name,email,phone', 'doctors:id,name,email,phone']);
+        $clinic->load([
+            'services',
+            'secretaries:id,name,email,phone',
+            'doctors:id,name,email,phone',
+            'permits',
+        ]);
 
-        $todayAppointments = $clinic->appointments()->whereDate('appointment_date', today())->count();
-        $totalAppointments = $clinic->appointments()->count();
-        $waitingCount = $clinic->queueEntries()->where('status','waiting')->count();
-        $servedToday = $clinic->queueEntries()->where('status','served')->whereDate('served_at', today())->count();
+        $permitDefinitions = collect(config('clinic_permits.types', []))
+            ->mapWithKeys(fn ($permit) => [$permit['key'] => $permit]);
 
         return view('admin.clinics.show', [
             'clinic' => $clinic,
-            'todayAppointments' => $todayAppointments,
-            'totalAppointments' => $totalAppointments,
-            'waitingCount' => $waitingCount,
-            'servedToday' => $servedToday,
+            'permitDefinitions' => $permitDefinitions,
         ]);
     }
 
     public function showApplication(Clinic $clinic)
     {
         // Load related data for the application detail view
-        $clinic->load(['services']);
+        $clinic->load(['services', 'permits']);
 
-        return view('admin.clinics.application-detail', compact('clinic'));
+        $permitDefinitions = collect(config('clinic_permits.types', []))
+            ->mapWithKeys(fn ($permit) => [$permit['key'] => $permit]);
+
+        return view('admin.clinics.application-detail', [
+            'clinic' => $clinic,
+            'permitDefinitions' => $permitDefinitions,
+        ]);
     }
 
     public function edit(Clinic $clinic)

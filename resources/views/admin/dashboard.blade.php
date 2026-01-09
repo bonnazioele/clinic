@@ -2,8 +2,8 @@
 
 @section('content')
 <div class="container py-4">
-  
-  
+
+
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -69,7 +69,7 @@
     </div>
   </div>
 
-  
+
   <div class="medical-card p-4" id="pending-clinic-applicants">
     <div class="d-flex align-items-center mb-3">
       <h5 class="mb-0"><i class="bi bi-inbox me-2"></i>Pending Clinic Applicants <span class="badge bg-primary ms-2">{{ $pendingCount }}</span></h5>
@@ -84,11 +84,36 @@
         <table class="table align-middle">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Contact</th>
-              <th>Address</th>
-              <th>Applied</th>
-              <th class="text-end">Actions</th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-person-badge"></i>
+                  Name
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-telephone-outbound"></i>
+                  Contact
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-geo-alt"></i>
+                  Address
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-calendar-event"></i>
+                  Applied
+                </span>
+              </th>
+              <th class="text-end text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2 justify-content-end w-100">
+                  <i class="bi bi-check2-square"></i>
+                  Actions
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -101,15 +126,18 @@
                   @endif
                 </td>
                 <td>
-                  @if($pc->contact_first_name || $pc->contact_last_name)
-                    <div class="fw-semibold">{{ trim(($pc->contact_first_name ?? '') . ' ' . ($pc->contact_last_name ?? '')) }}</div>
+                  @php
+                    $contactName = trim(($pc->contact_first_name ?? '') . ' ' . ($pc->contact_last_name ?? ''));
+                  @endphp
+                  @if($contactName)
+                    <div class="fw-semibold">{{ mask_person($contactName) }}</div>
                   @endif
                   @if($pc->contact_person_email)
-                    <div class="small text-primary">{{ $pc->contact_person_email }} <i class="bi bi-person-check"></i></div>
+                    <div class="small text-primary">{{ mask_email($pc->contact_person_email) }} <i class="bi bi-person-check"></i></div>
                   @endif
-                  <div class="small text-muted">{{ $pc->email }}</div>
+                  <div class="small text-muted">{{ mask_email($pc->email) }}</div>
                   @if($pc->contact_number)
-                    <div class="small text-muted">{{ $pc->contact_number }}</div>
+                    <div class="small text-muted">{{ mask_string($pc->contact_number, 2, 2) }}</div>
                   @endif
                 </td>
                 <td class="small">{{ Str::limit($pc->address, 50) }}</td>

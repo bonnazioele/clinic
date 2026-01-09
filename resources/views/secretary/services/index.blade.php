@@ -64,11 +64,17 @@
                   <td class="px-4 py-3"><span class="badge bg-secondary">{{ $s->pivot->duration_minutes }}m</span></td>
                   <td class="text-end">
                     <div class="d-inline-flex gap-1">
-                      <form method="POST" action="{{ route('secretary.services.detach',[$clinic,$s]) }}" onsubmit="return confirm('Detach this service from clinic?');">
+                      <form method="POST" action="{{ route('secretary.services.detach',[$clinic,$s]) }}"
+                            data-confirm="Detach this service from the clinic? Patients with upcoming appointments keep their bookings."
+                            data-confirm-title="Detach Service"
+                            data-confirm-btn="Detach">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-warning"><i class="bi bi-link-45deg me-1"></i>Detach</button>
                       </form>
-                      <form method="POST" action="{{ route('secretary.services.destroy',$s) }}" onsubmit="return confirm('Delete this service entirely? This cannot be undone.');">
+                      <form method="POST" action="{{ route('secretary.services.destroy',$s) }}"
+                            data-confirm="Delete this service from the master list? This cannot be undone."
+                            data-confirm-title="Delete Service"
+                            data-confirm-btn="Delete">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
                       </form>
@@ -96,7 +102,7 @@
                   <i class="bi bi-list-check"></i>
                   <span>Select Services</span>
                 </label>
-                
+
                 <div id="serviceSelectSkeleton" class="form-control select-placeholder-skeleton">Choose services...</div>
     <select id="serviceSelect"
       name="service_ids[]"

@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@php($permitTypes = $permitTypes ?? config('clinic_permits.types', []))
 <div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-lg-9">
@@ -75,21 +76,67 @@
               </div>
             </div>
 
-            
-            <div class="mb-3">
+            @if(!empty($permitTypes))
+            <h6 class="text-muted mb-3 mt-4">Regulatory Permits</h6>
+            <div class="row g-3">
+              @foreach($permitTypes as $permit)
+              @php($key = $permit['key'])
+              <div class="col-md-4">
+                <div class="border rounded p-3 h-100 shadow-sm">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-file-earmark-lock text-primary me-2"></i>
+                    <div>
+                      <strong>{{ $permit['label'] }}</strong>
+                      <div class="small text-muted">{{ $permit['description'] ?? '' }}</div>
+                    </div>
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label small fw-semibold">Permit Number{{ ($permit['requires_number'] ?? false) ? ' *' : '' }}</label>
+                    <input type="text" name="permits[{{ $key }}][permit_number]" class="form-control form-control-sm @error('permits.' . $key . '.permit_number') is-invalid @enderror" value="{{ old('permits.' . $key . '.permit_number') }}" placeholder="Document reference">
+                    @error('permits.' . $key . '.permit_number')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                  </div>
+
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <label class="form-label small fw-semibold">Issued{{ ($permit['requires_issue_date'] ?? false) ? ' *' : '' }}</label>
+                      <input type="date" name="permits[{{ $key }}][issued_at]" class="form-control form-control-sm @error('permits.' . $key . '.issued_at') is-invalid @enderror" value="{{ old('permits.' . $key . '.issued_at') }}">
+                      @error('permits.' . $key . '.issued_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small fw-semibold">Expires{{ ($permit['requires_expiry_date'] ?? false) ? ' *' : '' }}</label>
+                      <input type="date" name="permits[{{ $key }}][expires_at]" class="form-control form-control-sm @error('permits.' . $key . '.expires_at') is-invalid @enderror" value="{{ old('permits.' . $key . '.expires_at') }}">
+                      @error('permits.' . $key . '.expires_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label small fw-semibold">Attachment *</label>
+                    <input type="file" name="permits[{{ $key }}][file]" class="form-control form-control-sm @error('permits.' . $key . '.file') is-invalid @enderror" accept="application/pdf,image/*">
+                    @error('permits.' . $key . '.file')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                  </div>
+                  <div class="form-text small">PDF or image, max 5MB.</div>
+                </div>
+              </div>
+              @endforeach
+            </div>
+            @endif
+
+
+            <div class="mb-3 mt-4">
               <label class="form-label"><i class="bi bi-gear me-1"></i>Services Offered</label>
               <div class="dropdown">
                 <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="servicesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                   Select Services
                 </button>
                 <ul class="dropdown-menu w-100 p-2" aria-labelledby="servicesDropdown" style="max-height: 250px; overflow-y: auto;">
-                  
+
                   <li class="mb-2">
                     <input type="text" id="serviceSearch" class="form-control form-control-sm" placeholder="Search services...">
                   </li>
                   <li><hr class="dropdown-divider"></li>
 
-                  
+
                   <div id="servicesList">
                     @foreach(($services ?? []) as $service)
                       <li>
@@ -106,7 +153,7 @@
               <div id="selected-services" class="mt-2"></div>
             </div>
 
-            
+
             <div class="mb-3">
               <label class="form-label"><i class="bi bi-image me-1"></i>Clinic Logo <small class="text-muted">(optional)</small></label>
               <input type="file" name="logo" id="logoInput" class="form-control @error('logo') is-invalid @enderror" accept="image/jpeg,image/png,image/jpg,image/gif">
@@ -120,14 +167,14 @@
               </div>
             </div>
 
-            
+
             <div class="mb-3">
               <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Location</label>
               <div class="form-text mb-2">Click on the map or drag the marker to set the clinic location.</div>
               <div id="mapPicker" style="height: 300px;" class="border rounded"></div>
             </div>
 
-            
+
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-compass me-1"></i>Latitude</label>
@@ -141,7 +188,7 @@
               </div>
             </div>
 
-            
+
 
             <div class="mt-4 d-flex justify-content-end gap-2">
               <a href="{{ route('welcome') }}" class="btn btn-light">Cancel</a>

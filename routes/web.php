@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
+use App\Http\Controllers\Secretary\PatientController as SecPatient;
 use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 use App\Http\Controllers\Auth\SecretaryRegisterController;
@@ -145,6 +146,10 @@ Route::prefix('admin')
 
          Route::resource('doctors', SecDoctor::class);
 
+         Route::get('patients', [SecPatient::class, 'index'])->name('patients.index');
+         Route::get('patients/create', [SecPatient::class, 'create'])->name('patients.create');
+         Route::post('patients', [SecPatient::class, 'store'])->name('patients.store');
+
          Route::get('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'index'])->name('services.index');
          Route::get('services/create', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'create'])->name('services.create');
          Route::post('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'store'])->name('services.store');
@@ -167,6 +172,7 @@ Route::prefix('doctor')
            Route::post('/queue/{entry}/serve', [\App\Http\Controllers\Doctor\QueueController::class,'serve'])->name('queue.serve');
 
            Route::get('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'index'])->name('schedules.index');
+           Route::get('/schedules/feed', [\App\Http\Controllers\Doctor\ScheduleController::class,'feed'])->name('schedules.feed');
            Route::post('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'store'])->name('schedules.store');
            Route::put('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'update'])->name('schedules.update');
            Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'destroy'])->name('schedules.destroy');

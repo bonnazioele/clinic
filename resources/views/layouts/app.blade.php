@@ -10,26 +10,26 @@
 
     <title>@yield('title', config('app.name', 'CliniQ'))</title>
 
-    
+
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
-    
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
-    
+
     <link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
 
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
-    
+
     <style>
         :root {
             --primary-color: #0d6efd;
@@ -422,7 +422,7 @@
 <div id="app" class="d-flex flex-column min-vh-100">
     @include('partials.navbar')
 
-    
+
     @include('partials.alerts', ['toastOffsetTop' => '4.5rem'])
 
     <main class="py-4 flex-grow-1">
@@ -452,6 +452,7 @@
     </div>
 </div>
 
+@include('partials.confirm-modal')
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -488,11 +489,11 @@
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof Echo !== 'undefined') {
             const userId = {{ auth()->id() }};
-            
+
             Echo.private('user.notifications.' + userId)
                 .listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (e) => {
                     console.log('Notification received:', e);
-                    
+
                     if (e.notification && e.notification.type === 'queue_next_up') {
                         const messageElement = document.getElementById('queueCallMessage');
                         if (messageElement) {

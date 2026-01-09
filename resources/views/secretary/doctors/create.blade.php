@@ -16,16 +16,25 @@
   <form method="POST" action="{{ route('secretary.doctors.store') }}">
     @csrf
 
-    
-    <div class="mb-3">
-      <label for="doctor_name" class="form-label"><i class="bi bi-person me-1"></i>Name</label>
-      <input id="doctor_name" type="text" name="name"
-             class="form-control @error('name') is-invalid @enderror"
-             value="{{ old('name') }}" required>
-      @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label for="doctor_first_name" class="form-label"><i class="bi bi-person me-1"></i>First Name</label>
+        <input id="doctor_first_name" type="text" name="first_name"
+               class="form-control @error('first_name') is-invalid @enderror"
+               value="{{ old('first_name') }}" required>
+        @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+      </div>
+      <div class="col-md-6">
+        <label for="doctor_last_name" class="form-label"><i class="bi bi-person me-1"></i>Last Name</label>
+        <input id="doctor_last_name" type="text" name="last_name"
+               class="form-control @error('last_name') is-invalid @enderror"
+               value="{{ old('last_name') }}" required>
+        @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+      </div>
     </div>
 
-    
+
     <div class="mb-3">
       <label for="doctor_email" class="form-label"><i class="bi bi-envelope me-1"></i>Email</label>
       <input id="doctor_email" type="email" name="email"
@@ -34,7 +43,7 @@
       @error('email')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
-    
+
     <div class="mb-3">
       <label for="doctor_phone" class="form-label"><i class="bi bi-telephone me-1"></i>Phone</label>
       <input id="doctor_phone" type="text" name="phone"
@@ -43,7 +52,7 @@
       @error('phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
-    
+
     <div class="mb-3">
       <label for="doctor_address" class="form-label"><i class="bi bi-geo-alt me-1"></i>Address</label>
       <textarea id="doctor_address" name="address"
@@ -52,7 +61,7 @@
       @error('address')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
-    
+
     <div class="row g-3 mb-3">
       <div class="col">
   <label class="form-label"><i class="bi bi-key me-1"></i>Password</label>
@@ -80,7 +89,7 @@
 
 
 
-    
+
     <div class="mb-3">
       <label for="doctor_services" class="form-label"><i class="bi bi-scissors me-1"></i>Assign to Services</label>
       <select id="doctor_services" name="service_ids[]"
@@ -94,7 +103,7 @@
       <div class="form-text">Select all services this doctor can perform. Start typing to filter.</div>
     </div>
 
-    
+
     <div class="d-flex gap-2">
       <button class="btn btn-primary"><i class="bi bi-save me-2"></i>Add Doctor</button>
       <a href="{{ route('secretary.doctors.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-2"></i>Cancel</a>

@@ -41,7 +41,7 @@ class DoctorController extends Controller
         $user = auth()->user();
         $activeClinicId = session('active_clinic_id');
         $clinicIds = $user->secretaryClinics()->pluck('clinics.id')->all();
-        
+
         $serviceQuery = Service::query();
         if ($activeClinicId && in_array($activeClinicId, $clinicIds)) {
             $serviceQuery->whereHas('clinics', function($q) use ($activeClinicId){
@@ -59,7 +59,8 @@ class DoctorController extends Controller
     public function store(Request $req)
 {
     $data = $req->validate([
-        'name'             => 'required|string|max:255',
+        'first_name'       => 'required|string|max:255',
+        'last_name'        => 'required|string|max:255',
         'email'            => 'required|email|unique:users,email',
         'password'         => 'required|string|min:6|confirmed',
         'service_ids'      => 'array',
@@ -69,7 +70,9 @@ class DoctorController extends Controller
     ]);
 
     $doctor = User::create([
-        'name'       => $data['name'],
+        'name'       => trim($data['first_name'].' '.$data['last_name']),
+        'first_name' => $data['first_name'],
+        'last_name'  => $data['last_name'],
         'email'      => $data['email'],
         'password'   => Hash::make($data['password']),
         'phone'      => $data['phone'] ?? null,
@@ -84,7 +87,7 @@ class DoctorController extends Controller
     } else {
         $doctor->clinics()->sync($secretaryClinicIds);
     }
-    
+
     $allowedServiceIds = Service::whereHas('clinics', function($q) use ($secretaryClinicIds){
         $q->whereIn('clinics.id', $secretaryClinicIds);
     })->pluck('id')->all();
@@ -126,7 +129,8 @@ class DoctorController extends Controller
     abort_unless($doctor->is_doctor,404);
 
     $data = $req->validate([
-        'name'             => 'required|string|max:255',
+        'first_name'       => 'required|string|max:255',
+        'last_name'        => 'required|string|max:255',
         'email'            => 'required|email|unique:users,email,'.$doctor->id,
         'password'         => 'nullable|string|min:6|confirmed',
         'service_ids'      => 'array',
@@ -136,7 +140,9 @@ class DoctorController extends Controller
     ]);
 
     $doctor->update([
-        'name'     => $data['name'],
+        'name'     => trim($data['first_name'].' '.$data['last_name']),
+        'first_name'=> $data['first_name'],
+        'last_name' => $data['last_name'],
         'email'    => $data['email'],
         'phone'    => $data['phone'] ?? null,
         'address'  => $data['address'] ?? null,

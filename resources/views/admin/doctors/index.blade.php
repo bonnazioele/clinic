@@ -42,10 +42,30 @@
       <table class="table align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th><i class="bi bi-person me-1"></i>Name</th>
-            <th><i class="bi bi-envelope me-1"></i>Email</th>
-            <th><i class="bi bi-telephone me-1"></i>Phone</th>
-            <th><i class="bi bi-building me-1"></i>Clinics</th>
+            <th class="text-uppercase small fw-semibold">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-person"></i>
+                Name
+              </span>
+            </th>
+            <th class="text-uppercase small fw-semibold">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-envelope"></i>
+                Email
+              </span>
+            </th>
+            <th class="text-uppercase small fw-semibold">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-telephone"></i>
+                Phone
+              </span>
+            </th>
+            <th class="text-uppercase small fw-semibold">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-building"></i>
+                Clinics
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>

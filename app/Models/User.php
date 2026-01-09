@@ -77,6 +77,16 @@ public function queueEntries()
         );
     }
 
+    public function clinicsAsPatient()
+    {
+        return $this->belongsToMany(
+            Clinic::class,
+            'clinic_patients',
+            'patient_id',
+            'clinic_id'
+        )->withPivot(['registered_by'])->withTimestamps();
+    }
+
     public function clinics()
     {
         return $this->belongsToMany(

@@ -44,21 +44,71 @@
     <table class="table align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th><i class="bi bi-person me-1"></i>Name</th>
-            <th><i class="bi bi-envelope me-1"></i>Email</th>
+            <th class="text-uppercase small fw-semibold">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-person"></i>
+                Name
+              </span>
+            </th>
+            <th class="text-uppercase small fw-semibold">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-envelope"></i>
+                Email
+              </span>
+            </th>
             @php $current = request('role', $role ?? 'patient'); @endphp
             @if($current === 'doctor')
-              <th><i class="bi bi-building me-1"></i>Clinics</th>
-              <th><i class="bi bi-briefcase-medical me-1"></i>Services</th>
-              <th><i class="bi bi-telephone me-1"></i>Phone</th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-building"></i>
+                  Clinics
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-briefcase-medical"></i>
+                  Services
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-telephone"></i>
+                  Phone
+                </span>
+              </th>
             @elseif($current === 'secretary')
-              <th><i class="bi bi-building me-1"></i>Clinics</th>
-              <th><i class="bi bi-telephone me-1"></i>Phone</th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-building"></i>
+                  Clinics
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-telephone"></i>
+                  Phone
+                </span>
+              </th>
             @elseif($current === 'all')
-              <th><i class="bi bi-diagram-3 me-1"></i>Role</th>
-              <th><i class="bi bi-telephone me-1"></i>Phone</th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-diagram-3"></i>
+                  Role
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-telephone"></i>
+                  Phone
+                </span>
+              </th>
             @else
-              <th><i class="bi bi-telephone me-1"></i>Phone</th>
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
+                  <i class="bi bi-telephone"></i>
+                  Phone
+                </span>
+              </th>
             @endif
           </tr>
         </thead>
@@ -71,8 +121,8 @@
           @endphp
           @forelse($users as $u)
             <tr>
-              <td class="py-3 ps-4">{{ $u->name }}</td>
-              <td class="py-3 ps-4">{{ $u->email }}</td>
+              <td class="py-3 ps-4">{{ mask_person($u->name) }}</td>
+              <td class="py-3 ps-4">{{ mask_email($u->email) }}</td>
               @if($current === 'doctor')
                 <td class="py-3 ps-4">
                   @php
@@ -99,7 +149,7 @@
                     <span class="text-muted">—</span>
                   @endif
                 </td>
-                <td class="py-3 ps-4">{{ $u->phone ?? '—' }}</td>
+                <td class="py-3 ps-4">{{ $u->phone ? mask_string($u->phone, 2, 2) : '—' }}</td>
               @elseif($current === 'secretary')
                 <td class="py-3 ps-4">
                   @php $sc = $u->relationLoaded('secretaryClinics') ? $u->secretaryClinics : collect(); @endphp
@@ -121,7 +171,7 @@
                         }
                     }
                   @endphp
-                  {{ $phoneDisplay ?? '—' }}
+                  {{ $phoneDisplay ? mask_string($phoneDisplay, 2, 2) : '—' }}
                 </td>
               @elseif($current === 'all')
                 <td class="py-3 ps-4">
@@ -134,9 +184,9 @@
                   @endphp
                   <span class="badge rounded-pill {{ $badgeClass }}">{{ $roleLabel }}</span>
                 </td>
-                <td class="py-3 ps-4">{{ $u->phone ?? '—' }}</td>
+                <td class="py-3 ps-4">{{ $u->phone ? mask_string($u->phone, 2, 2) : '—' }}</td>
               @else
-                <td class="py-3 ps-4">{{ $u->phone }}</td>
+                <td class="py-3 ps-4">{{ $u->phone ? mask_string($u->phone, 2, 2) : '—' }}</td>
               @endif
             </tr>
           @empty

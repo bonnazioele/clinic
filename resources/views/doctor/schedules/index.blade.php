@@ -1,5 +1,13 @@
 @extends('layouts.app')
 @section('title','My Schedule')
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
+<style>
+  #doctorScheduleCalendar .fc-event { cursor: pointer; }
+  #doctorScheduleCalendar { min-height: 520px; }
+</style>
+@endpush
+
 @section('content')
 <div class="container py-4">
   <div class="medical-card p-4 mb-4">
@@ -8,7 +16,7 @@
   </div>
 
   <div class="row g-4">
-    <div class="col-lg-5">
+    <div class="col-lg-4">
       <div class="medical-card p-4 h-100">
         <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-plus-circle medical-icon me-2"></i>Add Availability</h5>
         <form id="scheduleForm" method="POST" action="{{ route('doctor.schedules.store') }}">
@@ -58,8 +66,12 @@
         </form>
       </div>
     </div>
-    <div class="col-lg-7">
-      <div class="medical-card p-4 h-100">
+    <div class="col-lg-8">
+      <div class="medical-card p-4 mb-4">
+        <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-calendar-event me-2"></i>Monthly Calendar</h5>
+        <div id="doctorScheduleCalendar"></div>
+      </div>
+      <div class="medical-card p-4">
         <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-list-ul medical-icon me-2"></i>Your Availability</h5>
         <div class="table-responsive">
           <table class="table align-middle mb-0">
@@ -123,9 +135,69 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+@php
+  $doctorSchedulesPayload = $schedules->map(function($s) {
+    return [
+      'id' => $s->id,
+      'clinic' => $s->clinic->name ?? 'Clinic',
+      'day_of_week' => $s->day_of_week,
+      'start_time' => substr($s->start_time, 0, 5),
+      'end_time' => substr($s->end_time, 0, 5),
+      'is_active' => (bool)($s->is_active ?? true),
+    ];
+  })->values();
+@endphp
 <script>
   (function(){
+    const doctorSchedules = @json($doctorSchedulesPayload);
+
+    function normalizeTime(value) {
+      if (!value) return '09:00:00';
+      if (value.length === 5) return value + ':00';
+      if (value.length === 8) return value;
+      return value.padEnd(8, ':00');
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function buildEvents(rangeStart, rangeEnd) {
+      const events = [];
+      doctorSchedules.forEach(schedule => {
+        if (!schedule.is_active) return;
+        const start = new Date(rangeStart.getTime());
+        const dayDiff = (schedule.day_of_week - start.getDay() + 7) % 7;
+        start.setDate(start.getDate() + dayDiff);
+        for (const cursor = new Date(start); cursor <= rangeEnd; cursor.setDate(cursor.getDate() + 7)) {
+          const dateStamp = formatDate(cursor);
+          const startTime = normalizeTime(schedule.start_time);
+          const endTime = normalizeTime(schedule.end_time);
+          events.push({
+            id: `schedule-${schedule.id}-${dateStamp}`,
+            title: schedule.clinic,
+            start: `${dateStamp}T${startTime}`,
+            end: `${dateStamp}T${endTime}`,
+            display: 'block',
+            extendedProps: {
+              clinic: schedule.clinic,
+              scheduleId: schedule.id,
+              day_of_week: schedule.day_of_week,
+              start_time: schedule.start_time,
+              end_time: schedule.end_time,
+            },
+          });
+        }
+      });
+      return events;
+    }
+
     const form = document.getElementById('scheduleForm');
+    if (!form) return;
     const methodInput = document.getElementById('formMethod');
     const scheduleIdInput = document.getElementById('schedule_id');
     const submitLabel = document.getElementById('submitLabel');
@@ -134,7 +206,7 @@
     const daySelect = form.querySelector('select[name="day_of_week"]');
     const startInput = form.querySelector('input[name="start_time"]');
     const endInput = form.querySelector('input[name="end_time"]');
-  const activeInput = form.querySelector('input[name="is_active"]');
+    const activeInput = form.querySelector('input[name="is_active"]');
 
     function resetForm(){
       form.action = '{{ route('doctor.schedules.store') }}';
@@ -148,6 +220,7 @@
     document.querySelectorAll('.edit-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         const tr = e.target.closest('tr');
+        if (!tr) return;
         const id = tr.dataset.id;
         clinicSelect.value = tr.dataset.clinic;
         daySelect.value = tr.dataset.day;
@@ -166,6 +239,54 @@
     });
 
     cancelBtn.addEventListener('click', resetForm);
+
+    const calendarEl = document.getElementById('doctorScheduleCalendar');
+    if (calendarEl && window.FullCalendar) {
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek'
+        },
+        events(info, successCallback) {
+          const startRange = new Date(info.start.getTime());
+          const endRange = new Date(info.end.getTime());
+          successCallback(buildEvents(startRange, endRange));
+        },
+        nowIndicator: true,
+        eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+        eventClick(info) {
+          const scheduleId = info?.event?.extendedProps?.scheduleId;
+          if (!scheduleId) return;
+          const targetRow = document.querySelector(`tr[data-id="${scheduleId}"]`);
+          if (targetRow) {
+            const editBtn = targetRow.querySelector('.edit-btn');
+            if (editBtn) {
+              editBtn.click();
+              targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        },
+        dateClick(info) {
+          if (!daySelect || !startInput || !endInput) return;
+          daySelect.value = info.date.getDay();
+          if (!clinicSelect.value && clinicSelect.options.length > 1) {
+            clinicSelect.selectedIndex = 1;
+          }
+          if (!startInput.value) {
+            startInput.value = '09:00';
+          }
+          if (!endInput.value) {
+            endInput.value = '10:00';
+          }
+          activeInput.checked = true;
+          clinicSelect.focus();
+        }
+      });
+      calendar.render();
+    }
   })();
 </script>
 @endpush

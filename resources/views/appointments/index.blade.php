@@ -13,7 +13,7 @@
     </div>
     <div class="card-body">
 
-      
+
       @php
         $activeQueues = auth()->user()->queueEntries()
           ->where('status', 'waiting')
@@ -53,7 +53,7 @@
         </div>
       @endif
 
-      
+
       <h5 class="mt-2 mb-3 fw-semibold">
         <i class="bi bi-clock-history me-2"></i>Upcoming Appointments
       </h5>
@@ -115,9 +115,11 @@
                         @endif
 
                         <form method="POST"
-                              action="{{ route('appointments.destroy', $a) }}"
-                              onsubmit="return confirm('Cancel this appointment? You will also be removed from the queue.')"
-                              class="d-inline">
+                          action="{{ route('appointments.destroy', $a) }}"
+                          class="d-inline"
+                          data-confirm="Cancel this appointment? You will also be removed from the queue."
+                          data-confirm-title="Cancel Appointment"
+                          data-confirm-btn="Cancel Appointment">
                           @csrf
                           @method('DELETE')
                           <button class="btn btn-sm btn-outline-danger rounded-pill px-3">
@@ -134,7 +136,7 @@
         </div>
       @endif
 
-      
+
       <h5 class="mt-4 mb-3 fw-semibold">
         <i class="bi bi-archive-fill me-2"></i>Past Appointments
       </h5>

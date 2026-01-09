@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use App\Models\QueueEntry;
-use App\Models\Appointment;
 use App\Events\QueueUpdated;
+use App\Models\Appointment;
+use App\Models\QueueEntry;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class QueueController extends Controller
 {
@@ -44,7 +45,7 @@ class QueueController extends Controller
         return view('doctor.queue.index', compact('waiting'));
     }
 
-    public function serve(QueueEntry $entry)
+    public function serve(Request $request, QueueEntry $entry)
     {
         $doctor = Auth::user();
 
@@ -52,7 +53,15 @@ class QueueController extends Controller
             abort(403);
         }
 
-        \DB::transaction(function() use ($entry) {
+        $dispositionOptions = ['completed','follow_up','referred','cancelled'];
+        $data = $request->validate([
+            'patient_disposition' => ['required', Rule::in($dispositionOptions)],
+            'doctor_notes' => ['nullable','string','max:2000'],
+            'prescription' => ['nullable','string','max:2000'],
+            'follow_up_at' => ['nullable','date'],
+        ]);
+
+        \DB::transaction(function() use ($entry, $data) {
             $fresh = QueueEntry::lockForUpdate()->find($entry->id);
 
             if (! in_array($fresh->status, ['waiting','now_serving'])) {
@@ -61,7 +70,11 @@ class QueueController extends Controller
 
             $fresh->update([
                 'status' => 'served',
-                'served_at' => now()
+                'served_at' => now(),
+                'patient_disposition' => $data['patient_disposition'],
+                'doctor_notes' => $data['doctor_notes'] ?? null,
+                'prescription' => $data['prescription'] ?? null,
+                'follow_up_at' => $data['follow_up_at'] ?? null,
             ]);
 
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {

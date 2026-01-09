@@ -60,6 +60,11 @@ class Clinic extends Model
         return $this->hasMany(QueueEntry::class, 'clinic_id');
     }
 
+    public function permits(): HasMany
+    {
+        return $this->hasMany(ClinicPermit::class);
+    }
+
     public function statusLogs(): HasMany
     {
         return $this->hasMany(ClinicStatusLog::class);
@@ -76,6 +81,13 @@ class Clinic extends Model
     {
         return $this->belongsToMany(User::class, 'clinic_secretary', 'clinic_id', 'secretary_id')
                     ->where('is_secretary', true)
+                    ->withTimestamps();
+    }
+
+    public function patients(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'clinic_patients', 'clinic_id', 'patient_id')
+                    ->withPivot(['registered_by'])
                     ->withTimestamps();
     }
 

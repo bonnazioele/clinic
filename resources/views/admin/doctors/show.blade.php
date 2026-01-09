@@ -80,10 +80,30 @@
             <table class="table align-middle">
               <thead class="table-light">
                 <tr>
-                  <th>Date</th>
-                  <th>Patient</th>
-                  <th>Clinic</th>
-                  <th>Status</th>
+                  <th class="text-uppercase small fw-semibold">
+                    <span class="d-inline-flex align-items-center gap-2">
+                      <i class="bi bi-calendar-event"></i>
+                      Date
+                    </span>
+                  </th>
+                  <th class="text-uppercase small fw-semibold">
+                    <span class="d-inline-flex align-items-center gap-2">
+                      <i class="bi bi-person"></i>
+                      Patient
+                    </span>
+                  </th>
+                  <th class="text-uppercase small fw-semibold">
+                    <span class="d-inline-flex align-items-center gap-2">
+                      <i class="bi bi-hospital"></i>
+                      Clinic
+                    </span>
+                  </th>
+                  <th class="text-uppercase small fw-semibold">
+                    <span class="d-inline-flex align-items-center gap-2">
+                      <i class="bi bi-activity"></i>
+                      Status
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

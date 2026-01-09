@@ -90,6 +90,12 @@
                 <i class="bi bi-people me-1"></i>Queue
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('secretary.patients.*')) active @endif"
+                 href="{{ route('secretary.patients.index') }}">
+                <i class="bi bi-people me-1"></i>Patients
+              </a>
+            </li>
 
 
           @elseif(auth()->user()->is_owner)

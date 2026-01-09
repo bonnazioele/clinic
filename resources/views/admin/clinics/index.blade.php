@@ -23,7 +23,7 @@
     font-size: 0.75rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #475569;
+    color: #0F172A;
     font-weight: 600;
     padding: 0.9rem 1.25rem;
   }
@@ -218,7 +218,7 @@
     color: #334155;
   }
 
-  
+
 
   .action-btn-delete:hover {
     background-color: rgba(100, 116, 139, 0.1);
@@ -279,7 +279,7 @@
 
 @section('content')
 <div class="container py-4">
-  
+
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center">
       <div>
@@ -301,7 +301,7 @@
     </div>
   </div>
 
-  
+
   <div class="medical-card p-4 mb-4">
     <form class="row g-3 align-items-end" method="GET" action="{{ route('admin.clinics.index') }}">
       <div class="col-md-5 col-lg-4">
@@ -333,7 +333,7 @@
     </form>
   </div>
 
-  
+
   <div class="medical-card p-4">
     <div class="mb-4">
       <h4 class="mb-0 d-flex align-items-center gap-2">
@@ -349,13 +349,13 @@
             <th class="ps-4">
               <input type="checkbox" class="form-check-input clinic-checkbox" id="select-all-clinics">
             </th>
-            <th>Clinic</th>
-            <th class="text-center">Staff</th>
-            <th class="text-center">Doctors</th>
-            <th class="text-center">Services</th>
-            <th>Location</th>
-            <th>Status</th>
-            <th class="pe-4 text-end">Actions</th>
+            <th><i class="bi bi-hospital me-1"></i>Clinic</th>
+            <th class="text-center"><i class="bi bi-people me-1"></i>Staff</th>
+            <th class="text-center"><i class="bi bi-person-badge me-1"></i>Doctors</th>
+            <th class="text-center"><i class="bi bi-clipboard-check me-1"></i>Services</th>
+            <th><i class="bi bi-geo-alt me-1"></i>Location</th>
+            <th><i class="bi bi-activity me-1"></i>Status</th>
+            <th class="pe-4 text-center"></i>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -381,7 +381,7 @@
                     <div class="clinic-branch">{{ $clinic->branch_code }}</div>
                   @endif
                   @if($clinic->contact_email)
-                    <div class="clinic-subtext">{{ Str::limit($clinic->contact_email, 28) }}</div>
+                    <div class="clinic-subtext">{{ mask_email($clinic->contact_email) }}</div>
                   @endif
                 </div>
               </div>
@@ -444,18 +444,26 @@
             </td>
             <td class="pe-4 text-end action-cell" data-label="Actions">
               <div class="d-flex gap-2 justify-content-end" onclick="event.stopPropagation();">
-                <a href="{{ route('admin.clinics.edit', $clinic) }}" 
-                   class="action-btn action-btn-edit" 
-                   title="Edit Clinic">
-                  <i class="bi bi-pencil"></i>
+                <a href="{{ route('admin.clinics.show', $clinic) }}"
+                   class="action-btn action-btn-edit"
+                   title="View Clinic">
+                  <i class="bi bi-eye"></i>
                 </a>
-                
-                <button type="button" 
-                        class="action-btn action-btn-delete" 
-                        onclick="deleteClinic({{ $clinic->id }})"
-                        title="Delete Clinic">
-                  <i class="bi bi-trash3"></i>
-                </button>
+
+                <form method="POST"
+                      action="{{ route('admin.clinics.destroy', $clinic) }}"
+                      class="d-inline"
+                      data-confirm="Delete this clinic? This action cannot be undone."
+                      data-confirm-title="Delete Clinic"
+                      data-confirm-btn="Delete">
+                  @csrf
+                  @method('DELETE')
+                  <button type="submit"
+                          class="action-btn action-btn-delete"
+                          title="Delete Clinic">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
               </div>
             </td>
           </tr>
@@ -484,7 +492,7 @@
     @endif
   </div>
 
-  
+
 </div>
 @endsection
 
@@ -529,19 +537,7 @@
     }
   });
 
-  
 
-  function deleteClinic(clinicId) {
-    if (!confirm('Are you sure you want to delete this clinic? This action cannot be undone.')) return;
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/admin/clinics/${clinicId}`;
-    form.innerHTML = `
-      <input type="hidden" name="_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="_method" value="DELETE">
-    `;
-    document.body.appendChild(form);
-    form.submit();
-  }
+
   </script>
 @endpush

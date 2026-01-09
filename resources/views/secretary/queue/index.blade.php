@@ -61,7 +61,11 @@
                   </form>
 
 
-                  <form method="POST" action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}" onsubmit="return confirm('Mark this patient as NO-SHOW?');">
+                  <form method="POST"
+                        action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
+                        data-confirm="Mark this patient as NO-SHOW? They will be removed from the queue."
+                        data-confirm-title="Mark As No-Show"
+                        data-confirm-btn="Mark No-Show">
                     @csrf
                     <button class="btn btn-sm btn-outline-secondary">
                       <i class="bi bi-person-x me-1"></i>No-Show
@@ -78,7 +82,11 @@
                   </button>
 
 
-                  <form method="POST" action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}">
+                  <form method="POST"
+                        action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
+                        data-confirm="Cancel this queue entry? The patient will be notified."
+                        data-confirm-title="Cancel Queue Entry"
+                        data-confirm-btn="Cancel">
                     @csrf
                     <button class="btn btn-sm btn-outline-danger">
                       <i class="bi bi-x-circle me-1"></i>Cancel

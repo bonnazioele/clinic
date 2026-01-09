@@ -27,15 +27,34 @@ class AppointmentController extends Controller
         });
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::user();
         $clinics = $user->secretaryClinics()
-            ->where('status', 'active')
+            ->whereIn('status', ['active','approved'])
             ->with(['services','doctors.services'])
             ->get();
 
-        return view('secretary.appointments.create', compact('clinics'));
+        $clinicPatients = $this->buildClinicPatientMap($clinics);
+        $activeClinicId = (int) $request->session()->get('active_clinic_id');
+
+        if (! $activeClinicId && $clinics->isNotEmpty()) {
+            $activeClinicId = (int) $clinics->first()->id;
+            $request->session()->put('active_clinic_id', $activeClinicId);
+        }
+
+        if ($activeClinicId && ! $clinics->contains('id', $activeClinicId)) {
+            $activeClinicId = (int) ($clinics->first()->id ?? 0);
+            if ($activeClinicId) {
+                $request->session()->put('active_clinic_id', $activeClinicId);
+            } else {
+                $request->session()->forget('active_clinic_id');
+            }
+        }
+
+        $activeClinic = $clinics->firstWhere('id', $activeClinicId) ?? null;
+
+        return view('secretary.appointments.create', compact('clinics', 'clinicPatients', 'activeClinicId', 'activeClinic'));
     }
 
     public function index(Request $request)
@@ -161,9 +180,17 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
+        $allowedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
+        $clinicId = (int) $request->session()->get('active_clinic_id');
+
+        if (! $clinicId || ! $allowedClinicIds->contains($clinicId)) {
+            return back()
+                ->withInput()
+                ->withErrors(['active_clinic' => 'Please select one of your clinics before creating appointments.']);
+        }
+
         $data = $request->validate([
-            'patient_name'     => 'required|string|max:255',
-            'clinic_id'        => 'required|exists:clinics,id',
+            'patient_id'      => 'required|exists:users,id',
             'service_id'       => 'required|exists:services,id',
             'doctor_id'        => 'required|exists:users,id',
             'appointment_date' => 'required|date|after_or_equal:today',
@@ -172,44 +199,23 @@ class AppointmentController extends Controller
             'medical_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,gif,webp|max:5120',
         ]);
 
-        $name = trim((string) $data['patient_name']);
-            $existing = User::query()
-                ->where('is_doctor', false)
-                ->where('is_admin', false)
-                ->where('is_secretary', false)
-                ->where('name', $name)
-                ->get();
-            if ($existing->count() === 1) {
-                $patient = $existing->first();
-            } else {
-                $emailSlug = \Illuminate\Support\Str::slug($name) ?: 'patient';
-                $unique = uniqid();
-                $patient = User::create([
-                    'name'        => $name,
-                    'first_name'  => $name,
-                    'last_name'   => $name, 
-                    'email'       => "walkin+{$emailSlug}+{$unique}@example.local",
-                    'password'    => \Illuminate\Support\Str::random(24),
-                    'is_admin'    => false,
-                    'is_secretary'=> false,
-                    'is_doctor'   => false,
-                ]);
-            }
+        $patient = User::findOrFail($data['patient_id']);
 
-        $allowedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
-        if (! $allowedClinicIds->contains($data['clinic_id'])) {
-            return back()->withInput()->withErrors(['clinic_id' => 'You are not assigned to this clinic.']);
+        if (! $this->patientBelongsToClinic($patient->id, $clinicId)) {
+            return back()
+                ->withInput()
+                ->withErrors(['patient_id' => 'Selected patient is not registered for this clinic.']);
         }
 
         $doctor = User::where('id', $data['doctor_id'])->where('is_doctor', true)
-            ->whereHas('clinics', function($q) use ($data){ $q->where('clinics.id', $data['clinic_id']); })
+            ->whereHas('clinics', function($q) use ($clinicId){ $q->where('clinics.id', $clinicId); })
             ->first();
         if (! $doctor) {
             return back()->withInput()->withErrors(['doctor_id' => 'Doctor not assigned to this clinic.']);
         }
 
         $exists = Appointment::where('user_id', $patient->id)
-            ->where('clinic_id', $data['clinic_id'])
+            ->where('clinic_id', $clinicId)
             ->where('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $data['appointment_time'])
             ->whereNotIn('status', ['cancelled','no_show'])
@@ -234,7 +240,7 @@ class AppointmentController extends Controller
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $time = $data['appointment_time'];
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
-            ->where('clinic_id', $data['clinic_id'])
+            ->where('clinic_id', $clinicId)
             ->where('day_of_week', $day)
             ->where('is_active', true)
             ->where('start_time', '<=', $time)
@@ -254,7 +260,7 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::create([
             'user_id'          => $patient->id,
-            'clinic_id'        => $data['clinic_id'],
+            'clinic_id'        => $clinicId,
             'service_id'       => $data['service_id'],
             'doctor_id'        => $data['doctor_id'],
             'appointment_date' => $data['appointment_date'],
@@ -269,17 +275,17 @@ class AppointmentController extends Controller
         }
 
         $queueService = app(\App\Services\QueueService::class);
-        $queueNumber = $queueService->getNextNumber($data['clinic_id']);
+        $queueNumber = $queueService->getNextNumber($clinicId);
 
         \App\Models\QueueEntry::create([
-            'clinic_id'     => $data['clinic_id'],
+            'clinic_id'     => $clinicId,
             'user_id'       => $patient->id,
             'appointment_id'=> $appointment->id,
             'queue_number'  => $queueNumber,
             'status'        => 'waiting',
         ]);
 
-    $appointment->user->notify(new PatientAppointmentBooked($appointment));
+        $appointment->user->notify(new PatientAppointmentBooked($appointment));
 
         if ($appointment->clinic) {
             $appointment->clinic->secretaries()->each(function($sec) use ($appointment) {
@@ -297,4 +303,49 @@ class AppointmentController extends Controller
     }
 
     public function show(Appointment $a) { return redirect()->route('secretary.appointments.index'); }
+
+    protected function buildClinicPatientMap($clinics): array
+    {
+        $map = [];
+
+        foreach ($clinics as $clinic) {
+            $patients = User::query()
+                ->select('users.id', 'users.name', 'users.email')
+                ->where(function ($query) use ($clinic) {
+                    $query->whereHas('appointments', function ($appointments) use ($clinic) {
+                        $appointments->where('clinic_id', $clinic->id);
+                    })->orWhereHas('queueEntries', function ($queues) use ($clinic) {
+                        $queues->where('clinic_id', $clinic->id);
+                    })->orWhereHas('clinicsAsPatient', function ($patientClinics) use ($clinic) {
+                        $patientClinics->where('clinics.id', $clinic->id);
+                    });
+                })
+                ->distinct('users.id')
+                ->orderBy('users.name')
+                ->get();
+
+            $map[$clinic->id] = $patients->map(fn ($patient) => [
+                'id' => $patient->id,
+                'name' => $patient->name,
+                'email' => $patient->email,
+            ]);
+        }
+
+        return $map;
+    }
+
+    protected function patientBelongsToClinic(int $patientId, int $clinicId): bool
+    {
+        return User::where('id', $patientId)
+            ->where(function ($query) use ($clinicId) {
+                $query->whereHas('appointments', function ($appointments) use ($clinicId) {
+                    $appointments->where('clinic_id', $clinicId);
+                })->orWhereHas('queueEntries', function ($queues) use ($clinicId) {
+                    $queues->where('clinic_id', $clinicId);
+                })->orWhereHas('clinicsAsPatient', function ($patientClinics) use ($clinicId) {
+                    $patientClinics->where('clinics.id', $clinicId);
+                });
+            })
+            ->exists();
+    }
 }

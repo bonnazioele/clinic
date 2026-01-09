@@ -2,7 +2,7 @@
 @section('title','Secretary Dashboard')
 @section('content')
 <div class="container py-4">
-  
+
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -18,7 +18,7 @@
         @php $assignedClinics = auth()->user()->secretaryClinics()->select('clinics.id','clinics.name','clinics.branch_code')->get(); @endphp
         <div class="row g-3 text-start justify-content-center">
           @if($assignedClinics->count())
-          
+
           <div class="col-md-3">
             <div class="p-4 rounded text-white h-100" style="background:#0d6efd;">
               @php $firstClinic = $assignedClinics->first(); @endphp
@@ -31,7 +31,7 @@
           </div>
           @endif
 
-          
+
           <div class="col-md-3">
             <a href="{{ route('secretary.appointments.index') }}" class="text-decoration-none">
               <div class="p-4 rounded h-100" style="background:#ffc107; color:#000;">
@@ -40,7 +40,7 @@
               </div>
             </a>
           </div>
-          
+
           <div class="col-md-3">
             <a href="{{ route('secretary.doctors.index') }}" class="text-decoration-none">
               <div class="p-4 rounded text-white h-100" style="background:#1f7f56;">
@@ -49,12 +49,21 @@
               </div>
             </a>
           </div>
-          
+
           <div class="col-md-3">
             <a href="{{ route('secretary.services.index') }}" class="text-decoration-none">
               <div class="p-4 rounded text-white h-100" style="background:#10c9f4;">
                 <div class="fs-3 fw-bold">{{ $availableServices ?? 0 }}</div>
                 <div class="mt-1">Available Services</div>
+              </div>
+            </a>
+          </div>
+
+          <div class="col-md-3">
+            <a href="{{ route('secretary.patients.index') }}" class="text-decoration-none">
+              <div class="p-4 rounded text-white h-100" style="background:#28a745;">
+                <div class="fs-3 fw-bold">{{ number_format($clinicPatients ?? 0) }}</div>
+                <div class="mt-1">Patients</div>
               </div>
             </a>
           </div>
@@ -67,7 +76,7 @@
 
 
 
-  
+
   @include('secretary.appointments._pane')
 </div>
 @endsection

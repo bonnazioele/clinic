@@ -10,17 +10,9 @@
       </div>
       <p class="text-muted mb-0">Schedule and manage patient appointments efficiently</p>
     </div>
-    <div class="d-flex gap-2">
-      <a href="{{ route('secretary.queue.overview') }}" class="btn btn-info">
-        <i class="bi bi-people me-2"></i>Manage Queue
-      </a>
-      <a href="{{ route('secretary.appointments.create') }}" class="btn btn-success">
-        <i class="bi bi-plus-circle me-2"></i>New Appointment
-      </a>
-    </div>
   </div>
 
-  
+
   <div class="row g-3">
     <div class="col-md-3">
       <div class="text-center p-3 bg-light rounded-3">
@@ -45,6 +37,39 @@
         <div class="dashboard-stat">{{ $appointments->where('status', 'cancelled')->count() }}</div>
         <small class="text-muted">Cancelled</small>
       </div>
+    </div>
+  </div>
+
+</div>
+
+
+<div class="medical-card p-4 mb-4">
+  <h5 class="mb-3"><i class="bi bi-lightning medical-icon me-2"></i>Quick Actions</h5>
+  <div class="row g-3">
+    <div class="col-md-3">
+      <a href="{{ route('secretary.patients.create') }}" class="btn w-100 text-white" style="background-color:#28a745; border-color:#28a745;">
+        <i class="bi bi-person-plus me-2"></i>Register Patient
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ route('secretary.appointments.create') }}" class="btn btn-success w-100">
+        <i class="bi bi-calendar-plus me-2"></i>New Appointment
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ route('secretary.queue.overview') }}" class="btn btn-info w-100">
+        <i class="bi bi-people me-2"></i>Manage Queue
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ route('secretary.doctors.index') }}" class="btn btn-primary w-100">
+        <i class="bi bi-person-badge me-2"></i>Manage Doctors
+      </a>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-warning w-100" onclick="exportAppointments()">
+        <i class="bi bi-download me-2"></i>Export Data
+      </button>
     </div>
   </div>
 </div>
@@ -85,35 +110,6 @@
 </div>
 
 
-<div class="medical-card p-4 mb-4">
-  <h5 class="mb-3">
-    <i class="bi bi-lightning medical-icon me-2"></i>Quick Actions
-  </h5>
-  <div class="row g-3">
-    <div class="col-md-3">
-      <a href="{{ route('secretary.appointments.create') }}" class="btn btn-success w-100">
-        <i class="bi bi-calendar-plus me-2"></i>New Appointment
-      </a>
-    </div>
-    <div class="col-md-3">
-      <a href="{{ route('secretary.queue.overview') }}" class="btn btn-info w-100">
-        <i class="bi bi-people me-2"></i>Manage Queue
-      </a>
-    </div>
-    <div class="col-md-3">
-      <a href="{{ route('secretary.doctors.index') }}" class="btn btn-primary w-100">
-        <i class="bi bi-person-badge me-2"></i>Manage Doctors
-      </a>
-    </div>
-    <div class="col-md-3">
-      <button class="btn btn-warning w-100" onclick="exportAppointments()">
-        <i class="bi bi-download me-2"></i>Export Data
-      </button>
-    </div>
-  </div>
-</div>
-
-
 <div class="medical-card p-0">
   <div class="d-flex align-items-center justify-content-between p-4 border-bottom">
     <h5 class="mb-0">
@@ -132,7 +128,7 @@
     </div>
   </div>
 
-  
+
   <div id="tableViewContent">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -200,7 +196,10 @@
                   <a href="{{ route('secretary.appointments.edit', $appointment) }}" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-pencil me-1"></i>Edit
                   </a>
-                  <form method="POST" action="{{ route('secretary.appointments.destroy', $appointment) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this appointment?')">
+                  <form method="POST" action="{{ route('secretary.appointments.destroy', $appointment) }}" class="d-inline"
+                        data-confirm="Delete this appointment? Any queue entry linked to it will also be cancelled."
+                        data-confirm-title="Delete Appointment"
+                        data-confirm-btn="Delete">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-sm btn-outline-danger w-100">
                       <i class="bi bi-trash me-1"></i>Delete
@@ -228,7 +227,7 @@
     </div>
   </div>
 
-  
+
   <div id="cardViewContent" class="p-4" style="display: none;">
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
       @forelse($appointments as $appointment)
@@ -251,7 +250,10 @@
                 <ul class="dropdown-menu">
                   <li><a class="dropdown-item" href="{{ route('secretary.appointments.edit', $appointment) }}"><i class="bi bi-pencil me-2"></i>Edit</a></li>
                   <li>
-                    <form method="POST" action="{{ route('secretary.appointments.destroy', $appointment) }}" onsubmit="return confirm('Are you sure you want to delete this appointment?')">
+                    <form method="POST" action="{{ route('secretary.appointments.destroy', $appointment) }}"
+                          data-confirm="Delete this appointment? Any queue entry linked to it will also be cancelled."
+                          data-confirm-title="Delete Appointment"
+                          data-confirm-btn="Delete">
                       @csrf @method('DELETE')
                       <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Delete</button>
                     </form>

@@ -21,7 +21,7 @@
     </div>
   </div>
 
-  
+
   <div class="medical-card p-4 mb-4">
     <form method="GET" action="{{ route('admin.services.index') }}" class="row g-3 align-items-end">
       <div class="col-md-5 col-lg-4">
@@ -47,9 +47,9 @@
     </form>
   </div>
 
-  
 
-  
+
+
   <div class="medical-card p-4">
     <div class="d-flex flex-wrap align-items-center mb-4 gap-2">
       <h4 class="mb-0">Available Services <span class="badge bg-primary" style="font-size:.75rem;">{{ $services->total() }}</span></h4>
@@ -59,9 +59,24 @@
       <table class="table table-hover">
         <thead>
           <tr class="bg-light">
-            <th class="border-0 px-4 py-3 fw-semibold">Service Name</th>
-            <th class="border-0 px-4 py-3 fw-semibold">Clinics Using</th>
-            <th class="border-0 px-4 py-3 fw-semibold text-end" style="width:140px;">Actions</th>
+            <th class="border-0 px-4 py-3 fw-semibold text-uppercase small">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-gear"></i>
+                Service Name
+              </span>
+            </th>
+            <th class="border-0 px-4 py-3 fw-semibold text-uppercase small">
+              <span class="d-inline-flex align-items-center gap-2">
+                <i class="bi bi-hospital"></i>
+                Clinics Using
+              </span>
+            </th>
+            <th class="border-0 px-4 py-3 fw-semibold text-end text-uppercase small" style="width:140px;">
+              <span class="d-inline-flex align-items-center gap-2 justify-content-end w-100">
+                <i class="bi bi-tools"></i>
+                Actions
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -75,8 +90,8 @@
               </td>
               <td class="px-4 py-4 text-end">
                 <div class="d-flex gap-2 justify-content-end">
-                  <a href="{{ route('admin.services.edit', $service) }}" 
-                     class="btn btn-primary d-flex align-items-center justify-content-center" 
+                  <a href="{{ route('admin.services.edit', $service) }}"
+                     class="btn btn-primary d-flex align-items-center justify-content-center"
                      style="width:36px;height:36px;"
                      title="Edit Service">
                       <i class="bi bi-pencil-square"></i>
@@ -114,7 +129,7 @@
       </table>
     </div>
 
-    
+
     @if($services->hasPages())
       <div class="d-flex justify-content-between align-items-center flex-column flex-md-row gap-3 p-3 border-top small">
         <div class="text-muted order-2 order-md-1">Showing

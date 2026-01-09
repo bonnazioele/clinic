@@ -7,6 +7,8 @@ use App\Http\Middleware\SecretaryMiddleware;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Appointment;
 use App\Models\Clinic;
+use App\Models\Service;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -22,9 +24,14 @@ class DashboardController extends Controller
         $clinicIds = $user->secretaryClinics()->pluck('clinics.id');
         $today = now()->toDateString();
 
-    $availableServices = \App\Models\Service::whereHas('clinics', function($q) use ($clinicIds) {
+    $availableServices = Service::whereHas('clinics', function($q) use ($clinicIds) {
                 $q->whereIn('clinics.id', $clinicIds);
             })->distinct()->count();
+
+        $activeClinicId = (int) $request->session()->get('active_clinic_id');
+        $activeClinic = $activeClinicId && $clinicIds->contains($activeClinicId)
+            ? Clinic::find($activeClinicId)
+            : ($clinicIds->first() ? Clinic::find($clinicIds->first()) : null);
 
         $stats = [
             'assignedClinics' => $clinicIds->count(),
@@ -33,6 +40,15 @@ class DashboardController extends Controller
             'totalDoctors' => Clinic::whereIn('id', $clinicIds)
                 ->withCount('doctors')->get()->sum('doctors_count'),
             'availableServices' => $availableServices,
+            'clinicPatients' => $activeClinic
+                ? User::where(function ($query) use ($activeClinic) {
+                    $query->whereHas('appointments', function ($appointments) use ($activeClinic) {
+                        $appointments->where('clinic_id', $activeClinic->id);
+                    })->orWhereHas('queueEntries', function ($queues) use ($activeClinic) {
+                        $queues->where('clinic_id', $activeClinic->id);
+                    });
+                })->distinct('users.id')->count('users.id')
+                : 0,
         ];
 
         $clinics = \App\Models\Clinic::whereIn('id', $clinicIds)->get();

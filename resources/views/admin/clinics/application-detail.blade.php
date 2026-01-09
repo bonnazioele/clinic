@@ -113,12 +113,12 @@
             <div class="application-card p-4 mb-4">
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <h4 class="mb-0">{{ $clinic->name }}</h4>
-                    <span class="badge status-badge 
-                        @if($clinic->isApprovedLike()) 
+                    <span class="badge status-badge
+                        @if($clinic->isApprovedLike())
                             bg-success
-                        @elseif(strtolower($clinic->status) === 'rejected') 
+                        @elseif(strtolower($clinic->status) === 'rejected')
                             bg-danger
-                        @else 
+                        @else
                             pending
                         @endif px-3 py-2">
                         @if($clinic->isApprovedLike())
@@ -147,7 +147,7 @@
                             </div>
                             @endif
                             <div class="mb-2">
-                                <strong>Email:</strong> 
+                                <strong>Email:</strong>
                                 <a href="mailto:{{ $clinic->email }}" class="text-decoration-none">{{ $clinic->email }}</a>
                             </div>
                             @if($clinic->description)
@@ -171,13 +171,13 @@
                             @endif
                             @if($clinic->contact_person_email)
                             <div class="mb-2">
-                                <strong>Email:</strong> 
+                                <strong>Email:</strong>
                                 <a href="mailto:{{ $clinic->contact_person_email }}" class="text-decoration-none">{{ $clinic->contact_person_email }}</a>
                             </div>
                             @endif
                             @if($clinic->contact_number)
                             <div class="mb-2">
-                                <strong>Phone:</strong> 
+                                <strong>Phone:</strong>
                                 <a href="tel:{{ $clinic->contact_number }}" class="text-decoration-none">{{ $clinic->contact_number }}</a>
                             </div>
                             @endif
@@ -195,9 +195,9 @@
                     </div>
                     @if($clinic->gps_latitude && $clinic->gps_longitude)
                     <div class="mb-2">
-                        <strong>GPS Coordinates:</strong> 
+                        <strong>GPS Coordinates:</strong>
                         {{ $clinic->gps_latitude }}, {{ $clinic->gps_longitude }}
-                        <a href="https://maps.google.com?q={{ $clinic->gps_latitude }},{{ $clinic->gps_longitude }}" 
+                        <a href="https://maps.google.com?q={{ $clinic->gps_latitude }},{{ $clinic->gps_longitude }}"
                            target="_blank" class="btn btn-sm btn-outline-primary ms-2">
                             <i class="bi bi-map me-1"></i>View on Map
                         </a>
@@ -221,6 +221,56 @@
                     @else
                         <div class="text-muted">
                             <i class="bi bi-info-circle me-1"></i>No services requested with this application
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Regulatory Permits -->
+                <div class="info-card p-3 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0">
+                            <i class="bi bi-file-earmark-lock me-1"></i>Regulatory Permits
+                        </h6>
+                        <span class="small text-muted">{{ $clinic->permits->count() }} upload{{ $clinic->permits->count() === 1 ? '' : 's' }}</span>
+                    </div>
+                    @php $permitsByType = $clinic->permits->keyBy('permit_type'); @endphp
+                    @if(!isset($permitDefinitions) || $permitDefinitions->isEmpty())
+                        <p class="text-muted small mb-0">No permit definitions configured.</p>
+                    @else
+                        <div class="row g-3 justify-content-center">
+                            @foreach($permitDefinitions as $key => $definition)
+                                @php $permit = $permitsByType->get($key); @endphp
+                                <div class="col-lg-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="d-flex align-items-start gap-2 mb-2">
+                                            <i class="bi bi-shield-check text-primary"></i>
+                                            <div>
+                                                <strong>{{ $definition['label'] ?? \Illuminate\Support\Str::title(str_replace('_',' ', $key)) }}</strong>
+                                                <div class="small text-muted">{{ $definition['description'] ?? 'Regulatory requirement' }}</div>
+                                            </div>
+                                        </div>
+                                        @if($permit)
+                                            <dl class="row small mb-3">
+                                                <dt class="col-6 text-muted">Permit #</dt>
+                                                <dd class="col-6 text-end">{{ $permit->permit_number ?? '—' }}</dd>
+                                                <dt class="col-6 text-muted">Issued</dt>
+                                                <dd class="col-6 text-end">{{ optional($permit->issued_at)->format('M d, Y') ?? '—' }}</dd>
+                                                <dt class="col-6 text-muted">Expires</dt>
+                                                <dd class="col-6 text-end">{{ optional($permit->expires_at)->format('M d, Y') ?? '—' }}</dd>
+                                            </dl>
+                                            @if($permit->attachment_path)
+                                                <a href="{{ Storage::disk('public')->url($permit->attachment_path) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary w-100">
+                                                    <i class="bi bi-box-arrow-up-right me-1"></i>View Attachment
+                                                </a>
+                                            @else
+                                                <span class="badge bg-warning text-dark">No file uploaded</span>
+                                            @endif
+                                        @else
+                                            <p class="text-muted small mb-0">No document submitted.</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     @endif
                 </div>
@@ -268,7 +318,7 @@
                             <div class="small">This clinic application has been approved and is active.</div>
                         </div>
                     </div>
-                    
+
                 @elseif(strtolower($clinic->status) === 'rejected')
                     <!-- Already Declined State -->
                     <div class="alert alert-danger d-flex align-items-center mb-3">
@@ -278,7 +328,7 @@
                             <div class="small">This clinic application has been declined.</div>
                         </div>
                     </div>
-                    
+
                     <button type="button" class="btn btn-outline-danger w-100 action-buttons mb-3" disabled>
                         <i class="bi bi-x-circle me-2"></i>Application Declined
                     </button>
@@ -302,7 +352,7 @@
                                 <label for="decline_reason" class="form-label fw-semibold">
                                     <i class="bi bi-exclamation-triangle me-1"></i>Reason for Decline
                                 </label>
-                                <textarea class="form-control @error('decline_reason') is-invalid @enderror" id="decline_reason" name="decline_reason" rows="4" 
+                                <textarea class="form-control @error('decline_reason') is-invalid @enderror" id="decline_reason" name="decline_reason" rows="4"
                                         placeholder="Please provide a clear reason for declining this application..." required>{{ old('decline_reason') }}</textarea>
                                 @error('decline_reason')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -343,8 +393,8 @@
                 </h6>
                 @if($clinic->logo)
                     <div class="text-center">
-                        <img src="{{ asset('storage/' . $clinic->logo) }}" 
-                             alt="Clinic Logo" 
+                        <img src="{{ asset('storage/' . $clinic->logo) }}"
+                             alt="Clinic Logo"
                              class="img-fluid rounded"
                              style="max-height: 200px; max-width: 100%;">
                     </div>
@@ -383,7 +433,7 @@
                         <i class="bi bi-info-circle text-muted me-2 mt-1"></i>
                         <div>
                             <small class="text-muted">
-                                An approval email with login credentials will be sent to 
+                                An approval email with login credentials will be sent to
                                 <strong>{{ $clinic->contact_person_email ?: $clinic->email }}</strong>
                             </small>
                         </div>

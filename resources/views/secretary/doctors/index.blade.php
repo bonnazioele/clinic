@@ -57,7 +57,9 @@
             <form method="POST"
                   action="{{ route('secretary.doctors.destroy',$d) }}"
                   class="d-inline"
-                  onsubmit="return confirm('Remove this doctor?')">
+                  data-confirm="Remove this doctor profile? They will lose access to clinic schedules."
+                  data-confirm-title="Remove Doctor"
+                  data-confirm-btn="Remove">
               @csrf @method('DELETE')
               <button class="btn btn-sm btn-outline-danger rounded-pill">
                 <i class="bi bi-trash me-1"></i>Delete

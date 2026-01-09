@@ -10,11 +10,21 @@ class QueueEntry extends Model
     use HasFactory;
 
     protected $fillable = [
-        'clinic_id','user_id','appointment_id','queue_number','status','served_at'
+        'clinic_id',
+        'user_id',
+        'appointment_id',
+        'queue_number',
+        'status',
+        'served_at',
+        'patient_disposition',
+        'doctor_notes',
+        'prescription',
+        'follow_up_at',
     ];
 
     protected $casts = [
         'served_at' => 'datetime',
+        'follow_up_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

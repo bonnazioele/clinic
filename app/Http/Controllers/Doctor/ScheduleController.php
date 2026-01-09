@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use App\Models\DoctorSchedule;
 use App\Models\Clinic;
+use App\Models\DoctorSchedule;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ScheduleController extends Controller
 {
@@ -125,5 +126,55 @@ class ScheduleController extends Controller
         ]);
 
         return back()->with('status','Schedule updated.');
+    }
+
+    public function feed(Request $request)
+    {
+        $doctor = Auth::user();
+
+        try {
+            $start = Carbon::parse($request->input('start', now()->startOfMonth()))->startOfDay();
+        } catch (\Throwable $e) {
+            $start = now()->startOfMonth();
+        }
+
+        try {
+            $end = Carbon::parse($request->input('end', $start->copy()->endOfMonth()))->endOfDay();
+        } catch (\Throwable $e) {
+            $end = $start->copy()->addMonth();
+        }
+
+        if ($end->lessThan($start)) {
+            $end = $start->copy()->addMonth();
+        }
+
+        $schedules = DoctorSchedule::with('clinic')
+            ->where('doctor_id', $doctor->id)
+            ->where('is_active', true)
+            ->get();
+
+        $events = [];
+        foreach ($schedules as $schedule) {
+            $cursor = $start->copy()->nextOrSame($schedule->day_of_week);
+            while ($cursor->lte($end)) {
+                $events[] = [
+                    'id' => 'schedule-'.$schedule->id.'-'.$cursor->format('Ymd'),
+                    'title' => $schedule->clinic?->name ?? 'Clinic',
+                    'start' => $cursor->copy()->setTimeFromTimeString($schedule->start_time)->toIso8601String(),
+                    'end' => $cursor->copy()->setTimeFromTimeString($schedule->end_time)->toIso8601String(),
+                    'display' => 'block',
+                    'extendedProps' => [
+                        'clinic' => $schedule->clinic?->name ?? 'Clinic',
+                        'scheduleId' => $schedule->id,
+                        'day_of_week' => $schedule->day_of_week,
+                        'start_time' => substr($schedule->start_time, 0, 5),
+                        'end_time' => substr($schedule->end_time, 0, 5),
+                    ],
+                ];
+                $cursor->addWeek();
+            }
+        }
+
+        return response()->json($events);
     }
 }

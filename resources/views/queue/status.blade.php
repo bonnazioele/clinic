@@ -6,7 +6,7 @@
   @include('partials.alerts')
 
   @if(isset($entry))
-    
+
     <div class="medical-card p-4 text-center position-relative">
       <div class="position-absolute" style="right:1rem; top:1rem;">
         <button type="button" class="btn btn-outline-secondary px-3 py-2" style="font-weight:500;" onclick="handleQueueBack()">
@@ -26,7 +26,7 @@
           </span>
         </div>
 
-        
+
         @php
           $estimatedMinutes = $ahead * 15; // 15 minutes per person
           $estimatedTime = now()->addMinutes($estimatedMinutes);
@@ -37,7 +37,7 @@
           <small class="text-muted">Expected to be called around {{ $estimatedTime->format('g:i A') }}</small>
         </div>
 
-        
+
         <div class="mb-4">
           <div class="d-flex justify-content-between mb-2">
             <small class="text-muted">Queue Progress</small>
@@ -51,8 +51,8 @@
           </div>
         </div>
 
-        
-        
+
+
       @else
         <div class="mb-4">
           <span class="badge bg-success text-white fs-6 px-4 py-3">
@@ -78,13 +78,15 @@
         </div>
       @endif
 
-      
+
       <div class="mt-4">
         @if($entry->status === 'waiting')
-          <form method="POST" action="{{ route('queue.leave', $entry) }}" class="d-inline me-2">
+          <form method="POST" action="{{ route('queue.leave', $entry) }}" class="d-inline me-2"
+                data-confirm="Leave this queue? Your spot will be forfeited."
+                data-confirm-title="Leave Queue"
+                data-confirm-btn="Leave">
             @csrf
-            <button type="submit" class="btn btn-danger"
-                    onclick="return confirm('Are you sure you want to leave the queue?')">
+            <button type="submit" class="btn btn-danger">
               <i class="bi bi-x-circle me-2"></i>Leave Queue
             </button>
           </form>
@@ -98,7 +100,7 @@
       </div>
     </div>
   @elseif(isset($userQueues) && $userQueues->count() > 0)
-    
+
     <div class="medical-card p-4 mb-4">
       <h3 class="text-center mb-4">
         <i class="bi bi-people medical-icon me-2"></i>Your Queue Status
@@ -136,7 +138,7 @@
       </div>
     </div>
   @else
-    
+
     <div class="medical-card p-4 text-center">
       <div class="mb-4">
         <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
