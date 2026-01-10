@@ -36,8 +36,16 @@
             <tr>
               <td>#{{ $queueEntry->queue_number }}</td>
               <td>
-                <strong>{{ $queueEntry->user->name }}</strong><br>
-                <small class="text-muted">{{ $queueEntry->user->email }}</small>
+                <div class="fw-semibold">{{ $queueEntry->display_name }}</div>
+                @if($queueEntry->display_email)
+                  <div class="small text-muted"><i class="bi bi-envelope me-1"></i>{{ $queueEntry->display_email }}</div>
+                @endif
+                @if($queueEntry->display_phone)
+                  <div class="small text-muted"><i class="bi bi-telephone me-1"></i>{{ $queueEntry->display_phone }}</div>
+                @endif
+                @if($queueEntry->is_walk_in)
+                  <span class="badge bg-success-subtle text-success mt-1">Walk-In</span>
+                @endif
               </td>
               <td>
                 @if($queueEntry->appointment)

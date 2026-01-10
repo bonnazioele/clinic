@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Secretary;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
@@ -25,11 +28,7 @@ class PatientController extends Controller
 
     public function index(Request $request)
     {
-        $user = $request->user();
-        $activeClinicId = (int) $request->session()->get('active_clinic_id');
-        $clinic = $activeClinicId
-            ? $user->secretaryClinics()->where('clinics.id', $activeClinicId)->first()
-            : null;
+        $clinic = $this->resolveActiveClinic($request);
 
         if (! $clinic) {
             return redirect()
@@ -87,9 +86,49 @@ class PatientController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('secretary.patients.create');
+        [$activeClinic, $clinicServices] = $this->resolveClinicContext($request);
+
+        return view('secretary.patients.create', [
+            'activeClinic' => $activeClinic,
+            'clinicServices' => $clinicServices,
+        ]);
+    }
+
+    protected function resolveClinicContext(Request $request): array
+    {
+        $user = $request->user();
+        if (! $user || ! $user->is_secretary) {
+            return [null, collect()];
+        }
+
+        $activeClinic = View::shared('activeClinic');
+
+        if (! $activeClinic) {
+            $activeClinicId = (int) $request->session()->get('active_clinic_id');
+
+            if ($activeClinicId) {
+                $activeClinic = $user->secretaryClinics()
+                    ->where('clinics.id', $activeClinicId)
+                    ->first();
+            }
+
+            if (! $activeClinic) {
+                $activeClinic = $user->secretaryClinics()->orderBy('name')->first();
+                if ($activeClinic) {
+                    $request->session()->put('active_clinic_id', $activeClinic->id);
+                }
+            }
+        }
+
+        if (! $activeClinic) {
+            return [null, collect()];
+        }
+
+        $services = $activeClinic->services()->orderBy('name')->get();
+
+        return [$activeClinic, $services];
     }
 
     public function store(Request $request)
@@ -130,5 +169,113 @@ class PatientController extends Controller
         return redirect()
             ->route('secretary.patients.create')
             ->with('status', 'Patient account registered successfully for '.$patient->name.'.');
+    }
+
+    public function edit(Request $request, User $patient)
+    {
+        $clinic = $this->resolveActiveClinic($request);
+
+        if (! $clinic) {
+            return redirect()
+                ->route('secretary.dashboard')
+                ->with('warning', 'Please select an active clinic to manage patients.');
+        }
+
+        $this->ensurePatientBelongsToClinic($patient, $clinic);
+
+        return view('secretary.patients.edit', [
+            'clinic' => $clinic,
+            'patient' => $patient,
+        ]);
+    }
+
+    public function update(Request $request, User $patient)
+    {
+        $clinic = $this->resolveActiveClinic($request);
+
+        if (! $clinic) {
+            return redirect()
+                ->route('secretary.dashboard')
+                ->with('warning', 'Please select an active clinic to manage patients.');
+        }
+
+        $this->ensurePatientBelongsToClinic($patient, $clinic);
+
+        $data = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($patient->id)],
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        $patient->update([
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'name' => trim($data['first_name'].' '.$data['last_name']),
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'address' => $data['address'] ?? null,
+        ]);
+
+        $patient->clinicsAsPatient()->syncWithoutDetaching([
+            $clinic->id => ['registered_by' => $request->user()->id],
+        ]);
+
+        return redirect()
+            ->route('secretary.patients.index')
+            ->with('status', 'Patient details updated successfully.');
+    }
+
+    public function destroy(Request $request, User $patient)
+    {
+        $clinic = $this->resolveActiveClinic($request);
+
+        if (! $clinic) {
+            return redirect()
+                ->route('secretary.dashboard')
+                ->with('warning', 'Please select an active clinic to manage patients.');
+        }
+
+        $this->ensurePatientBelongsToClinic($patient, $clinic);
+
+        if ($patient->is_admin || $patient->is_secretary || $patient->is_doctor) {
+            return back()->with('error', 'You cannot delete staff accounts from the patient directory.');
+        }
+
+        $patientName = $patient->name;
+        $patient->delete();
+
+        return redirect()
+            ->route('secretary.patients.index')
+            ->with('status', $patientName.' has been removed.');
+    }
+
+    protected function resolveActiveClinic(Request $request): ?Clinic
+    {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+
+        $activeClinicId = (int) $request->session()->get('active_clinic_id');
+        if (! $activeClinicId) {
+            return null;
+        }
+
+        return $user->secretaryClinics()
+            ->where('clinics.id', $activeClinicId)
+            ->first();
+    }
+
+    protected function ensurePatientBelongsToClinic(User $patient, Clinic $clinic): void
+    {
+        $belongs = $patient->appointments()->where('clinic_id', $clinic->id)->exists()
+            || $patient->queueEntries()->where('clinic_id', $clinic->id)->exists()
+            || $patient->clinicsAsPatient()->where('clinics.id', $clinic->id)->exists();
+
+        if (! $belongs) {
+            abort(404, 'Patient not found in this clinic.');
+        }
     }
 }

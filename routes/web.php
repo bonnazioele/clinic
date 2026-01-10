@@ -18,10 +18,12 @@ use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\Secretary\PatientController as SecPatient;
+use App\Http\Controllers\Secretary\WalkInPatientDirectoryController;
 use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 use App\Http\Controllers\Auth\SecretaryRegisterController;
 use App\Http\Controllers\Owner\ApplicationController as OwnerApplicationController;
+use App\Http\Controllers\WalkInRegistrationController;
 
 
 //Public Routes
@@ -97,6 +99,7 @@ Route::prefix('admin')
          Route::get('clinics/{clinic}/application', [AdminClinicController::class, 'showApplication'])->name('clinics.application');
          Route::post('clinics/{clinic}/approve', [AdminClinicController::class, 'approve'])->name('clinics.approve');
          Route::post('clinics/{clinic}/decline', [AdminClinicController::class, 'decline'])->name('clinics.decline');
+                     Route::get('/patients', [WalkInPatientDirectoryController::class, 'index'])->name('patients');
 
          Route::resource('services', AdminServiceController::class)
               ->except('show');
@@ -151,6 +154,19 @@ Route::prefix('admin')
          Route::get('patients', [SecPatient::class, 'index'])->name('patients.index');
          Route::get('patients/create', [SecPatient::class, 'create'])->name('patients.create');
          Route::post('patients', [SecPatient::class, 'store'])->name('patients.store');
+         Route::get('patients/{patient}/edit', [SecPatient::class, 'edit'])->name('patients.edit');
+         Route::put('patients/{patient}', [SecPatient::class, 'update'])->name('patients.update');
+         Route::delete('patients/{patient}', [SecPatient::class, 'destroy'])->name('patients.destroy');
+
+           Route::prefix('walkin')
+                ->name('walkin.')
+                ->group(function () {
+                     Route::get('/', [WalkInRegistrationController::class, 'index'])->name('index');
+                     Route::get('/search', [WalkInRegistrationController::class, 'searchPatient'])->name('search');
+                     Route::post('/register', [WalkInRegistrationController::class, 'store'])->name('store');
+                     Route::get('/confirmation/{visit}', [WalkInRegistrationController::class, 'confirmation'])->name('confirmation');
+                     Route::get('/print/{visit}', [WalkInRegistrationController::class, 'printSlip'])->name('print');
+                });
 
          Route::get('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'index'])->name('services.index');
          Route::get('services/create', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'create'])->name('services.create');

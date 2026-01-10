@@ -22,7 +22,9 @@ class QueueController extends Controller
         $clinics = Clinic::whereIn('id', $clinicIds)
             ->with([
                 'queueEntries' => function ($q) {
-                    $q->where('status', 'waiting')->orderBy('queue_number');
+                    $q->where('status', 'waiting')
+                        ->orderBy('queue_number')
+                        ->with(['user', 'patient']);
                 },
             ])
             ->withCount([
@@ -49,7 +51,7 @@ class QueueController extends Controller
             abort(403, 'Not assigned to this clinic');
         }
 
-        $waitingQuery = QueueEntry::with(['user', 'appointment.service'])
+        $waitingQuery = QueueEntry::with(['user', 'patient', 'appointment.service'])
             ->where('clinic_id', $clinic->id)
             ->where('status', 'waiting');
 

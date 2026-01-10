@@ -60,7 +60,7 @@
                         <div class="d-flex align-items-center justify-content-between">
                           <div>
                             <span class="fw-semibold">#{{ $entry->queue_number }}</span>
-                            <small class="text-muted d-block">{{ $entry->user->name ?? 'Unknown' }}</small>
+                            <small class="text-muted d-block">{{ $entry->display_name }}</small>
                           </div>
                           <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ $entry->formatted_created_time }}</small>
                         </div>

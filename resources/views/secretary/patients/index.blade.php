@@ -89,10 +89,16 @@
                   Activity
                 </span>
               </th>
-              <th class="text-uppercase small fw-semibold text-end">
-                <span class="d-inline-flex align-items-center gap-2 justify-content-end">
+              <th class="text-uppercase small fw-semibold">
+                <span class="d-inline-flex align-items-center gap-2">
                   <i class="bi bi-chat-dots"></i>
                   Contact
+                </span>
+              </th>
+              <th class="text-uppercase small fw-semibold text-end">
+                <span class="d-inline-flex align-items-center gap-2 justify-content-end">
+                  <i class="bi bi-gear"></i>
+                  Actions
                 </span>
               </th>
             </tr>
@@ -110,13 +116,13 @@
               <tr>
                 <td>
                   <div class="fw-semibold">{{ $patient->name }}</div>
-                  <div class="small text-muted">Patient ID: #{{ $patient->id }}</div>
+                  <div class="small text-muted">Account ID: #{{ $patient->id }}</div>
                 </td>
                 <td>
                   @if($lastVisitFormatted)
                     <span class="fw-semibold">{{ $lastVisitFormatted }}</span>
                     <div class="small text-muted">
-                      {{ $patient->last_appointment_date ? 'Appointment' : 'Queue Activity' }}
+                      {{ $patient->last_appointment_date ? 'Appointment' : 'Walk-In' }}
                     </div>
                   @else
                     <span class="text-muted">No interactions yet</span>
@@ -132,17 +138,37 @@
                     </span>
                   </div>
                 </td>
-                <td class="text-end">
+                <td>
                   <div class="small">
                     <i class="bi bi-envelope me-1"></i>
-                    <a href="mailto:{{ $patient->email }}" class="text-decoration-none">{{ $patient->email }}</a>
+                    @if($patient->email)
+                      <a href="mailto:{{ $patient->email }}" class="text-decoration-none">{{ $patient->email }}</a>
+                    @else
+                      <span class="text-muted">No email</span>
+                    @endif
                   </div>
-                  @if($patient->phone)
-                    <div class="small mt-1">
-                      <i class="bi bi-telephone me-1"></i>
+                  <div class="small mt-1">
+                    <i class="bi bi-telephone me-1"></i>
+                    @if($patient->phone)
                       <a href="tel:{{ $patient->phone }}" class="text-decoration-none">{{ $patient->phone }}</a>
-                    </div>
-                  @endif
+                    @else
+                      <span class="text-muted">No phone</span>
+                    @endif
+                  </div>
+                </td>
+                <td class="text-end">
+                  <div class="d-inline-flex gap-2">
+                    <a href="{{ route('secretary.patients.edit', $patient) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    <form method="POST" action="{{ route('secretary.patients.destroy', $patient) }}" onsubmit="return confirm('Delete {{ $patient->name }}? This cannot be undone.');">
+                      @csrf
+                      @method('DELETE')
+                      <button class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>Delete
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             @endforeach

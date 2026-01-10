@@ -12,6 +12,7 @@ class QueueEntry extends Model
     protected $fillable = [
         'clinic_id',
         'user_id',
+        'patient_id',
         'appointment_id',
         'queue_number',
         'status',
@@ -39,9 +40,38 @@ class QueueEntry extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
     public function appointment()
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->user?->name
+            ?? $this->patient?->full_name
+            ?? 'Walk-In Patient';
+    }
+
+    public function getDisplayEmailAttribute(): ?string
+    {
+        return $this->user?->email
+            ?? $this->patient?->email_address;
+    }
+
+    public function getDisplayPhoneAttribute(): ?string
+    {
+        return $this->user?->phone
+            ?? $this->patient?->mobile_number;
+    }
+
+    public function getIsWalkInAttribute(): bool
+    {
+        return $this->patient_id !== null && $this->user_id === null;
     }
 
     public function scopeWaiting($query)
