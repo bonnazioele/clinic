@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Clinic;
 use App\Models\Appointment;
+use App\Models\PatientHistory; // ✅ ADDED
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\PatientAppointmentBooked;
@@ -113,7 +114,7 @@ class AppointmentController extends Controller
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
-            while ($cursor < $end) { 
+            while ($cursor < $end) {
                 $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
                 if ($slotEnd > $end) {
                     break;
@@ -191,7 +192,6 @@ class AppointmentController extends Controller
             ]);
         }
 
-        
         $sameClinicConflict = Appointment::where('user_id', Auth::id())
             ->where('clinic_id', $data['clinic_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
@@ -230,6 +230,21 @@ class AppointmentController extends Controller
             'status'         => 'waiting',
         ]);
 
+        // ✅ CREATE PATIENT HISTORY WHEN SUCCESSFULLY QUEUED
+        PatientHistory::firstOrCreate(
+            [
+                'user_id'       => Auth::id(),
+                'clinic_name'   => optional($appointment->clinic)->name ?? 'Unknown Clinic',
+                'date_of_visit' => $appointment->appointment_date,
+            ],
+            [
+                'doctor'        => optional($appointment->doctor)->name ?? null,
+                'diagnosis'     => null,
+                'treatment'     => null,
+                'document_path' => $appointment->medical_document ?? null,
+            ]
+        );
+
         Auth::user()->notify(new PatientAppointmentBooked($appointment));
 
         if ($appointment->clinic) {
@@ -252,9 +267,9 @@ class AppointmentController extends Controller
         if ($appointment->user_id !== Auth::id()) {
             abort(403,'Forbidden');
         }
-        
+
         $appointment->load(['clinic.services','doctor','service']);
-        
+
         $clinic = $appointment->clinic;
         $clinic->load(['services','doctors']);
         return view('appointments.edit', [
@@ -281,7 +296,7 @@ class AppointmentController extends Controller
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $time = $data['appointment_time'];
-        $clinicId = $appointment->clinic_id; 
+        $clinicId = $appointment->clinic_id;
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)

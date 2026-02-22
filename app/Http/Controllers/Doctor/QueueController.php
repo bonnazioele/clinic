@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
-use App\Events\QueueUpdated;
-use App\Models\Appointment;
-use App\Models\QueueEntry;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use App\Models\QueueEntry;
+use App\Models\Appointment;
+use App\Models\PatientHistory;
+use App\Events\QueueUpdated;
 use Illuminate\Validation\Rule;
 
 class QueueController extends Controller
@@ -17,30 +18,15 @@ class QueueController extends Controller
         $this->middleware(['auth', \App\Http\Middleware\DoctorMiddleware::class]);
     }
 
-    public function index(Request $request)
+    public function index()
     {
         $doctor = Auth::user();
-        $clinics = $doctor->clinics()->pluck('clinics.id');
 
-        $waitingQuery = QueueEntry::with('appointment.user','clinic')
-            ->whereIn('clinic_id', $clinics)
-            ->whereIn('status', ['waiting','now_serving']);
-
-        $clinicModes = \App\Models\Clinic::whereIn('id', $clinics)->pluck('queue_mode')->unique();
-        if ($clinicModes->count() === 1 && $clinicModes->first() === 'priority') {
-            $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
-                ->select('queue_entries.*')
-                ->orderByRaw("CASE WHEN queue_entries.status = 'now_serving' THEN 0 ELSE 1 END")
-                ->orderByRaw('appointments.appointment_date IS NULL')
-                ->orderBy('appointments.appointment_date')
-                ->orderBy('appointments.appointment_time')
-                ->orderBy('queue_number');
-        } else {
-            $waitingQuery
-                ->orderByRaw("CASE WHEN status = 'now_serving' THEN 0 ELSE 1 END")
-                ->orderBy('queue_number');
-        }
-        $waiting = $waitingQuery->get();
+        $waiting = QueueEntry::with(['appointment.user', 'appointment.clinic', 'clinic'])
+            ->whereIn('status', ['waiting', 'now_serving'])
+            ->whereIn('clinic_id', $doctor->clinics()->pluck('clinics.id'))
+            ->orderBy('created_at')
+            ->get();
 
         return view('doctor.queue.index', compact('waiting'));
     }
@@ -53,21 +39,23 @@ class QueueController extends Controller
             abort(403);
         }
 
-        $dispositionOptions = ['completed','follow_up','referred','cancelled'];
         $data = $request->validate([
-            'patient_disposition' => ['required', Rule::in($dispositionOptions)],
-            'doctor_notes' => ['nullable','string','max:2000'],
-            'prescription' => ['nullable','string','max:2000'],
-            'follow_up_at' => ['nullable','date'],
+            'diagnosis' => 'nullable|string|max:255',
+            'treatment' => 'nullable|string|max:255',
         ]);
 
-        \DB::transaction(function() use ($entry, $data) {
-            $fresh = QueueEntry::lockForUpdate()->find($entry->id);
+        \DB::transaction(function () use ($entry, $doctor, $data) {
+            $fresh = QueueEntry::lockForUpdate()
+                ->with(['appointment.user', 'appointment.clinic', 'clinic'])
+                ->find($entry->id);
+
+            if (! $fresh) return;
 
             if (! in_array($fresh->status, ['waiting','now_serving'])) {
                 return;
             }
 
+            // Mark served
             $fresh->update([
                 'status' => 'served',
                 'served_at' => now(),
@@ -77,10 +65,49 @@ class QueueController extends Controller
                 'follow_up_at' => $data['follow_up_at'] ?? null,
             ]);
 
+            // Mark appointment completed
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
                 $fresh->appointment->update(['status' => 'completed']);
             }
 
+            // ✅ Create / Update patient history with doctor name + diagnosis/treatment
+            if ($fresh->appointment) {
+                $appointment = $fresh->appointment;
+
+                $clinicName = optional($fresh->clinic)->name
+                    ?? optional($appointment->clinic)->name
+                    ?? 'Unknown Clinic';
+
+                $history = PatientHistory::firstOrCreate(
+                    [
+                        'user_id'       => $appointment->user_id,
+                        'clinic_name'   => $clinicName,
+                        'date_of_visit' => $appointment->appointment_date,
+                    ],
+                    [
+                        'doctor'        => $doctor->name, // ✅ ACTUAL logged-in doctor
+                        'document_path' => $appointment->medical_document ?? null,
+                        'diagnosis'     => null,
+                        'treatment'     => null,
+                    ]
+                );
+
+                // Always ensure doctor is saved even if record existed
+                $history->doctor = $history->doctor ?: $doctor->name;
+
+                // Save diagnosis/treatment if provided
+                if (!empty($data['diagnosis'])) $history->diagnosis = $data['diagnosis'];
+                if (!empty($data['treatment'])) $history->treatment = $data['treatment'];
+
+                // Attach document if history doesn't have it yet
+                if (!$history->document_path && $appointment->medical_document) {
+                    $history->document_path = $appointment->medical_document;
+                }
+
+                $history->save();
+            }
+
+            // Notify secretaries (your existing logic)
             $clinic = $fresh->clinic;
             if ($clinic && $fresh->appointment) {
                 $secretaries = $clinic->secretaries()->get();
@@ -92,6 +119,6 @@ class QueueController extends Controller
             event(new QueueUpdated($fresh->fresh(), 'served'));
         });
 
-        return back()->with('status', 'Processed queue entry #'.$entry->queue_number.'.');
+        return back()->with('status', 'Patient marked done and saved to medical history.');
     }
 }

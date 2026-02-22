@@ -14,7 +14,7 @@ class PatientHistory extends Model
         'clinic_name',
         'diagnosis',
         'treatment',
-        'doctor_name',
+        'doctor',          // ✅ FIX: matches migration column name
         'document_path',
         'date_of_visit',
     ];
@@ -25,6 +25,6 @@ class PatientHistory extends Model
 
     public function patient()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

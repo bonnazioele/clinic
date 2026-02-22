@@ -20,7 +20,7 @@
       @if($user->medical_document)
         <p>
           <strong>Medical Document:</strong>
-          <a href="{{ Storage::url($user->medical_document) }}" target="_blank">
+          <a href="{{ Storage::url($user->medical_document) }}" target="_blank" rel="noopener">
             View / Download
           </a>
         </p>
@@ -42,41 +42,51 @@
     </div>
 
     <div class="accordion mb-3" id="medicalHistoryAccordion">
-  @foreach($user->patientHistories->sortByDesc('date_of_visit') as $history)
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="heading{{ $history->id }}">
-        <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse{{ $history->id }}">
-          <div class="d-flex justify-content-between w-100 me-3">
-            <strong>{{ $history->clinic_name }}</strong>
-            <span class="text-muted">
-              {{ $history->date_of_visit?->format('M d, Y') }}
-            </span>
+      @forelse($user->patientHistories->sortByDesc('date_of_visit') as $history)
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="heading{{ $history->id }}">
+            <button class="accordion-button collapsed" type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapse{{ $history->id }}"
+                    aria-expanded="false"
+                    aria-controls="collapse{{ $history->id }}">
+              <div class="d-flex justify-content-between w-100 me-3">
+                <strong>{{ $history->clinic_name }}</strong>
+                <span class="text-muted">
+                  {{ $history->date_of_visit?->format('M d, Y') ?? '—' }}
+                </span>
+              </div>
+            </button>
+          </h2>
+
+          <div id="collapse{{ $history->id }}"
+               class="accordion-collapse collapse"
+               aria-labelledby="heading{{ $history->id }}"
+               data-bs-parent="#medicalHistoryAccordion">
+            <div class="accordion-body">
+              {{-- ✅ FIX: use doctor (migration column), not doctor_name --}}
+              <p><strong>Doctor:</strong> {{ $history->doctor ?? '—' }}</p>
+
+              <p><strong>Diagnosis:</strong> {{ $history->diagnosis ?? '—' }}</p>
+              <p><strong>Treatment:</strong> {{ $history->treatment ?? '—' }}</p>
+
+              @if($history->document_path)
+                <a href="{{ Storage::url($history->document_path) }}"
+                   target="_blank"
+                   rel="noopener"
+                   class="btn btn-sm btn-outline-primary">
+                  View Attached Document
+                </a>
+              @endif
+            </div>
           </div>
-        </button>
-      </h2>
-
-      <div id="collapse{{ $history->id }}"
-           class="accordion-collapse collapse"
-           data-bs-parent="#medicalHistoryAccordion">
-
-        <div class="accordion-body">
-          <p><strong>Doctor:</strong> {{ $history->doctor_name ?? '—' }}</p>
-          <p><strong>Diagnosis:</strong> {{ $history->diagnosis }}</p>
-          <p><strong>Treatment:</strong> {{ $history->treatment ?? '—' }}</p>
-
-          @if($history->document_path)
-            <a href="{{ Storage::url($history->document_path) }}"
-               target="_blank"
-               class="btn btn-sm btn-outline-primary">
-              View Attached Document
-            </a>
-          @endif
         </div>
-      </div>
+      @empty
+        <div class="p-4 text-center text-muted">
+          No medical history recorded.
+        </div>
+      @endforelse
     </div>
-  @endforeach
+  </div>
 </div>
-
 @endsection
