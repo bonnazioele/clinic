@@ -12,6 +12,8 @@ use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\PatientAppointmentBooked;
 use App\Notifications\SecretaryAppointmentBooked;
 use App\Notifications\DoctorAppointmentBooked;
+use App\Models\PatientHistory;
+
 
 class AppointmentController extends Controller
 {
@@ -159,7 +161,26 @@ class AppointmentController extends Controller
             }
         }
 
-        $appointment->update($data);
+        $wasCompleted = $appointment->status === 'completed';
+
+$appointment->update($data);
+
+// ✅ CREATE MEDICAL HISTORY WHEN STATUS BECOMES COMPLETED
+if (
+    ! $wasCompleted &&
+    $data['status'] === 'completed'
+) {
+    PatientHistory::create([
+        'user_id'       => $appointment->user_id,
+        'clinic_name'   => $appointment->clinic->name,
+        'doctor_name'   => optional($appointment->doctor)->name,
+        'diagnosis'     => $appointment->notes ?? 'Pending diagnosis',
+        'treatment'     => 'Pending treatment',
+        'date_of_visit' => $appointment->appointment_date,
+        'document_path'=> $appointment->medical_document,
+    ]);
+}
+
 
         $appointment->user->notify(new AppointmentStatusChanged($appointment));
 

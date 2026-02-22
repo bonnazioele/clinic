@@ -4,7 +4,8 @@
 @section('title','Dashboard')
 
 @section('content')
-<div class="container py-4">
+<div class="dashboard-watermark">
+  <div class="container py-4">
   @include('partials.alerts')
   
   <div class="row mb-4">
@@ -375,6 +376,7 @@
         @endif
       </div>
     </div>
+  </div>
   </div>
 </div>
 @endsection

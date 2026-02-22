@@ -41,32 +41,42 @@
       </a>
     </div>
 
-    <div class="card-body">
-      @forelse($user->patientHistories->sortByDesc('date_of_visit') as $history)
-        <div class="border rounded p-3 mb-3">
-          <div class="d-flex justify-content-between">
+    <div class="accordion mb-3" id="medicalHistoryAccordion">
+  @foreach($user->patientHistories->sortByDesc('date_of_visit') as $history)
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="heading{{ $history->id }}">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse{{ $history->id }}">
+          <div class="d-flex justify-content-between w-100 me-3">
             <strong>{{ $history->clinic_name }}</strong>
             <span class="text-muted">
-              {{ $history->date_of_visit?->format('M d, Y') ?? '—' }}
+              {{ $history->date_of_visit?->format('M d, Y') }}
             </span>
           </div>
+        </button>
+      </h2>
 
-          <p class="mb-1"><strong>Doctor:</strong> {{ $history->doctor_name ?? '—' }}</p>
-          <p class="mb-1"><strong>Diagnosis:</strong> {{ $history->diagnosis }}</p>
-          <p class="mb-1"><strong>Treatment:</strong> {{ $history->treatment ?? '—' }}</p>
+      <div id="collapse{{ $history->id }}"
+           class="accordion-collapse collapse"
+           data-bs-parent="#medicalHistoryAccordion">
+
+        <div class="accordion-body">
+          <p><strong>Doctor:</strong> {{ $history->doctor_name ?? '—' }}</p>
+          <p><strong>Diagnosis:</strong> {{ $history->diagnosis }}</p>
+          <p><strong>Treatment:</strong> {{ $history->treatment ?? '—' }}</p>
 
           @if($history->document_path)
-            <p class="mb-0">
-              <a href="{{ Storage::url($history->document_path) }}" target="_blank">
-                View Attached Document
-              </a>
-            </p>
+            <a href="{{ Storage::url($history->document_path) }}"
+               target="_blank"
+               class="btn btn-sm btn-outline-primary">
+              View Attached Document
+            </a>
           @endif
         </div>
-      @empty
-        <p class="text-muted mb-0">No medical history records available.</p>
-      @endforelse
+      </div>
     </div>
-  </div>
+  @endforeach
 </div>
+
 @endsection
