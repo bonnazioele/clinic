@@ -18,6 +18,9 @@ class NotificationsController extends Controller
         $all      = $user->notifications()->latest()->paginate(20);
         $unread   = $user->unreadNotifications()->count();
 
+        // Auto-mark all notifications as read when user views the page
+        $user->unreadNotifications->markAsRead();
+
         return view('notifications.index', compact('all','unread'));
     }
 

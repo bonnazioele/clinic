@@ -22,6 +22,7 @@
         }
       }
     @endphp
+
     <a class="navbar-brand d-flex align-items-center"
        href="{{ route($homeRoute) }}">
       <i class="bi bi-heart-pulse-fill me-2" style="font-size: 1.8rem;"></i>
@@ -48,6 +49,7 @@
               <i class="bi bi-building me-1"></i>Find Clinics
             </a>
           </li>
+
         @else
           @if(auth()->user()->is_admin)
 
@@ -97,7 +99,6 @@
               </a>
             </li>
 
-
           @elseif(auth()->user()->is_owner)
 
             <li class="nav-item">
@@ -106,6 +107,7 @@
                 <i class="bi bi-speedometer2 me-1"></i>Secretary
               </a>
             </li>
+
           @elseif(auth()->user()->is_doctor)
 
             <li class="nav-item">
@@ -120,6 +122,7 @@
                 <i class="bi bi-calendar-range me-1"></i>Schedule
               </a>
             </li>
+
           @else
 
             <li class="nav-item">
@@ -140,13 +143,14 @@
                 <i class="bi bi-clock me-1"></i>Queue Status
               </a>
             </li>
+
           @endif
         @endguest
       </ul>
 
-
       <ul class="navbar-nav ms-auto align-items-center">
         @guest
+
           <li class="nav-item">
             <a class="nav-link text-white me-2" href="{{ route('owner.apply') }}">
               <i class="bi bi-building-add me-1"></i>Register Clinic
@@ -162,6 +166,7 @@
               <i class="bi bi-person-plus me-1"></i>Register
             </a>
           </li>
+
         @else
 
           <li class="nav-item me-2">
@@ -177,31 +182,37 @@
             </a>
           </li>
 
-
           <li class="nav-item dropdown me-3">
-            @php $unread = auth()->user()->unreadNotifications->count(); @endphp
+            @php
+              $unread = auth()->user()->unreadNotifications()->count();
+            @endphp
+
             <a class="nav-link position-relative"
                href="#"
                id="notifDropdown"
+               role="button"
                data-bs-toggle="dropdown"
                aria-expanded="false"
                title="Notifications">
               <i class="bi bi-bell-fill" style="font-size: 1.2rem;"></i>
-              @if($unread)
-                <span class="position-absolute top-0 start-100 translate-middle
-                             badge rounded-pill bg-danger animate-pulse">
-                  {{ $unread }}
-                </span>
-              @endif
+              <span id="notifCount"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger animate-pulse"
+                    style="{{ $unread > 0 ? '' : 'display:none;' }}">
+                {{ $unread }}
+              </span>
             </a>
+
             <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="notifDropdown" style="min-width:350px;">
               <li class="dropdown-header d-flex align-items-center">
                 <i class="bi bi-bell me-2 text-primary"></i>
                 <strong>Notifications</strong>
-                @if($unread)
-                  <span class="badge bg-primary ms-auto">{{ $unread }} new</span>
-                @endif
+                <span id="notifHeaderBadge"
+                      class="badge bg-primary ms-auto"
+                      style="{{ $unread > 0 ? '' : 'display:none;' }}">
+                  {{ $unread }} new
+                </span>
               </li>
+
               @forelse(auth()->user()->notifications()->latest()->take(5)->get() as $note)
                 <li>
                   <a href="{{ route('notifications.index') }}"
@@ -223,6 +234,7 @@
                   <div>No notifications</div>
                 </li>
               @endforelse
+
               <li><hr class="dropdown-divider"></li>
               <li>
                 <a class="dropdown-item text-center text-primary fw-semibold"
@@ -232,7 +244,6 @@
               </li>
             </ul>
           </li>
-
 
           <li class="nav-item dropdown">
             <a id="userDropdown"
@@ -246,6 +257,7 @@
               </div>
               <span class="d-none d-md-inline">{{ Auth::user()->name }}</span>
             </a>
+
             <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="userDropdown">
               <li class="dropdown-header">
                 <div class="d-flex align-items-center">
@@ -270,7 +282,9 @@
                   </div>
                 </div>
               </li>
+
               <li><hr class="dropdown-divider"></li>
+
               <li>
                 <a class="dropdown-item" href="{{ route('profile.show') }}">
                   <i class="bi bi-person-circle me-2"></i>My Profile
@@ -281,17 +295,20 @@
                   <i class="bi bi-pencil-square me-2"></i>Edit Profile
                 </a>
               </li>
+
               @if(Auth::user()->is_secretary && Auth::user()->secretaryClinics()->exists())
                 @php $firstClinic = Auth::user()->secretaryClinics()->select('clinics.id')->first(); @endphp
                 @if($firstClinic)
-                <li>
-                  <a class="dropdown-item" href="{{ route('secretary.clinic.edit', $firstClinic->id) }}">
-                    <i class="bi bi-gear me-2"></i>Clinic Settings
-                  </a>
-                </li>
+                  <li>
+                    <a class="dropdown-item" href="{{ route('secretary.clinic.edit', $firstClinic->id) }}">
+                      <i class="bi bi-gear me-2"></i>Clinic Settings
+                    </a>
+                  </li>
                 @endif
               @endif
+
               <li><hr class="dropdown-divider"></li>
+
               <li>
                 <a class="dropdown-item text-danger" href="#"
                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
@@ -299,6 +316,7 @@
                 </a>
               </li>
             </ul>
+
             <form id="logout-form"
                   action="{{ route('logout') }}"
                   method="POST"
@@ -311,3 +329,44 @@
     </div>
   </div>
 </nav>
+
+@auth
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const notifBell = document.getElementById('notifDropdown');
+    const notifCount = document.getElementById('notifCount');
+    const notifHeaderBadge = document.getElementById('notifHeaderBadge');
+    let hasMarkedAsRead = false;
+
+    if (notifBell) {
+        notifBell.addEventListener('click', function () {
+            if (hasMarkedAsRead) return;
+            hasMarkedAsRead = true;
+
+            fetch("{{ route('notifications.markRead') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).catch(() => {});
+
+            if (notifCount) {
+                notifCount.textContent = '0';
+                notifCount.style.display = 'none';
+            }
+
+            if (notifHeaderBadge) {
+                notifHeaderBadge.textContent = '0 new';
+                notifHeaderBadge.style.display = 'none';
+            }
+
+            document.querySelectorAll('#notifDropdown + .dropdown-menu .dropdown-item.fw-bold').forEach(function(item) {
+                item.classList.remove('fw-bold', 'bg-light');
+            });
+        });
+    }
+});
+</script>
+@endauth

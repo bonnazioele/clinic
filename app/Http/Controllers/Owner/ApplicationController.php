@@ -42,6 +42,7 @@ class ApplicationController extends Controller
             'service_ids.*' => ['integer','exists:services,id'],
         ];
 
+        // Permit validation rules
         $permitTypes->each(function ($permit) use (&$rules) {
             $key = $permit['key'];
             $requiresNumber = (bool) ($permit['requires_number'] ?? false);
@@ -49,24 +50,35 @@ class ApplicationController extends Controller
             $requiresExpiry = (bool) ($permit['requires_expiry_date'] ?? false);
 
             $rules["permits.$key.permit_number"] = $requiresNumber
-                ? ['required','string','max:255']
-                : ['nullable','string','max:255'];
+                ? ['required','string','max:255', Rule::unique('clinic_permits', 'permit_number')]
+                : ['nullable','string','max:255', Rule::unique('clinic_permits', 'permit_number')];
+
             $rules["permits.$key.issued_at"] = $requiresIssued
                 ? ['required','date']
                 : ['nullable','date'];
+
             $rules["permits.$key.expires_at"] = $requiresExpiry
                 ? ['required','date','after_or_equal:permits.'.$key.'.issued_at']
                 : ['nullable','date'];
+
             $rules["permits.$key.file"] = ['required','file','mimes:pdf,jpeg,jpg,png','max:5120'];
         });
 
-        Validator::make($data, $rules)->validate();
+        // ✅ CUSTOM ERROR MESSAGES
+        $messages = [
+            'permits.*.permit_number.unique' => 'This permit is already registered under another clinic.',
+            'permits.*.permit_number.required' => 'Permit number is required.',
+        ];
 
+        Validator::make($data, $rules, $messages)->validate();
+
+        // Upload logo
         $logoPath = null;
         if ($request->hasFile('logo')) {
             $logoPath = $request->file('logo')->store('clinic-logos', 'public');
         }
 
+        // Create clinic
         $clinic = Clinic::create([
             'created_by_user_id' => null,
             'name' => $data['clinic_name'],
@@ -84,10 +96,12 @@ class ApplicationController extends Controller
             'status' => 'pending',
         ]);
 
+        // Attach services
         if ($request->filled('service_ids')) {
             $clinic->services()->attach($request->input('service_ids'));
         }
 
+        // Save permits
         $permitTypes->each(function ($permit) use ($request, $clinic) {
             $key = $permit['key'];
             $payload = $request->input("permits.$key", []);

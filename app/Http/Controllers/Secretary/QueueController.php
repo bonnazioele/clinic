@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Secretary;
 
 use App\Events\QueueUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Notifications\AppointmentStatusChanged;
@@ -14,60 +15,101 @@ use Illuminate\Support\Facades\DB;
 
 class QueueController extends Controller
 {
-    public function overview()
+    public function overview(Request $request)
     {
         $user = auth()->user();
         $clinicIds = $user->secretaryClinics()->pluck('clinics.id');
+        $selectedDate = $request->input('date', today()->toDateString());
 
         $clinics = Clinic::whereIn('id', $clinicIds)
             ->with([
-                'queueEntries' => function ($q) {
-                    $q->where('status', 'waiting')
+                'queueEntries' => function ($q) use ($selectedDate) {
+                    $q->whereDate('created_at', $selectedDate)
+                        ->whereIn('status', ['waiting', 'now_serving', 'called'])
                         ->orderBy('queue_number')
                         ->with(['user', 'patient']);
                 },
             ])
             ->withCount([
-                'queueEntries as waiting_count' => function ($q) {
-                    $q->where('status', 'waiting');
+                'queueEntries as waiting_count' => function ($q) use ($selectedDate) {
+                    $q->whereDate('created_at', $selectedDate)
+                        ->whereIn('status', ['waiting', 'now_serving', 'called']);
                 },
             ])
             ->get();
 
         $totalWaiting = QueueEntry::whereIn('clinic_id', $clinicIds)
+            ->whereDate('created_at', $selectedDate)
             ->where('status', 'waiting')
             ->count();
+
         $totalServedToday = QueueEntry::whereIn('clinic_id', $clinicIds)
+            ->whereDate('created_at', $selectedDate)
             ->where('status', 'served')
-            ->whereDate('served_at', today())
             ->count();
 
-        return view('secretary.queue.overview', compact('clinics', 'totalWaiting', 'totalServedToday'));
+        return view('secretary.queue.overview', compact(
+            'clinics',
+            'totalWaiting',
+            'totalServedToday',
+            'selectedDate'
+        ));
     }
 
-    public function queue(Clinic $clinic)
+    public function queue(Request $request, Clinic $clinic)
     {
         if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
             abort(403, 'Not assigned to this clinic');
         }
 
+        $selectedDate = $request->input('date', today()->toDateString());
+
         $waitingQuery = QueueEntry::with(['user', 'patient', 'appointment.service'])
             ->where('clinic_id', $clinic->id)
-            ->where('status', 'waiting');
+            ->whereDate('created_at', $selectedDate)
+            ->whereIn('status', ['waiting', 'now_serving', 'called']);
 
         if ($clinic->queueModeIs('priority')) {
             $waitingQuery->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
                 ->select('queue_entries.*')
+                ->orderByRaw("
+                    CASE
+                        WHEN queue_entries.status = 'now_serving' THEN 0
+                        WHEN queue_entries.status = 'called' THEN 1
+                        WHEN queue_entries.status = 'waiting' THEN 2
+                        ELSE 3
+                    END
+                ")
                 ->orderByRaw('appointments.appointment_date IS NULL')
                 ->orderBy('appointments.appointment_date')
                 ->orderBy('appointments.appointment_time')
                 ->orderBy('queue_number');
         } else {
-            $waitingQuery->orderBy('queue_number');
+            $waitingQuery->orderByRaw("
+                CASE
+                    WHEN status = 'now_serving' THEN 0
+                    WHEN status = 'called' THEN 1
+                    WHEN status = 'waiting' THEN 2
+                    ELSE 3
+                END
+            ")->orderBy('queue_number');
         }
+
         $waiting = $waitingQuery->get();
 
-        return view('secretary.queue.index', compact('clinic', 'waiting'));
+        $completed = QueueEntry::with(['user', 'patient', 'appointment.service'])
+            ->where('clinic_id', $clinic->id)
+            ->whereDate('created_at', $selectedDate)
+            ->whereIn('status', ['served', 'cancelled', 'no_show', 'rescheduled'])
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return view('secretary.queue.index', compact(
+            'clinic',
+            'waiting',
+            'completed',
+            'selectedDate'
+        ));
     }
 
     public function call(Clinic $clinic, QueueEntry $entry)
@@ -201,4 +243,3 @@ class QueueController extends Controller
         return back()->with('status', "Marked queue #{$entry->queue_number} as no-show.");
     }
 }
-

@@ -183,18 +183,19 @@ Route::prefix('admin')
 //Doctor Routes
 
 Route::prefix('doctor')
-      ->name('doctor.')
-      ->group(function(){
-           Route::get('/dashboard', [\App\Http\Controllers\Doctor\DashboardController::class,'index'])->name('dashboard');
-           Route::get('/queue', [\App\Http\Controllers\Doctor\QueueController::class,'index'])->name('queue.index');
-           Route::post('/queue/{entry}/serve', [\App\Http\Controllers\Doctor\QueueController::class,'serve'])->name('queue.serve');
+    ->middleware(['auth', 'force.password.change', \App\Http\Middleware\DoctorMiddleware::class])
+    ->name('doctor.')
+    ->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Doctor\DashboardController::class,'index'])->name('dashboard');
+        Route::get('/queue', [\App\Http\Controllers\Doctor\QueueController::class,'index'])->name('queue.index');
+        Route::post('/queue/{entry}/serve', [\App\Http\Controllers\Doctor\QueueController::class,'serve'])->name('queue.serve');
 
-           Route::get('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'index'])->name('schedules.index');
-           Route::get('/schedules/feed', [\App\Http\Controllers\Doctor\ScheduleController::class,'feed'])->name('schedules.feed');
-           Route::post('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'store'])->name('schedules.store');
-           Route::put('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'update'])->name('schedules.update');
-           Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'destroy'])->name('schedules.destroy');
-      });
+        Route::get('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'index'])->name('schedules.index');
+        Route::get('/schedules/feed', [\App\Http\Controllers\Doctor\ScheduleController::class,'feed'])->name('schedules.feed');
+        Route::post('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class,'store'])->name('schedules.store');
+        Route::put('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'update'])->name('schedules.update');
+        Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class,'destroy'])->name('schedules.destroy');
+    });
 
 
 Broadcast::routes();

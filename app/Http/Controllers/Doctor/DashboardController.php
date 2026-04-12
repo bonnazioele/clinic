@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Doctor;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Appointment;
-use App\Models\Clinic;
 use App\Models\QueueEntry;
 use Illuminate\Http\Request;
 
@@ -21,20 +20,39 @@ class DashboardController extends Controller
         $doctor = Auth::user();
         $today = now()->toDateString();
 
-        $appointments = Appointment::with('clinic','user','service')
-            ->where('doctor_id', $doctor->id)
-            ->whereDate('appointment_date', $today)
-            ->orderBy('appointment_time')
-            ->get();
-
         $clinics = $doctor->clinics()->get();
 
-        $queue = QueueEntry::with('appointment.user','clinic')
-            ->whereIn('clinic_id', $clinics->pluck('id'))
-            ->where('status','waiting')
-            ->orderBy('created_at')
-            ->get();
+        $activeClinicId = (int) $request->input('clinic_id');
 
-        return view('doctor.dashboard', compact('doctor','appointments','queue','clinics'));
+        if (!$activeClinicId || !$clinics->pluck('id')->contains($activeClinicId)) {
+            $activeClinicId = (int) optional($clinics->first())->id;
+        }
+
+        $appointments = collect();
+        $queue = collect();
+
+        if ($activeClinicId) {
+            $appointments = Appointment::with(['clinic', 'user', 'service'])
+                ->where('doctor_id', $doctor->id)
+                ->where('clinic_id', $activeClinicId)
+                ->whereDate('appointment_date', $today)
+                ->orderBy('appointment_time')
+                ->get();
+
+            $queue = QueueEntry::with(['appointment.user', 'appointment.clinic', 'clinic'])
+                ->where('clinic_id', $activeClinicId)
+                ->whereIn('status', ['waiting', 'now_serving'])
+                ->orderByRaw("CASE WHEN status = 'now_serving' THEN 0 ELSE 1 END")
+                ->orderBy('created_at')
+                ->get();
+        }
+
+        return view('doctor.dashboard', compact(
+            'doctor',
+            'appointments',
+            'queue',
+            'clinics',
+            'activeClinicId'
+        ));
     }
 }

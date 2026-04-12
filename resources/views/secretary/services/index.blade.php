@@ -71,13 +71,13 @@
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-warning"><i class="bi bi-link-45deg me-1"></i>Detach</button>
                       </form>
-                      <form method="POST" action="{{ route('secretary.services.destroy',$s) }}"
+                      <!-- <form method="POST" action="{{ route('secretary.services.destroy',$s) }}"
                             data-confirm="Delete this service from the master list? This cannot be undone."
                             data-confirm-title="Delete Service"
                             data-confirm-btn="Delete">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
-                      </form>
+                      </form> -->
                     </div>
                   </td>
                 </tr>
