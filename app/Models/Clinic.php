@@ -103,6 +103,22 @@ class Clinic extends Model
         });
     }
 
+    public function scopeForIds($query, $clinicIds)
+    {
+        return $query->whereIn('id', $clinicIds);
+    }
+
+    public function scopeWithDashboardDoctorLaneRelations($query)
+    {
+        return $query->with([
+            'doctors' => function ($doctorQuery) {
+                $doctorQuery->select('users.id', 'users.name')
+                    ->with(['services:id,name'])
+                    ->orderBy('users.name');
+            },
+        ]);
+    }
+
     public function isApprovedLike(): bool
     {
         return in_array(strtolower((string)$this->status), ['approved','active'], true);

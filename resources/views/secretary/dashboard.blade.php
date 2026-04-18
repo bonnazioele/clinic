@@ -3,80 +3,194 @@
 @section('content')
 <div class="container py-4">
 
-  <div class="row mb-4">
+  <div class="row mb-3">
     <div class="col-12">
-      <div class="medical-card p-4 text-center">
-        <div class="d-flex align-items-center justify-content-center mb-3">
-          <i class="bi bi-heart-pulse-fill medical-icon me-3" style="font-size: 3rem;"></i>
-          <div>
-            <h1 class="mb-1 fw-bold text-primary">Welcome, {{ auth()->user()->name }}!</h1>
-            <p class="text-muted mb-0">
-              <i class="bi bi-person-badge me-2"></i>Secretary Dashboard
-            </p>
-          </div>
-        </div>
-        @php $assignedClinics = auth()->user()->secretaryClinics()->select('clinics.id','clinics.name','clinics.branch_code')->get(); @endphp
-        <div class="row g-3 text-start justify-content-center">
-          @if($assignedClinics->count())
+      <h5 class="mb-1">Welcome, {{ auth()->user()->name }}!</h5>
+    </div>
+  </div>
 
-          <div class="col-md-3">
-            <div class="p-4 rounded text-white h-100" style="background:#0d6efd;">
-              @php $firstClinic = $assignedClinics->first(); @endphp
-              <div class="fs-3 fw-bold">{{ $firstClinic ? Str::limit($firstClinic->name, 18) : '—' }}</div>
-              <div class="mt-1">Assigned Clinic{{ $assignedClinics->count()>1 ? 's' : '' }}</div>
-              @if($assignedClinics->count() > 1)
-                <div class="small opacity-75 mt-2">+{{ $assignedClinics->count() - 1 }} more</div>
-              @endif
-            </div>
-          </div>
-          @endif
+  <div class="row g-4 align-items-start mb-4">
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="bg-white border rounded-3 p-3 h-100">
+        <div class="small text-muted">Total today</div>
+        <div class="display-6 lh-1 mt-3">{{ number_format($totalTodayCount ?? 0) }}</div>
+      </div>
+    </div>
 
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="bg-white border rounded-3 p-3 h-100">
+        <div class="small text-muted">Waiting</div>
+        <div class="display-6 lh-1 mt-3">{{ number_format($waitingCount ?? 0) }}</div>
+      </div>
+    </div>
 
-          <div class="col-md-3">
-            <a href="{{ route('secretary.appointments.index') }}" class="text-decoration-none">
-              <div class="p-4 rounded h-100" style="background:#ffc107; color:#000;">
-                <div class="fs-3 fw-bold">{{ $todayAppts }}</div>
-                <div class="mt-1">Today's Appointments</div>
-              </div>
-            </a>
-          </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="bg-white border rounded-3 p-3 h-100">
+        <div class="small text-muted">Served</div>
+        <div class="display-6 lh-1 mt-3">{{ number_format($servedCount ?? 0) }}</div>
+      </div>
+    </div>
 
-          <div class="col-md-3">
-            <a href="{{ route('secretary.doctors.index') }}" class="text-decoration-none">
-              <div class="p-4 rounded text-white h-100" style="background:#1f7f56;">
-                <div class="fs-3 fw-bold">{{ $totalDoctors }}</div>
-                <div class="mt-1">Doctors</div>
-              </div>
-            </a>
-          </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="bg-white border rounded-3 p-3 h-100">
+        <div class="small text-muted">No show</div>
+        <div class="display-6 lh-1 mt-3">{{ number_format($noShowCount ?? 0) }}</div>
+      </div>
+    </div>
 
-          <div class="col-md-3">
-            <a href="{{ route('secretary.services.index') }}" class="text-decoration-none">
-              <div class="p-4 rounded text-white h-100" style="background:#10c9f4;">
-                <div class="fs-3 fw-bold">{{ $availableServices ?? 0 }}</div>
-                <div class="mt-1">Available Services</div>
-              </div>
-            </a>
-          </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="bg-white border rounded-3 p-3 h-100">
+        <div class="small text-muted">Rescheduled</div>
+        <div class="display-6 lh-1 mt-3">{{ number_format($rescheduledCount ?? 0) }}</div>
+      </div>
+    </div>
 
-          <div class="col-md-3">
-            <a href="{{ route('secretary.patients.index') }}" class="text-decoration-none">
-              <div class="p-4 rounded text-white h-100" style="background:#28a745;">
-                <div class="fs-3 fw-bold">{{ number_format($clinicPatients ?? 0) }}</div>
-                <div class="mt-1">Patients</div>
-              </div>
-            </a>
-          </div>
-        </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="bg-white border rounded-3 p-3 h-100">
+        <div class="small text-muted">Walk-in today</div>
+        <div class="display-6 lh-1 mt-3">{{ number_format($walkInTodayCount ?? 0) }}</div>
       </div>
     </div>
   </div>
 
+  <div class="row mb-4">
+    <div class="col-12">
+      <section class="bg-white border rounded-3 p-4 p-lg-4">
+        <div class="d-flex justify-content-end mb-3">
+          <form method="GET" action="{{ route('secretary.dashboard') }}" class="d-flex align-items-center gap-2">
+            @foreach(request()->except('sort_by', 'service_id') as $key => $value)
+              <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+            @endforeach
+            <label for="lane-sort" class="small text-muted mb-0">Sort by</label>
+            <select id="lane-sort" name="sort_by" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="doctor" {{ ($laneSort ?? 'doctor') === 'doctor' ? 'selected' : '' }}>Doctor</option>
+              <option value="service" {{ ($laneSort ?? 'doctor') === 'service' ? 'selected' : '' }}>Service</option>
+            </select>
 
+            @if(($laneSort ?? 'doctor') === 'service')
+              <label for="lane-service" class="small text-muted mb-0">Service</label>
+              <select id="lane-service" name="service_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="0" {{ (int) ($selectedServiceId ?? 0) === 0 ? 'selected' : '' }}>All services</option>
+                @foreach(($serviceOptions ?? collect()) as $serviceOption)
+                  <option value="{{ $serviceOption->id }}" {{ (int) ($selectedServiceId ?? 0) === (int) $serviceOption->id ? 'selected' : '' }}>
+                    {{ $serviceOption->name }}
+                  </option>
+                @endforeach
+              </select>
+            @endif
+          </form>
+        </div>
 
+        @if(($doctorLanes ?? collect())->count())
+          <ul class="nav nav-pills flex-nowrap overflow-auto mb-4" id="queueLaneTabs" role="tablist">
+            @foreach($doctorLanes as $index => $lane)
+              <li class="nav-item me-2 mb-2" role="presentation">
+                <button
+                  class="nav-link {{ $index === 0 ? 'active' : '' }}"
+                  id="{{ $lane['id'] }}-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#{{ $lane['id'] }}"
+                  type="button"
+                  role="tab"
+                  aria-controls="{{ $lane['id'] }}"
+                  aria-selected="{{ $index === 0 ? 'true' : 'false' }}">
+                  {{ $lane['doctor_name'] }}
+                </button>
+              </li>
+            @endforeach
+          </ul>
 
+          <div class="tab-content" id="queueLaneTabsContent">
+            @foreach($doctorLanes as $index => $lane)
+              @php
+                $nowServing = $lane['now_serving'];
+                $nextUp = $lane['next_up'];
+                $callNextEntry = $lane['call_next_entry'];
+                $noShowEntry = $lane['no_show_entry'];
+              @endphp
+              <div
+                class="tab-pane fade {{ $index === 0 ? 'show active' : '' }}"
+                id="{{ $lane['id'] }}"
+                role="tabpanel"
+                aria-labelledby="{{ $lane['id'] }}-tab">
 
+                <div class="border rounded-3 p-4">
+                  <div class="mb-3">
+                    <div class="h4 mb-0">{{ number_format($lane['queue_depth']) }}</div>
+                    <div class="small text-muted">in active queue</div>
+                  </div>
 
-  @include('secretary.appointments._pane')
+                  <div class="bg-light border rounded-3 p-3 mb-3">
+                    <div class="small text-muted mb-1">Now serving</div>
+                    @if($nowServing)
+                      <div class="fs-5">{{ $nowServing->display_name }} <span class="text-muted">- #{{ $nowServing->queue_number }}</span></div>
+                      <div class="small text-muted mt-1">
+                        Called at {{ optional($nowServing->updated_at)->format('g:i A') ?? '-' }}
+                        - {{ $nowServing->appointment_id ? 'Appointment' : 'Walk-in' }}
+                      </div>
+                    @else
+                      <div class="text-muted">No patient is currently being served.</div>
+                    @endif
+                  </div>
+
+                  <div class="mb-4">
+                    <div class="small text-muted mb-2">Next up</div>
+                    @if($nextUp->count())
+                      <div class="vstack gap-2">
+                        @foreach($nextUp as $entry)
+                          <div class="d-flex justify-content-between align-items-center border rounded-3 p-2">
+                            <div>#{{ $entry->queue_number }} {{ $entry->display_name }}</div>
+                            <span class="badge text-bg-light border">{{ $entry->appointment_id ? 'Appt' : 'Walk-in' }}</span>
+                          </div>
+                        @endforeach
+                      </div>
+                    @else
+                      <div class="text-muted">No queued patients waiting in this lane.</div>
+                    @endif
+                  </div>
+
+                  @if(!$nowServing && $callNextEntry)
+                    <div class="mb-3">
+                      <form method="POST" action="{{ route('secretary.queue.call', [$lane['clinic_id'], $callNextEntry->id]) }}">
+                        @csrf
+                        <button class="btn btn-primary">Start</button>
+                      </form>
+                    </div>
+                  @endif
+
+                  <div class="d-flex flex-wrap gap-2">
+                    @if($nowServing)
+                      <form method="POST" action="{{ route('secretary.queue.done_next', [$lane['clinic_id'], $nowServing->id]) }}">
+                        @csrf
+                        <button class="btn btn-primary">Done and next</button>
+                      </form>
+
+                      <form
+                        method="POST"
+                        action="{{ route('secretary.queue.no_show', [$lane['clinic_id'], $noShowEntry->id]) }}"
+                        data-confirm="Mark this patient as no-show?"
+                        data-confirm-title="Mark As No-Show"
+                        data-confirm-btn="Mark No-Show">
+                        @csrf
+                        <button class="btn btn-outline-secondary">Mark no-show</button>
+                      </form>
+                    @else
+                      <button class="btn btn-outline-secondary" disabled>Mark no-show</button>
+                    @endif
+                  </div>
+                </div>
+              </div>
+            @endforeach
+          </div>
+        @else
+          <div class="bg-light border rounded-3 p-4 text-center text-muted">
+            No doctor lanes are available yet for your assigned clinics.
+          </div>
+        @endif
+      </section>
+    </div>
+  </div>
+  </div>
+
 </div>
 @endsection

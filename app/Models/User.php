@@ -112,6 +112,42 @@ public function queueEntries()
         );
     }
 
+    public function dashboardServiceLabel(?QueueEntry $nowServing = null, ?QueueEntry $nextCandidate = null): string
+    {
+        $doctorServices = $this->relationLoaded('services')
+            ? $this->services->pluck('name')->filter()->unique()->values()
+            : collect();
+
+        if ($doctorServices->isNotEmpty()) {
+            return $doctorServices->join(', ');
+        }
+
+        return $nowServing?->appointment?->service?->name
+            ?? $nextCandidate?->appointment?->service?->name
+            ?? 'General consultation';
+    }
+
+    public function matchesDashboardServiceFilter(
+        int $serviceId,
+        ?QueueEntry $nowServing = null,
+        ?QueueEntry $nextCandidate = null
+    ): bool {
+        if ($serviceId <= 0) {
+            return true;
+        }
+
+        if ($this->relationLoaded('services') && $this->services->pluck('id')->contains($serviceId)) {
+            return true;
+        }
+
+        $laneServiceIds = collect([
+            $nowServing?->appointment?->service_id,
+            $nextCandidate?->appointment?->service_id,
+        ])->filter()->map(fn ($id) => (int) $id);
+
+        return $laneServiceIds->contains($serviceId);
+    }
+
     public function getNameAttribute($value)
     {
         if ($value) {

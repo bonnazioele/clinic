@@ -104,6 +104,36 @@ class QueueController extends Controller
         return back()->with('status', 'Now serving queue entry #' . $entry->queue_number . '.');
     }
 
+    public function doneNext(Clinic $clinic, QueueEntry $entry)
+    {
+        if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
+            abort(403, 'Not assigned to this clinic');
+        }
+        if ($entry->clinic_id !== $clinic->id) {
+            abort(403, 'Queue entry does not belong to this clinic.');
+        }
+
+        $result = QueueEntry::completeNowServingAndPromoteNext(
+            (int) $clinic->id,
+            (int) $entry->id,
+            now()->toDateString()
+        );
+
+        if (($result['result'] ?? '') === 'invalid') {
+            return back()->with('error', 'Queue entry is invalid for this clinic.');
+        }
+
+        if (($result['result'] ?? '') === 'noop') {
+            return back()->with('status', 'Queue entry is no longer in now serving state.');
+        }
+
+        if (($result['result'] ?? '') === 'served_and_promoted' && isset($result['next'])) {
+            return back()->with('status', 'Completed #' . $entry->queue_number . ' and moved #' . $result['next']->queue_number . ' to now serving.');
+        }
+
+        return back()->with('status', 'Completed queue entry #' . $entry->queue_number . '. No next patient to promote.');
+    }
+
     public function reschedule(Request $request, Clinic $clinic, QueueEntry $entry)
     {
         if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {

@@ -4,11 +4,10 @@ namespace App\Http\Controllers\Secretary;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\SecretaryMiddleware;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Appointment;
 use App\Models\Clinic;
+use App\Models\QueueEntry;
 use App\Models\Service;
-use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -23,58 +22,117 @@ class DashboardController extends Controller
         $user = Auth::user();
         $clinicIds = $user->secretaryClinics()->pluck('clinics.id');
         $today = now()->toDateString();
+        $laneSort = strtolower((string) $request->query('sort_by', 'doctor'));
+        $selectedServiceId = (int) $request->query('service_id', 0);
 
-    $availableServices = Service::whereHas('clinics', function($q) use ($clinicIds) {
-                $q->whereIn('clinics.id', $clinicIds);
-            })->distinct()->count();
+        if (!in_array($laneSort, ['doctor', 'service'], true)) {
+            $laneSort = 'doctor';
+        }
 
-        $activeClinicId = (int) $request->session()->get('active_clinic_id');
-        $activeClinic = $activeClinicId && $clinicIds->contains($activeClinicId)
-            ? Clinic::find($activeClinicId)
-            : ($clinicIds->first() ? Clinic::find($clinicIds->first()) : null);
+        $serviceOptions = Service::query()
+            ->forClinics($clinicIds)
+            ->orderBy('name')
+            ->distinct()
+            ->get(['services.id', 'services.name']);
+
+        if ($laneSort !== 'service') {
+            $selectedServiceId = 0;
+        } elseif ($selectedServiceId > 0 && !$serviceOptions->pluck('id')->contains($selectedServiceId)) {
+            $selectedServiceId = 0;
+        }
+
+        $queueEntriesForDashboardDay = QueueEntry::query()->forDashboardPanel($clinicIds, $today);
+
+        $walkInTodayCount = (clone $queueEntriesForDashboardDay)->walkIn()->count();
+        $appointmentTodayCount = (clone $queueEntriesForDashboardDay)->withAppointment()->count();
+        $statusCounts = QueueEntry::dashboardStatusCounts($queueEntriesForDashboardDay);
 
         $stats = [
-            'assignedClinics' => $clinicIds->count(),
-            'todayAppts' => Appointment::whereIn('clinic_id', $clinicIds)
-                ->whereDate('appointment_date', $today)->count(),
-            'totalDoctors' => Clinic::whereIn('id', $clinicIds)
-                ->withCount('doctors')->get()->sum('doctors_count'),
-            'availableServices' => $availableServices,
-            'clinicPatients' => $activeClinic
-                ? User::where(function ($query) use ($activeClinic) {
-                    $query->whereHas('appointments', function ($appointments) use ($activeClinic) {
-                        $appointments->where('clinic_id', $activeClinic->id);
-                    })->orWhereHas('queueEntries', function ($queues) use ($activeClinic) {
-                        $queues->where('clinic_id', $activeClinic->id);
-                    });
-                })->distinct('users.id')->count('users.id')
-                : 0,
+            'totalTodayCount' => $walkInTodayCount + $appointmentTodayCount,
+            'waitingCount' => $statusCounts['waiting'],
+            'servedCount' => $statusCounts['served'],
+            'noShowCount' => $statusCounts['no_show'],
+            'rescheduledCount' => $statusCounts['rescheduled'],
+            'walkInTodayCount' => $walkInTodayCount,
         ];
 
-        $clinics = \App\Models\Clinic::whereIn('id', $clinicIds)->get();
+        $clinicsWithDoctors = Clinic::query()
+            ->forIds($clinicIds)
+            ->withDashboardDoctorLaneRelations()
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
-        $query = Appointment::with('user','clinic','service','doctor')
-            ->whereIn('clinic_id', $clinicIds);
+        $queueEntriesToday = (clone $queueEntriesForDashboardDay)
+            ->withDashboardRelations()
+            ->get();
 
-        if ($request->filled('patient')) {
-            $term = trim((string) $request->input('patient'));
-            $query->whereHas('user', function ($q) use ($term) {
-                $q->where('name', 'like', "%{$term}%");
-            });
+        $laneEntriesByKey = $queueEntriesToday
+            ->filter(fn ($entry) => $entry->laneKey() !== null)
+            ->groupBy(fn ($entry) => $entry->laneKey());
+
+        $doctorLanes = collect();
+        foreach ($clinicsWithDoctors as $clinic) {
+            foreach ($clinic->doctors as $doctor) {
+                $laneEntries = $laneEntriesByKey->get($clinic->id . ':' . $doctor->id, collect());
+
+                $nowServing = $laneEntries
+                    ->where('status', 'now_serving')
+                    ->sortByDesc('updated_at')
+                    ->first();
+
+                $nextCandidates = $laneEntries
+                    ->filter(fn ($entry) => in_array($entry->status, QueueEntry::nextCandidateStatuses(), true))
+                    ->sortBy('queue_number')
+                    ->values();
+
+                $firstNextCandidate = $nextCandidates->first();
+
+                if (
+                    $laneSort === 'service'
+                    && $selectedServiceId > 0
+                    && !$doctor->matchesDashboardServiceFilter($selectedServiceId, $nowServing, $firstNextCandidate)
+                ) {
+                    continue;
+                }
+
+                $nextUp = $nextCandidates->take(2);
+
+                $queueDepth = $laneEntries
+                    ->filter(fn ($entry) => in_array($entry->status, QueueEntry::activeLaneStatuses(), true))
+                    ->count();
+
+                $serviceName = $doctor->dashboardServiceLabel($nowServing, $firstNextCandidate);
+
+                $callNextEntry = $firstNextCandidate;
+                $noShowEntry = $nowServing;
+
+                $doctorLanes->push([
+                    'id' => 'lane-' . $clinic->id . '-' . $doctor->id,
+                    'clinic_id' => $clinic->id,
+                    'clinic_name' => $clinic->name,
+                    'doctor_name' => $doctor->name,
+                    'service_name' => $serviceName,
+                    'now_serving' => $nowServing,
+                    'next_up' => $nextUp,
+                    'queue_depth' => $queueDepth,
+                    'call_next_entry' => $callNextEntry,
+                    'no_show_entry' => $noShowEntry,
+                ]);
+            }
         }
-        if ($request->filled('status')) {
-            $query->where('status', (string) $request->input('status'));
-        }
-        if ($request->filled('date')) {
-            $query->whereDate('appointment_date', (string) $request->input('date'));
-        }
 
-        $appointments = $query
-            ->orderBy('appointment_date')
-            ->orderBy('appointment_time')
-            ->paginate(15)
-            ->withQueryString();
+        $doctorLanes = $laneSort === 'service'
+            ? $doctorLanes->sortBy([
+                ['service_name', 'asc'],
+                ['doctor_name', 'asc'],
+                ['clinic_name', 'asc'],
+            ])->values()
+            : $doctorLanes->sortBy([
+                ['doctor_name', 'asc'],
+                ['service_name', 'asc'],
+                ['clinic_name', 'asc'],
+            ])->values();
 
-        return view('secretary.dashboard', array_merge($stats, compact('clinics','appointments')));
+        return view('secretary.dashboard', array_merge($stats, compact('doctorLanes', 'laneSort', 'serviceOptions', 'selectedServiceId')));
     }
 }
