@@ -46,52 +46,50 @@ class QueueController extends Controller
     }
 
     public function serve(Request $request, QueueEntry $entry)
-    {
-        $doctor = Auth::user();
+{
+    $doctor = Auth::user();
 
-        if (! $doctor->clinics()->where('clinics.id', $entry->clinic_id)->exists()) {
-            abort(403);
+    if (! $doctor->clinics()->where('clinics.id', $entry->clinic_id)->exists()) {
+        abort(403);
+    }
+
+    $data = $request->validate([
+        'doctor_notes' => ['nullable','string','max:2000'],
+        'prescription' => ['nullable','string','max:2000'],
+        'follow_up_at' => ['nullable','date'],
+    ]);
+
+    \DB::transaction(function() use ($entry, $data) {
+        $fresh = QueueEntry::lockForUpdate()->find($entry->id);
+
+        if (! in_array($fresh->status, ['waiting','now_serving'])) {
+            return;
         }
 
-        $dispositionOptions = ['completed','follow_up','referred','cancelled'];
-        $data = $request->validate([
-            'patient_disposition' => ['required', Rule::in($dispositionOptions)],
-            'doctor_notes' => ['nullable','string','max:2000'],
-            'prescription' => ['nullable','string','max:2000'],
-            'follow_up_at' => ['nullable','date'],
+        $fresh->update([
+            'status' => 'served',
+            'served_at' => now(),
+            'patient_disposition' => 'completed',
+            'doctor_notes' => $data['doctor_notes'] ?? null,
+            'prescription' => $data['prescription'] ?? null,
+            'follow_up_at' => $data['follow_up_at'] ?? null,
         ]);
 
-        \DB::transaction(function() use ($entry, $data) {
-            $fresh = QueueEntry::lockForUpdate()->find($entry->id);
+        if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
+            $fresh->appointment->update(['status' => 'completed']);
+        }
 
-            if (! in_array($fresh->status, ['waiting','now_serving'])) {
-                return;
+        $clinic = $fresh->clinic;
+        if ($clinic && $fresh->appointment) {
+            $secretaries = $clinic->secretaries()->get();
+            foreach ($secretaries as $sec) {
+                $sec->notify(new \App\Notifications\DoctorServedQueue($fresh->appointment));
             }
+        }
 
-            $fresh->update([
-                'status' => 'served',
-                'served_at' => now(),
-                'patient_disposition' => $data['patient_disposition'],
-                'doctor_notes' => $data['doctor_notes'] ?? null,
-                'prescription' => $data['prescription'] ?? null,
-                'follow_up_at' => $data['follow_up_at'] ?? null,
-            ]);
+        event(new QueueUpdated($fresh->fresh(), 'served'));
+    });
 
-            if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-                $fresh->appointment->update(['status' => 'completed']);
-            }
-
-            $clinic = $fresh->clinic;
-            if ($clinic && $fresh->appointment) {
-                $secretaries = $clinic->secretaries()->get();
-                foreach ($secretaries as $sec) {
-                    $sec->notify(new \App\Notifications\DoctorServedQueue($fresh->appointment));
-                }
-            }
-
-            event(new QueueUpdated($fresh->fresh(), 'served'));
-        });
-
-        return back()->with('status', 'Processed queue entry #'.$entry->queue_number.'.');
-    }
+    return back()->with('status', 'Processed queue entry #'.$entry->queue_number.'.');
+}
 }

@@ -49,8 +49,8 @@ class ApplicationController extends Controller
             $requiresExpiry = (bool) ($permit['requires_expiry_date'] ?? false);
 
             $rules["permits.$key.permit_number"] = $requiresNumber
-                ? ['required','string','max:255']
-                : ['nullable','string','max:255'];
+    ? ['required','string','max:255', Rule::unique('clinic_permits','permit_number')->where('permit_type', $key)]
+    : ['nullable','string','max:255', Rule::unique('clinic_permits','permit_number')->where('permit_type', $key)];
             $rules["permits.$key.issued_at"] = $requiresIssued
                 ? ['required','date']
                 : ['nullable','date'];
@@ -60,7 +60,10 @@ class ApplicationController extends Controller
             $rules["permits.$key.file"] = ['required','file','mimes:pdf,jpeg,jpg,png','max:5120'];
         });
 
-        Validator::make($data, $rules)->validate();
+        Validator::make($data, $rules, [
+    'permits.*.permit_number.unique' => 'This permit number is already registered.',
+    'permits.*.permit_number.required' => 'Permit number is required for this document.',
+])->validate();
 
         $logoPath = null;
         if ($request->hasFile('logo')) {
