@@ -1,6 +1,53 @@
 @extends('layouts.app')
 @section('title','Secretary Dashboard')
 @section('content')
+<style>
+  #queueLaneTabs .queue-lane-tab {
+    min-width: 210px;
+    text-align: left;
+    border: 1px solid #d8dee4;
+    background-color: #f8fafc;
+    color: #1f2937;
+    padding: 0.6rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  #queueLaneTabs .queue-lane-tab .queue-lane-doctor {
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.2;
+  }
+
+  #queueLaneTabs .queue-lane-tab .queue-lane-service {
+    font-size: 0.8rem;
+    color: #4b5563;
+    line-height: 1.2;
+  }
+
+  #queueLaneTabs .queue-lane-tab:hover {
+    background-color: #e2e8f0;
+    border-color: #94a3b8;
+    color: #111827;
+  }
+
+  #queueLaneTabs .queue-lane-tab:hover .queue-lane-doctor,
+  #queueLaneTabs .queue-lane-tab:hover .queue-lane-service {
+    color: #111827;
+  }
+
+  #queueLaneTabs .queue-lane-tab.active {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+  }
+
+  #queueLaneTabs .queue-lane-tab.active .queue-lane-doctor,
+  #queueLaneTabs .queue-lane-tab.active .queue-lane-service {
+    color: #ffffff;
+  }
+</style>
 <div class="container py-4">
 
   <div class="row mb-3">
@@ -56,7 +103,7 @@
   <div class="row mb-4">
     <div class="col-12">
       <section class="bg-white border rounded-3 p-4 p-lg-4">
-        <div class="d-flex justify-content-end mb-3">
+        <div class="d-flex justify-content-start mb-3">
           <form method="GET" action="{{ route('secretary.dashboard') }}" class="d-flex align-items-center gap-2">
             @foreach(request()->except('sort_by', 'service_id') as $key => $value)
               <input type="hidden" name="{{ $key }}" value="{{ $value }}">
@@ -86,7 +133,7 @@
             @foreach($doctorLanes as $index => $lane)
               <li class="nav-item me-2 mb-2" role="presentation">
                 <button
-                  class="nav-link {{ $index === 0 ? 'active' : '' }}"
+                  class="nav-link queue-lane-tab {{ $index === 0 ? 'active' : '' }}"
                   id="{{ $lane['id'] }}-tab"
                   data-bs-toggle="tab"
                   data-bs-target="#{{ $lane['id'] }}"
@@ -94,7 +141,8 @@
                   role="tab"
                   aria-controls="{{ $lane['id'] }}"
                   aria-selected="{{ $index === 0 ? 'true' : 'false' }}">
-                  {{ $lane['doctor_name'] }}
+                  <div class="queue-lane-doctor">{{ $lane['doctor_name'] }}</div>
+                  <div class="queue-lane-service">{{ $lane['service_name'] ?: 'General consultation' }}</div>
                 </button>
               </li>
             @endforeach

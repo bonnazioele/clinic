@@ -2,25 +2,27 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Http\Controllers\Concerns\InteractsWithActiveClinic;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSelectedClinic;
 use App\Http\Middleware\SecretaryMiddleware;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Models\Service;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    use InteractsWithActiveClinic;
+
     public function __construct()
     {
-        $this->middleware(['auth', SecretaryMiddleware::class]);
+        $this->middleware(['auth', SecretaryMiddleware::class, EnsureSelectedClinic::class]);
     }
 
     public function index(Request $request)
     {
-        $user = Auth::user();
-        $clinicIds = $user->secretaryClinics()->pluck('clinics.id');
+        $activeClinicId = $this->activeClinicId($request);
         $today = now()->toDateString();
         $laneSort = strtolower((string) $request->query('sort_by', 'doctor'));
         $selectedServiceId = (int) $request->query('service_id', 0);
@@ -30,7 +32,7 @@ class DashboardController extends Controller
         }
 
         $serviceOptions = Service::query()
-            ->forClinics($clinicIds)
+            ->forClinics([$activeClinicId])
             ->orderBy('name')
             ->distinct()
             ->get(['services.id', 'services.name']);
@@ -41,7 +43,7 @@ class DashboardController extends Controller
             $selectedServiceId = 0;
         }
 
-        $queueEntriesForDashboardDay = QueueEntry::query()->forDashboardPanel($clinicIds, $today);
+        $queueEntriesForDashboardDay = QueueEntry::query()->forDashboardPanel([$activeClinicId], $today);
 
         $walkInTodayCount = (clone $queueEntriesForDashboardDay)->walkIn()->count();
         $appointmentTodayCount = (clone $queueEntriesForDashboardDay)->withAppointment()->count();
@@ -57,7 +59,7 @@ class DashboardController extends Controller
         ];
 
         $clinicsWithDoctors = Clinic::query()
-            ->forIds($clinicIds)
+            ->forIds([$activeClinicId])
             ->withDashboardDoctorLaneRelations()
             ->orderBy('name')
             ->get(['id', 'name']);

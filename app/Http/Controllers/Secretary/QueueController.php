@@ -3,23 +3,24 @@
 namespace App\Http\Controllers\Secretary;
 
 use App\Events\QueueUpdated;
+use App\Http\Controllers\Concerns\InteractsWithActiveClinic;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\QueueNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class QueueController extends Controller
 {
-    public function overview()
-    {
-        $user = auth()->user();
-        $clinicIds = $user->secretaryClinics()->pluck('clinics.id');
+    use InteractsWithActiveClinic;
 
-        $clinics = Clinic::whereIn('id', $clinicIds)
+    public function overview(Request $request)
+    {
+        $activeClinicId = $this->activeClinicId($request);
+
+        $clinics = Clinic::whereKey($activeClinicId)
             ->with([
                 'queueEntries' => function ($q) {
                     $q->where('status', 'waiting')
@@ -34,10 +35,10 @@ class QueueController extends Controller
             ])
             ->get();
 
-        $totalWaiting = QueueEntry::whereIn('clinic_id', $clinicIds)
+        $totalWaiting = QueueEntry::where('clinic_id', $activeClinicId)
             ->where('status', 'waiting')
             ->count();
-        $totalServedToday = QueueEntry::whereIn('clinic_id', $clinicIds)
+        $totalServedToday = QueueEntry::where('clinic_id', $activeClinicId)
             ->where('status', 'served')
             ->whereDate('served_at', today())
             ->count();
@@ -45,14 +46,12 @@ class QueueController extends Controller
         return view('secretary.queue.overview', compact('clinics', 'totalWaiting', 'totalServedToday'));
     }
 
-    public function queue(Clinic $clinic)
+    public function queue(Request $request, Clinic $clinic)
     {
-        if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
-            abort(403, 'Not assigned to this clinic');
-        }
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
 
         $waitingQuery = QueueEntry::with(['user', 'patient', 'appointment.service'])
-            ->where('clinic_id', $clinic->id)
+            ->where('clinic_id', $activeClinicId)
             ->where('status', 'waiting');
 
         if ($clinic->queueModeIs('priority')) {
@@ -70,17 +69,21 @@ class QueueController extends Controller
         return view('secretary.queue.index', compact('clinic', 'waiting'));
     }
 
-    public function call(Clinic $clinic, QueueEntry $entry)
+    public function call(Request $request, Clinic $clinic, QueueEntry $entry)
     {
-        if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
-            abort(403, 'Not assigned to this clinic');
-        }
-        if ($entry->clinic_id !== $clinic->id) {
-            abort(403, 'Queue entry does not belong to this clinic.');
-        }
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
-        DB::transaction(function () use ($entry) {
-            $fresh = QueueEntry::lockForUpdate()->find($entry->id);
+        DB::transaction(function () use ($entry, $activeClinicId) {
+            $fresh = QueueEntry::query()
+                ->where('clinic_id', $activeClinicId)
+                ->whereKey($entry->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $fresh) {
+                return;
+            }
 
             if ($fresh->status === 'served') {
                 return;
@@ -104,17 +107,13 @@ class QueueController extends Controller
         return back()->with('status', 'Now serving queue entry #' . $entry->queue_number . '.');
     }
 
-    public function doneNext(Clinic $clinic, QueueEntry $entry)
+    public function doneNext(Request $request, Clinic $clinic, QueueEntry $entry)
     {
-        if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
-            abort(403, 'Not assigned to this clinic');
-        }
-        if ($entry->clinic_id !== $clinic->id) {
-            abort(403, 'Queue entry does not belong to this clinic.');
-        }
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
         $result = QueueEntry::completeNowServingAndPromoteNext(
-            (int) $clinic->id,
+            $activeClinicId,
             (int) $entry->id,
             now()->toDateString()
         );
@@ -136,21 +135,27 @@ class QueueController extends Controller
 
     public function reschedule(Request $request, Clinic $clinic, QueueEntry $entry)
     {
-        if (!auth()->user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
-            abort(403, 'Not assigned to this clinic');
-        }
-        if ($entry->clinic_id !== $clinic->id) {
-            abort(403, 'Queue entry does not belong to this clinic.');
-        }
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
         $data = $request->validate([
             'new_date' => 'required|date',
             'new_time' => 'required',
         ]);
 
-        DB::transaction(function () use ($entry, $data) {
-            if ($entry->appointment) {
-                $appointment = $entry->appointment;
+        DB::transaction(function () use ($entry, $data, $activeClinicId) {
+            $fresh = QueueEntry::query()
+                ->where('clinic_id', $activeClinicId)
+                ->whereKey($entry->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $fresh) {
+                return;
+            }
+
+            if ($fresh->appointment) {
+                $appointment = $fresh->appointment;
                 $appointment->update([
                     'appointment_date' => $data['new_date'],
                     'appointment_time' => $data['new_time'],
@@ -161,11 +166,11 @@ class QueueController extends Controller
                     $appointment->user->notify(new AppointmentStatusChanged($appointment));
                 }
 
-                $entry->update(['status' => 'rescheduled']);
+                $fresh->update(['status' => 'rescheduled']);
             } else {
-                $entry->update(['status' => 'rescheduled']);
-                if ($entry->user) {
-                    $entry->user->notify(new QueueNotification($entry));
+                $fresh->update(['status' => 'rescheduled']);
+                if ($fresh->user) {
+                    $fresh->user->notify(new QueueNotification($fresh));
                 }
             }
         });
@@ -175,21 +180,30 @@ class QueueController extends Controller
         return back()->with('status', "Queue #{$entry->queue_number} rescheduled.");
     }
 
-    public function cancel(Clinic $clinic, QueueEntry $entry)
+    public function cancel(Request $request, Clinic $clinic, QueueEntry $entry)
     {
-        if ($entry->clinic_id !== $clinic->id) {
-            abort(403, 'Queue entry does not belong to this clinic.');
-        }
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
         if (!in_array($entry->status, ['waiting', 'called', 'rescheduled', 'now_serving'])) {
             return back()->with('error', 'Only waiting/called/now serving/rescheduled entries can be cancelled.');
         }
 
-        DB::transaction(function () use ($entry) {
-            $entry->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($entry, $activeClinicId) {
+            $fresh = QueueEntry::query()
+                ->where('clinic_id', $activeClinicId)
+                ->whereKey($entry->id)
+                ->lockForUpdate()
+                ->first();
 
-            if ($entry->appointment) {
-                $appointment = $entry->appointment;
+            if (! $fresh) {
+                return;
+            }
+
+            $fresh->update(['status' => 'cancelled']);
+
+            if ($fresh->appointment) {
+                $appointment = $fresh->appointment;
 
                 if ($appointment->status !== 'completed') {
                     $appointment->update(['status' => 'cancelled']);
@@ -205,22 +219,32 @@ class QueueController extends Controller
         return back()->with('status', "Cancelled queue #{$entry->queue_number}.");
     }
 
-    public function noShow(Clinic $clinic, QueueEntry $entry)
+    public function noShow(Request $request, Clinic $clinic, QueueEntry $entry)
     {
-        if ($entry->clinic_id !== $clinic->id) {
-            abort(403, 'Queue entry does not belong to this clinic.');
-        }
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
+
         if (!in_array($entry->status, ['waiting', 'called', 'rescheduled', 'now_serving'])) {
             return back()->with('error', 'Only waiting/called/now serving/rescheduled entries can be marked no-show.');
         }
 
-        DB::transaction(function () use ($entry) {
-            $entry->update(['status' => 'no_show']);
-            if ($entry->appointment && $entry->appointment->status !== 'completed') {
-                if ($entry->appointment->status !== 'cancelled') {
-                    $entry->appointment->update(['status' => 'cancelled']);
-                    if ($entry->appointment->user) {
-                        $entry->appointment->user->notify(new AppointmentStatusChanged($entry->appointment));
+        DB::transaction(function () use ($entry, $activeClinicId) {
+            $fresh = QueueEntry::query()
+                ->where('clinic_id', $activeClinicId)
+                ->whereKey($entry->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $fresh) {
+                return;
+            }
+
+            $fresh->update(['status' => 'no_show']);
+            if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
+                if ($fresh->appointment->status !== 'cancelled') {
+                    $fresh->appointment->update(['status' => 'cancelled']);
+                    if ($fresh->appointment->user) {
+                        $fresh->appointment->user->notify(new AppointmentStatusChanged($fresh->appointment));
                     }
                 }
             }
@@ -229,6 +253,24 @@ class QueueController extends Controller
         event(new QueueUpdated($entry->fresh(), 'no_show'));
 
         return back()->with('status', "Marked queue #{$entry->queue_number} as no-show.");
+    }
+
+    private function assertRouteClinicMatchesActive(Request $request, Clinic $clinic): int
+    {
+        $activeClinicId = $this->activeClinicId($request);
+
+        if ((int) $clinic->id !== $activeClinicId) {
+            abort(403, 'Route clinic does not match your active clinic.');
+        }
+
+        return $activeClinicId;
+    }
+
+    private function assertEntryBelongsToActiveClinic(QueueEntry $entry, int $activeClinicId): void
+    {
+        if ((int) $entry->clinic_id !== $activeClinicId) {
+            abort(403, 'Queue entry does not belong to your active clinic.');
+        }
     }
 }
 
