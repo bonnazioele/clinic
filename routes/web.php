@@ -88,7 +88,7 @@ Route::middleware(['auth'])
     Route::get('/queue/status/{entry}', [QueueController::class, 'status'])->name('queue.status.entry');
     Route::post('/queue/join/{clinic}', [QueueController::class, 'join'])->name('queue.join');
      Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])->name('queue.leave');
-     Route::post('/profile/history', [ProfileController::class, 'storeHistory'])->name('profile.history.store');
+     
 
 });
 

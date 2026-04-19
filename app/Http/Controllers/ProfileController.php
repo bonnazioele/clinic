@@ -13,12 +13,20 @@ class ProfileController extends Controller
     }
 
     public function show()
-    {
-       
-        return view('profile.show', [
-            'user' => Auth::user()
-        ]);
-    }
+{
+    $user = Auth::user();
+
+    $reportMonths = $user->appointments()
+        ->where('status', 'completed')
+        ->selectRaw('DATE_FORMAT(appointment_date, "%Y-%m") as month')
+        ->distinct()
+        ->orderByDesc('month')
+        ->pluck('month');
+
+    return view('profile.show', [
+        'user'         => $user,
+    ]);
+}
 
     public function edit()
     {
@@ -48,16 +56,5 @@ class ProfileController extends Controller
         return back()->with('status','Profile updated');
     }
 
-    public function storeHistory(Request $request)
-{
-    $request->validate([
-        'condition'       => 'required|string|max:255',
-        'diagnosis_date'  => 'nullable|date',
-        'notes'           => 'nullable|string',
-    ]);
 
-    Auth::user()->patientHistories()->create($request->all());
-
-    return back()->with('status', 'Medical history added successfully.');
-}
 }
