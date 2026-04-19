@@ -22,7 +22,7 @@ class AppointmentObserver
     if ($appointment->isDirty('status') && $appointment->status === 'completed') {
         $appointment->user->patientHistories()->create([
             'clinic_name'   => $appointment->clinic->name,
-            'doctor_name'   => $appointment->doctor->name ?? null,
+            'doctor'        => $appointment->doctor->name ?? null,
             'diagnosis'     => $appointment->service->name,
             'treatment'     => null, // fill in if you have a treatment field on appointments
             'date_of_visit' => $appointment->appointment_date,

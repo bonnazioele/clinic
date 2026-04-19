@@ -26,6 +26,7 @@ class DashboardController extends Controller
         $today = now()->toDateString();
         $laneSort = strtolower((string) $request->query('sort_by', 'doctor'));
         $selectedServiceId = (int) $request->query('service_id', 0);
+        $requestedActiveLaneId = trim((string) $request->query('lane', ''));
 
         if (!in_array($laneSort, ['doctor', 'service'], true)) {
             $laneSort = 'doctor';
@@ -135,6 +136,11 @@ class DashboardController extends Controller
                 ['clinic_name', 'asc'],
             ])->values();
 
-        return view('secretary.dashboard', array_merge($stats, compact('doctorLanes', 'laneSort', 'serviceOptions', 'selectedServiceId')));
+        $availableLaneIds = $doctorLanes->pluck('id');
+        $activeLaneId = $availableLaneIds->contains($requestedActiveLaneId)
+            ? $requestedActiveLaneId
+            : ($availableLaneIds->first() ?? null);
+
+        return view('secretary.dashboard', array_merge($stats, compact('doctorLanes', 'laneSort', 'serviceOptions', 'selectedServiceId', 'activeLaneId')));
     }
 }

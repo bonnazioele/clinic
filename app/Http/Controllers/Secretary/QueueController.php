@@ -30,8 +30,8 @@ class QueueController extends Controller
             ])
             ->withCount([
                 'queueEntries as waiting_count' => function ($q) {
-    $q->whereIn('status', ['waiting', 'now_serving', 'called']);
-},
+        $q->whereIn('status', ['waiting', 'now_serving', 'called']);
+    },
             ])
             ->get();
 
@@ -127,6 +127,22 @@ class QueueController extends Controller
         $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
         $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
+        $laneId = trim((string) $request->input('lane', ''));
+        $redirectToDashboard = $laneId !== '';
+        $dashboardQuery = [
+            'sort_by' => strtolower((string) $request->input('sort_by', 'doctor')),
+            'service_id' => (int) $request->input('service_id', 0),
+            'lane' => $laneId,
+        ];
+
+        if (!in_array($dashboardQuery['sort_by'], ['doctor', 'service'], true)) {
+            $dashboardQuery['sort_by'] = 'doctor';
+        }
+
+        if ($dashboardQuery['sort_by'] !== 'service') {
+            $dashboardQuery['service_id'] = 0;
+        }
+
         $result = QueueEntry::completeNowServingAndPromoteNext(
             $activeClinicId,
             (int) $entry->id,
@@ -134,15 +150,31 @@ class QueueController extends Controller
         );
 
         if (($result['result'] ?? '') === 'invalid') {
+            if ($redirectToDashboard) {
+                return redirect()->route('secretary.dashboard', $dashboardQuery)->with('error', 'Queue entry is invalid for this clinic.');
+            }
+
             return back()->with('error', 'Queue entry is invalid for this clinic.');
         }
 
         if (($result['result'] ?? '') === 'noop') {
+            if ($redirectToDashboard) {
+                return redirect()->route('secretary.dashboard', $dashboardQuery)->with('status', 'Queue entry is no longer in now serving state.');
+            }
+
             return back()->with('status', 'Queue entry is no longer in now serving state.');
         }
 
         if (($result['result'] ?? '') === 'served_and_promoted' && isset($result['next'])) {
+            if ($redirectToDashboard) {
+                return redirect()->route('secretary.dashboard', $dashboardQuery)->with('status', 'Completed #' . $entry->queue_number . ' and moved #' . $result['next']->queue_number . ' to now serving.');
+            }
+
             return back()->with('status', 'Completed #' . $entry->queue_number . ' and moved #' . $result['next']->queue_number . ' to now serving.');
+        }
+
+        if ($redirectToDashboard) {
+            return redirect()->route('secretary.dashboard', $dashboardQuery)->with('status', 'Completed queue entry #' . $entry->queue_number . '. No next patient to promote.');
         }
 
         return back()->with('status', 'Completed queue entry #' . $entry->queue_number . '. No next patient to promote.');

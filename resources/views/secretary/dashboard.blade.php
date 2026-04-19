@@ -133,14 +133,14 @@
             @foreach($doctorLanes as $index => $lane)
               <li class="nav-item me-2 mb-2" role="presentation">
                 <button
-                  class="nav-link queue-lane-tab {{ $index === 0 ? 'active' : '' }}"
+                  class="nav-link queue-lane-tab {{ ($activeLaneId ?? null) === $lane['id'] ? 'active' : '' }}"
                   id="{{ $lane['id'] }}-tab"
                   data-bs-toggle="tab"
                   data-bs-target="#{{ $lane['id'] }}"
                   type="button"
                   role="tab"
                   aria-controls="{{ $lane['id'] }}"
-                  aria-selected="{{ $index === 0 ? 'true' : 'false' }}">
+                  aria-selected="{{ ($activeLaneId ?? null) === $lane['id'] ? 'true' : 'false' }}">
                   <div class="queue-lane-doctor">{{ $lane['doctor_name'] }}</div>
                   <div class="queue-lane-service">{{ $lane['service_name'] ?: 'General consultation' }}</div>
                 </button>
@@ -157,7 +157,7 @@
                 $noShowEntry = $lane['no_show_entry'];
               @endphp
               <div
-                class="tab-pane fade {{ $index === 0 ? 'show active' : '' }}"
+                class="tab-pane fade {{ ($activeLaneId ?? null) === $lane['id'] ? 'show active' : '' }}"
                 id="{{ $lane['id'] }}"
                 role="tabpanel"
                 aria-labelledby="{{ $lane['id'] }}-tab">
@@ -210,6 +210,9 @@
                     @if($nowServing)
                       <form method="POST" action="{{ route('secretary.queue.done_next', [$lane['clinic_id'], $nowServing->id]) }}">
                         @csrf
+                        <input type="hidden" name="lane" value="{{ $lane['id'] }}">
+                        <input type="hidden" name="sort_by" value="{{ $laneSort ?? 'doctor' }}">
+                        <input type="hidden" name="service_id" value="{{ (int) ($selectedServiceId ?? 0) }}">
                         <button class="btn btn-primary">Done and next</button>
                       </form>
 

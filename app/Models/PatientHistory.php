@@ -14,7 +14,7 @@ class PatientHistory extends Model
         'clinic_name',
         'diagnosis',
         'treatment',
-        'doctor_name',
+        'doctor',
         'document_path',
         'date_of_visit',
     ];
@@ -26,5 +26,15 @@ class PatientHistory extends Model
     public function patient()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getDoctorNameAttribute(): ?string
+    {
+        return $this->attributes['doctor'] ?? null;
+    }
+
+    public function setDoctorNameAttribute($value): void
+    {
+        $this->attributes['doctor'] = $value;
     }
 }

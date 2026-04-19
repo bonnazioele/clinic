@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\QueueUpdated;
+use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\QueueNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -214,7 +215,12 @@ class QueueEntry extends Model
             ]);
 
             if ($currentEntry->appointment && !in_array($currentEntry->appointment->status, ['completed', 'cancelled'], true)) {
-                $currentEntry->appointment->update(['status' => 'completed']);
+                $appointment = $currentEntry->appointment;
+                $appointment->update(['status' => 'completed']);
+
+                if ($appointment->user) {
+                    $appointment->user->notify(new AppointmentStatusChanged($appointment));
+                }
             }
 
             $currentEntry = $currentEntry->fresh();
