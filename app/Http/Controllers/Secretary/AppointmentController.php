@@ -8,6 +8,7 @@ use App\Models\Clinic;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\QueryException;
 use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\PatientAppointmentBooked;
 use App\Notifications\SecretaryAppointmentBooked;
@@ -214,10 +215,12 @@ class AppointmentController extends Controller
             return back()->withInput()->withErrors(['doctor_id' => 'Doctor not assigned to this clinic.']);
         }
 
+        $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
+
         $exists = Appointment::where('user_id', $patient->id)
             ->where('clinic_id', $clinicId)
             ->where('appointment_date', $data['appointment_date'])
-            ->where('appointment_time', $data['appointment_time'])
+            ->where('appointment_time', $time)
             ->whereNotIn('status', ['cancelled','no_show'])
             ->exists();
         if ($exists) {
@@ -228,7 +231,7 @@ class AppointmentController extends Controller
 
         $globalConflict = Appointment::where('user_id', $patient->id)
             ->whereDate('appointment_date', $data['appointment_date'])
-            ->where('appointment_time', $data['appointment_time'])
+            ->where('appointment_time', $time)
             ->whereNotIn('status', ['cancelled','no_show'])
             ->exists();
         if ($globalConflict) {
@@ -238,7 +241,6 @@ class AppointmentController extends Controller
         }
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
-        $time = $data['appointment_time'];
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)
             ->where('day_of_week', $day)
@@ -258,16 +260,30 @@ class AppointmentController extends Controller
             return back()->withInput()->withErrors(['appointment_time' => 'Doctor already booked for that timeslot.']);
         }
 
-        $appointment = Appointment::create([
-            'user_id'          => $patient->id,
-            'clinic_id'        => $clinicId,
-            'service_id'       => $data['service_id'],
-            'doctor_id'        => $data['doctor_id'],
-            'appointment_date' => $data['appointment_date'],
-            'appointment_time' => $data['appointment_time'],
-            'status'           => 'scheduled',
-            'notes'            => $data['notes'] ?? null,
-        ]);
+        try {
+            $appointment = Appointment::create([
+                'user_id'          => $patient->id,
+                'clinic_id'        => $clinicId,
+                'service_id'       => $data['service_id'],
+                'doctor_id'        => $data['doctor_id'],
+                'appointment_date' => $data['appointment_date'],
+                'appointment_time' => $time,
+                'status'           => 'scheduled',
+                'notes'            => $data['notes'] ?? null,
+            ]);
+        } catch (QueryException $e) {
+            $sqlState = (string) ($e->errorInfo[0] ?? '');
+            $errorMessage = strtolower((string) $e->getMessage());
+            $isDoctorSlotConflict = $sqlState === '23000' && str_contains($errorMessage, 'appointments_doctor_date_time_unique');
+
+            if ($isDoctorSlotConflict) {
+                return back()->withInput()->withErrors([
+                    'appointment_time' => 'Doctor already booked for that timeslot.',
+                ]);
+            }
+
+            throw $e;
+        }
 
         if ($request->hasFile('medical_document')) {
             $path = $request->file('medical_document')->store('medical-documents', 'public');

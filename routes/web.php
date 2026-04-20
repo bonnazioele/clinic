@@ -37,6 +37,7 @@ Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);
 
 Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
+Route::post('/clinics', [ClinicController::class, 'store'])->name('clinics.store');
 Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
 Route::get('/services/search', [\App\Http\Controllers\PublicServiceController::class, 'search'])->name('services.search');
 
@@ -180,11 +181,8 @@ Route::middleware(['auth', 'force.password.change', SecretaryMiddleware::class])
                 });
 
          Route::get('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'index'])->name('services.index');
-         Route::get('services/create', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'create'])->name('services.create');
-         Route::post('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'store'])->name('services.store');
          Route::post('clinics/{clinic}/services/attach', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'attach'])->name('services.attach');
          Route::delete('clinics/{clinic}/services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'detach'])->name('services.detach');
-         Route::delete('services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'destroy'])->name('services.destroy');
 
          Route::get('clinics/{clinic}/edit', [\App\Http\Controllers\Secretary\ClinicProfileController::class,'edit'])->name('clinic.edit');
          Route::put('clinics/{clinic}', [\App\Http\Controllers\Secretary\ClinicProfileController::class,'update'])->name('clinic.update');

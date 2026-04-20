@@ -7,7 +7,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p class="mb-0" id="confirmActionMessage">Are you sure you want to continue?</p>
+        <div class="mb-0" id="confirmActionMessage">Are you sure you want to continue?</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -43,7 +43,11 @@
       event.preventDefault();
       pendingForm = target;
       titleEl.textContent = target.dataset.confirmTitle || 'Please Confirm';
-      messageEl.textContent = target.dataset.confirm || 'Are you sure you want to continue?';
+      if (target.dataset.confirmHtml) {
+        messageEl.innerHTML = target.dataset.confirmHtml;
+      } else {
+        messageEl.textContent = target.dataset.confirm || 'Are you sure you want to continue?';
+      }
       continueBtn.textContent = target.dataset.confirmBtn || 'Confirm';
       continueBtn.disabled = false;
       modal.show();

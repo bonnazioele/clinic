@@ -24,25 +24,15 @@ class DashboardController extends Controller
     {
         $activeClinicId = $this->activeClinicId($request);
         $today = now()->toDateString();
-        $laneSort = strtolower((string) $request->query('sort_by', 'doctor'));
-        $selectedServiceId = (int) $request->query('service_id', 0);
+        $requestedServiceTabId = trim((string) $request->query('service_tab', ''));
         $requestedActiveLaneId = trim((string) $request->query('lane', ''));
-
-        if (!in_array($laneSort, ['doctor', 'service'], true)) {
-            $laneSort = 'doctor';
-        }
 
         $serviceOptions = Service::query()
             ->forClinics([$activeClinicId])
             ->orderBy('name')
             ->distinct()
             ->get(['services.id', 'services.name']);
-
-        if ($laneSort !== 'service') {
-            $selectedServiceId = 0;
-        } elseif ($selectedServiceId > 0 && !$serviceOptions->pluck('id')->contains($selectedServiceId)) {
-            $selectedServiceId = 0;
-        }
+        $activeClinicServiceIds = $serviceOptions->pluck('id')->map(fn ($id) => (int) $id);
 
         $queueEntriesForDashboardDay = QueueEntry::query()->forDashboardPanel([$activeClinicId], $today);
 
@@ -76,6 +66,14 @@ class DashboardController extends Controller
         $doctorLanes = collect();
         foreach ($clinicsWithDoctors as $clinic) {
             foreach ($clinic->doctors as $doctor) {
+                $doctorServices = $doctor->services
+                    ->filter(fn ($service) => $activeClinicServiceIds->contains((int) $service->id))
+                    ->values();
+
+                if ($doctorServices->isEmpty()) {
+                    continue;
+                }
+
                 $laneEntries = $laneEntriesByKey->get($clinic->id . ':' . $doctor->id, collect());
 
                 $nowServing = $laneEntries
@@ -89,14 +87,6 @@ class DashboardController extends Controller
                     ->values();
 
                 $firstNextCandidate = $nextCandidates->first();
-
-                if (
-                    $laneSort === 'service'
-                    && $selectedServiceId > 0
-                    && !$doctor->matchesDashboardServiceFilter($selectedServiceId, $nowServing, $firstNextCandidate)
-                ) {
-                    continue;
-                }
 
                 $nextUp = $nextCandidates->take(2);
 
@@ -113,8 +103,10 @@ class DashboardController extends Controller
                     'id' => 'lane-' . $clinic->id . '-' . $doctor->id,
                     'clinic_id' => $clinic->id,
                     'clinic_name' => $clinic->name,
+                    'doctor_id' => (int) $doctor->id,
                     'doctor_name' => $doctor->name,
                     'service_name' => $serviceName,
+                    'service_ids' => $doctorServices->pluck('id')->map(fn ($id) => (int) $id)->values(),
                     'now_serving' => $nowServing,
                     'next_up' => $nextUp,
                     'queue_depth' => $queueDepth,
@@ -124,23 +116,39 @@ class DashboardController extends Controller
             }
         }
 
-        $doctorLanes = $laneSort === 'service'
-            ? $doctorLanes->sortBy([
-                ['service_name', 'asc'],
-                ['doctor_name', 'asc'],
-                ['clinic_name', 'asc'],
-            ])->values()
-            : $doctorLanes->sortBy([
-                ['doctor_name', 'asc'],
-                ['service_name', 'asc'],
-                ['clinic_name', 'asc'],
-            ])->values();
+        $doctorLanes = $doctorLanes->sortBy([
+            ['doctor_name', 'asc'],
+            ['clinic_name', 'asc'],
+        ])->values();
 
-        $availableLaneIds = $doctorLanes->pluck('id');
-        $activeLaneId = $availableLaneIds->contains($requestedActiveLaneId)
-            ? $requestedActiveLaneId
-            : ($availableLaneIds->first() ?? null);
+        $serviceTabs = $serviceOptions
+            ->map(function ($service) use ($doctorLanes, $requestedActiveLaneId) {
+                $serviceId = (int) $service->id;
 
-        return view('secretary.dashboard', array_merge($stats, compact('doctorLanes', 'laneSort', 'serviceOptions', 'selectedServiceId', 'activeLaneId')));
+                $lanes = $doctorLanes
+                    ->filter(fn ($lane) => $lane['service_ids']->contains($serviceId))
+                    ->values();
+
+                $availableLaneIds = $lanes->pluck('id');
+                $activeLaneId = $availableLaneIds->contains($requestedActiveLaneId)
+                    ? $requestedActiveLaneId
+                    : ($availableLaneIds->first() ?? null);
+
+                return [
+                    'id' => 'service-tab-' . $serviceId,
+                    'service_id' => $serviceId,
+                    'service_name' => $service->name,
+                    'doctor_lanes' => $lanes,
+                    'active_lane_id' => $activeLaneId,
+                ];
+            })
+            ->values();
+
+        $availableServiceTabIds = $serviceTabs->pluck('id');
+        $activeServiceTabId = $availableServiceTabIds->contains($requestedServiceTabId)
+            ? $requestedServiceTabId
+            : ($availableServiceTabIds->first() ?? null);
+
+        return view('secretary.dashboard', array_merge($stats, compact('serviceTabs', 'activeServiceTabId')));
     }
 }

@@ -64,8 +64,9 @@ class ClinicController extends Controller
         }
 
         $clinics = $query->paginate(10)->withQueryString();
+        $services = Service::orderBy('name')->get(['id', 'name']);
 
-        return view('clinics.index', compact('clinics'));
+        return view('clinics.index', compact('clinics', 'services'));
     }
 
     // =========================================================================
