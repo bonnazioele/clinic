@@ -45,7 +45,8 @@ class QueueController extends Controller
         return view('doctor.queue.index', compact('waiting'));
     }
 
-    public function serve(Request $request, QueueEntry $entry)
+
+public function serve(Request $request, QueueEntry $entry)
 {
     $doctor = Auth::user();
 
@@ -53,13 +54,7 @@ class QueueController extends Controller
         abort(403);
     }
 
-    $data = $request->validate([
-        'doctor_notes' => ['nullable','string','max:2000'],
-        'prescription' => ['nullable','string','max:2000'],
-        'follow_up_at' => ['nullable','date'],
-    ]);
-
-    \DB::transaction(function() use ($entry, $data) {
+    \DB::transaction(function() use ($entry) {
         $fresh = QueueEntry::lockForUpdate()->find($entry->id);
 
         if (! in_array($fresh->status, ['waiting','now_serving'])) {
@@ -70,9 +65,6 @@ class QueueController extends Controller
             'status' => 'served',
             'served_at' => now(),
             'patient_disposition' => 'completed',
-            'doctor_notes' => $data['doctor_notes'] ?? null,
-            'prescription' => $data['prescription'] ?? null,
-            'follow_up_at' => $data['follow_up_at'] ?? null,
         ]);
 
         if ($fresh->appointment && $fresh->appointment->status !== 'completed') {

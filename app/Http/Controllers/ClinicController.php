@@ -63,9 +63,10 @@ class ClinicController extends Controller
             $query->latest('id');
         }
 
-        $clinics = $query->paginate(10)->withQueryString();
+        $clinics  = $query->paginate(10)->withQueryString();
+        $services = Service::orderBy('name')->get(); // FIX: pass services for filter dropdown
 
-        return view('clinics.index', compact('clinics'));
+        return view('clinics.index', compact('clinics', 'services'));
     }
 
     // =========================================================================
@@ -76,7 +77,7 @@ class ClinicController extends Controller
     {
         $services = Service::orderBy('name')->get();
 
-        return view('clinics.create', compact('services'));
+        return view('clinics.create', compact('services')); // FIX: was 'clinics.index'
     }
 
     public function store(Request $request)

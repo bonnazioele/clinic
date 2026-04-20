@@ -32,6 +32,8 @@ Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);
 
 Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
+Route::get('/clinics/create', [ClinicController::class, 'create'])->name('clinics.create');
+Route::post('/clinics', [ClinicController::class, 'store'])->name('clinics.store');
 Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
 Route::get('/services/search', [\App\Http\Controllers\PublicServiceController::class, 'search'])->name('services.search');
 
@@ -83,7 +85,7 @@ Route::middleware(['auth'])
     Route::get('/queue/status/{entry}', [QueueController::class, 'status'])->name('queue.status.entry');
     Route::post('/queue/join/{clinic}', [QueueController::class, 'join'])->name('queue.join');
      Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])->name('queue.leave');
-     
+     Route::post('/profile/history', [ProfileController::class, 'storeHistory'])->name('profile.history.store');
 
 });
 

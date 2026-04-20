@@ -9,15 +9,16 @@ class PatientHistory extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'user_id',
-        'clinic_name',
-        'diagnosis',
-        'treatment',
-        'doctor_name',
-        'document_path',
-        'date_of_visit',
-    ];
+
+protected $fillable = [
+    'user_id',
+    'clinic_name',
+    'diagnosis',
+    'treatment',
+    'doctor',  // Changed from 'doctor_name'
+    'document_path',
+    'date_of_visit',
+];
 
     protected $casts = [
         'date_of_visit' => 'date',
