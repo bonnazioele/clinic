@@ -415,6 +415,112 @@
         @media (prefers-reduced-motion: reduce) {
             .float-sm, .float-md, .dashboard-card.float-enabled, .medical-card.float-enabled { animation: none !important; }
         }
+
+        .patient-tab-shell {
+  display: flex;
+  width: 100%;
+  min-height: calc(100vh - 140px);
+}
+
+.patient-sidebar {
+  width: 82px;
+  min-width: 82px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, #061727 0%, #0b2035 100%);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 20;
+  box-shadow: 8px 0 28px rgba(2, 8, 23, .16);
+}
+
+.sidebar-brand,
+.sidebar-link {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: #d8e6f4;
+  text-decoration: none;
+  font-size: 22px;
+  transition: .2s ease;
+  border: 0;
+}
+
+.sidebar-brand {
+  color: #4aa3ff;
+  font-size: 30px;
+  margin-bottom: 24px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active,
+.sidebar-brand.active {
+  background: linear-gradient(135deg, #0d6efd, #178bff);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(13, 110, 253, .35);
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+.sidebar-logout {
+  background: transparent;
+}
+
+.patient-tab-content {
+  flex: 1;
+  min-width: 0;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .patient-tab-shell {
+    display: block;
+  }
+
+  .patient-sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px;
+  }
+
+  .sidebar-brand {
+    margin-bottom: 0;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .sidebar-brand,
+  .sidebar-link {
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
+  }
+
+  .patient-tab-content {
+    padding: 0;
+  }
+}
     </style>
 
     @stack('styles')
