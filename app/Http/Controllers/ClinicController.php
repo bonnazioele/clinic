@@ -63,8 +63,7 @@ class ClinicController extends Controller
             $query->latest('id');
         }
 
-        $clinics  = $query->paginate(10)->withQueryString();
-        $services = Service::orderBy('name')->get(); // FIX: pass services for filter dropdown
+        $clinics = $query->paginate(10)->withQueryString();
 
         return view('clinics.index', compact('clinics', 'services'));
     }

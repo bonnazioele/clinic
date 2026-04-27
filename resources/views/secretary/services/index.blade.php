@@ -8,30 +8,7 @@
       <h2 class="fw-bold text-primary mb-0 d-flex align-items-center">
         <i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services
       </h2>
-      <div class="d-flex gap-2">
-        <a href="{{ route('secretary.services.create',['clinic_id'=>$clinic?->id]) }}" class="btn btn-success">
-          <i class="bi bi-plus-circle me-2"></i>New Service
-        </a>
-      </div>
     </div>
-    <form method="GET" class="row g-3 align-items-end">
-      <div class="col-sm-4 col-md-3">
-        <label for="clinic_filter" class="form-label fw-semibold">Clinic</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-hospital"></i></span>
-          <select id="clinic_filter" name="clinic_id" class="form-select" onchange="this.form.submit()">
-            @foreach($assignedClinics as $c)
-              <option value="{{ $c->id }}" @if($clinic && $clinic->id===$c->id) selected @endif>{{ $c->name }}</option>
-            @endforeach
-          </select>
-        </div>
-      </div>
-      <div class="col-sm-4 col-md-3 d-flex align-items-end">
-        @if($clinic)
-          <span class="badge bg-info text-dark"><i class="bi bi-list-check me-1"></i>{{ $services->count() }} services</span>
-        @endif
-      </div>
-    </form>
   </div>
 
   @if(!$clinic)
@@ -53,30 +30,51 @@
                   <th class="px-4 py-3">Name</th>
                   <th class="px-4 py-3">Description</th>
                   <th class="px-4 py-3">Duration</th>
+                  <th class="px-4 py-3">Doctor Count</th>
+                  <th class="px-4 py-3">Doctor In Queue</th>
                   <th class="px-4 py-3 text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 @foreach($services as $s)
+                @php
+                  $activeQueueCount = (int) ($activeQueueCounts[$s->id] ?? 0);
+                  $activeDoctorCount = (int) ($activeDoctorCounts[$s->id] ?? 0);
+                  $doctorInQueueCount = (int) ($doctorInQueueCounts[$s->id] ?? 0);
+                  $requiresDetachWarning = $activeQueueCount > 0 || $activeDoctorCount > 0;
+                  $queueLabel = $activeQueueCount === 1 ? 'queue entry' : 'queue entries';
+                  $doctorLabel = $activeDoctorCount === 1 ? 'doctor link' : 'doctor links';
+                  $warningSegments = [];
+                  if ($activeQueueCount > 0) {
+                    $warningSegments[] = $activeQueueCount.' active '.$queueLabel;
+                  }
+                  if ($activeDoctorCount > 0) {
+                    $warningSegments[] = $activeDoctorCount.' active '.$doctorLabel;
+                  }
+                  $warningSummary = implode(' and ', $warningSegments);
+                @endphp
                 <tr>
-                  <td class="fw-semibold px-4 py-3">{{ $s->name }}</td>
-                  <td class="small text-muted px-4 py-3" style="max-width:240px">{{ Str::limit($s->description,80) }}</td>
-                  <td class="px-4 py-3"><span class="badge bg-secondary">{{ $s->pivot->duration_minutes }}m</span></td>
+                  <td>{{ $s->name }}</td>
+                  <td>{{ Str::limit($s->description,80) }}</td>
+                  <td>{{ $s->pivot->duration_minutes }}m</td>
+                  <td>{{ $activeDoctorCount }}</td>
+                  <td>{{ $doctorInQueueCount }}</td>
                   <td class="text-end">
                     <div class="d-inline-flex gap-1">
                       <form method="POST" action="{{ route('secretary.services.detach',[$clinic,$s]) }}"
-                            data-confirm="Detach this service from the clinic? Patients with upcoming appointments keep their bookings."
-                            data-confirm-title="Detach Service"
-                            data-confirm-btn="Detach">
+                            data-confirm="{{ $requiresDetachWarning ? 'This service has active appointments and assigned doctors. Proceeding will: Cancel all appointments and notify affected patients. Unlink doctors and clear their related schedules. Close active queues and waitlists. Do you want to proceed?' : 'Do you want to proceed?' }}"
+                            data-confirm-title="{{ $requiresDetachWarning ? 'Warning: Active Records Detected' : 'Confirm Detach' }}"
+                            @if($requiresDetachWarning)
+                            data-confirm-html="<p class='mb-2'>This service has <strong>{{ $warningSummary }}</strong> in this clinic.</p><p class='mb-2'>Proceeding will:</p><ul class='mb-3 ps-3'><li>Cancel all appointments and notify affected patients.</li><li>Unlink doctors and clear their related schedules.</li><li>Close active queues and waitlists.</li></ul><p class='mb-0'>Do you want to proceed?</p>"
+                            @else
+                            data-confirm-html="<p class='mb-0'>Do you want to proceed?</p>"
+                            @endif
+                            data-confirm-btn="Proceed">
                         @csrf @method('DELETE')
+                        @if($requiresDetachWarning)
+                          <input type="hidden" name="proceed_detach" value="1">
+                        @endif
                         <button class="btn btn-sm btn-outline-warning"><i class="bi bi-link-45deg me-1"></i>Detach</button>
-                      </form>
-                      <form method="POST" action="{{ route('secretary.services.destroy',$s) }}"
-                            data-confirm="Delete this service from the master list? This cannot be undone."
-                            data-confirm-title="Delete Service"
-                            data-confirm-btn="Delete">
-                        @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
                       </form>
                     </div>
                   </td>

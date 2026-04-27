@@ -128,19 +128,14 @@ class QueueController extends Controller
         $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
         $laneId = trim((string) $request->input('lane', ''));
+        $serviceTabId = trim((string) $request->input('service_tab', ''));
         $redirectToDashboard = $laneId !== '';
         $dashboardQuery = [
-            'sort_by' => strtolower((string) $request->input('sort_by', 'doctor')),
-            'service_id' => (int) $request->input('service_id', 0),
             'lane' => $laneId,
         ];
 
-        if (!in_array($dashboardQuery['sort_by'], ['doctor', 'service'], true)) {
-            $dashboardQuery['sort_by'] = 'doctor';
-        }
-
-        if ($dashboardQuery['sort_by'] !== 'service') {
-            $dashboardQuery['service_id'] = 0;
+        if ($serviceTabId !== '') {
+            $dashboardQuery['service_tab'] = $serviceTabId;
         }
 
         $result = QueueEntry::completeNowServingAndPromoteNext(
@@ -288,8 +283,8 @@ class QueueController extends Controller
 
             $fresh->update(['status' => 'no_show']);
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-                if ($fresh->appointment->status !== 'cancelled') {
-                    $fresh->appointment->update(['status' => 'cancelled']);
+                if ($fresh->appointment->status !== 'no_show') {
+                    $fresh->appointment->update(['status' => 'no_show']);
                     if ($fresh->appointment->user) {
                         $fresh->appointment->user->notify(new AppointmentStatusChanged($fresh->appointment));
                     }
