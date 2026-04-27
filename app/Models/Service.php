@@ -26,5 +26,12 @@ class Service extends Model
             'doctor_id'
         )->where('is_doctor',true);
     }
+
+    public function scopeForClinics($query, $clinicIds)
+    {
+        return $query->whereHas('clinics', function ($clinicQuery) use ($clinicIds) {
+            $clinicQuery->whereIn('clinics.id', $clinicIds);
+        });
+    }
 }
 

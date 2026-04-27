@@ -22,7 +22,7 @@ public function updated(Appointment $appointment)
     if ($appointment->isDirty('status') && $appointment->status === 'completed') {
         $appointment->user->patientHistories()->create([
             'clinic_name'   => $appointment->clinic->name,
-            'doctor'        => $appointment->doctor->name ?? null,  // Changed from 'doctor_name'
+            'doctor_name'   => $appointment->doctor->name ?? null,
             'diagnosis'     => $appointment->service->name,
             'treatment'     => null,
             'date_of_visit' => $appointment->appointment_date,

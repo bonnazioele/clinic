@@ -5,53 +5,74 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
+use App\Models\Clinic;
 
 class EnsureSelectedClinic
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
         $user = Auth::user();
-        if (! $user || ! $user->is_secretary) {
+
+        // Enforce for secretaries and doctors only.
+        if (! $user || (! $user->is_secretary && ! $user->is_doctor)) {
             return $next($request);
         }
 
+
         $session = $request->session();
-        $currentId = $session->get('active_clinic_id');
 
-        if ($currentId && ! $user->secretaryClinics()->where('clinics.id',$currentId)->exists()) {
-            $currentId = null;
+        // Fetch assigned clinic IDs once (single query)
+        $clinicIds = $user->is_secretary ? $user->secretaryClinics()->pluck('clinics.id')->map(fn ($id) => (int) $id) 
+            : $user->clinics()->pluck('clinics.id')->map(fn ($id) => (int) $id);
+
+        $request->attributes->set('assigned_clinic_ids', $clinicIds);
+
+        $activeClinicId = (int) $session->get('active_clinic_id');
+
+        // If session active clinic is not in assigned clinics, clear it
+        if ($activeClinicId && ! $clinicIds->contains($activeClinicId)) {
             $session->forget('active_clinic_id');
+            $activeClinicId = 0;
         }
 
-        if (! $currentId) {
-            $first = $user->secretaryClinics()->orderBy('name')->first();
-            if ($first) {
-                $currentId = $first->id;
-                $session->put('active_clinic_id', $currentId);
+        // If no active clinic yet, auto-select or redirect to chooser
+        if (! $activeClinicId) {
+            if ($clinicIds->count() === 1) {
+                $activeClinicId = (int) $clinicIds->first();
+                $session->put('active_clinic_id', $activeClinicId);
             } else {
-                if (! $session->has('_no_clinic_warned')) {
-                    $session->flash('warning', 'You have no assigned clinics. Please contact an administrator.');
-                    $session->put('_no_clinic_warned', true);
+                // Allow chooser routes through to avoid redirect loops
+                if ($user->is_secretary) {
+                    if (! $request->routeIs('secretary.choose-clinic') &&
+                        ! $request->routeIs('secretary.choose-clinic.select')) {
+                        return redirect()->route('secretary.choose-clinic');
+                    }
+                } else {
+                    if (! $request->routeIs('doctor.choose-clinic') &&
+                        ! $request->routeIs('doctor.choose-clinic.select')) {
+                        return redirect()->route('doctor.choose-clinic');
+                    }
                 }
+
             }
         }
 
-        $routeClinic = $request->route('clinic');
-        if ($routeClinic) {
-            $routeClinicId = is_object($routeClinic) ? ($routeClinic->id ?? null) : (int)$routeClinic;
-            if ($currentId && $routeClinicId && $routeClinicId !== (int)$currentId) {
-                abort(403, 'Clinic mismatch with active clinic context.');
-            }
+        // Attach active clinic id for controllers/services to reuse
+        $request->attributes->set('active_clinic_id', $activeClinicId);
+
+        // Load active clinic model safely (only from assigned clinics)
+        $activeClinic = null;
+
+        if ($activeClinicId) {
+            $activeClinic = $user->is_secretary
+                ? $user->secretaryClinics()->whereKey($activeClinicId)->first()
+                : $user->clinics()->whereKey($activeClinicId)->first();
         }
 
-        if ($currentId) {
-            view()->share('activeClinic', $user->secretaryClinics()->where('clinics.id',$currentId)->first());
-            view()->share('activeClinicId', $currentId);
-        } else {
-            view()->share('activeClinic', null);
-            view()->share('activeClinicId', null);
-        }
+        $request->attributes->set('active_clinic', $activeClinic);
+        View::share('activeClinic', $activeClinic);
 
         return $next($request);
     }

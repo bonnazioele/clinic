@@ -15,15 +15,20 @@ use App\Http\Controllers\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Admin\DoctorController as AdminDoctorController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Doctor\ClinicSelectionController as DocClinicSelectionController;
 use App\Http\Controllers\Secretary\AppointmentController as SecAppt;
 use App\Http\Controllers\Secretary\DoctorController as SecDoctor;
 use App\Http\Controllers\Secretary\PatientController as SecPatient;
+use App\Http\Controllers\Secretary\ClinicSelectionController;
+use App\Http\Controllers\Secretary\QueueController as SecretaryQueueController;
 use App\Http\Controllers\Secretary\WalkInPatientDirectoryController;
 use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 use App\Http\Controllers\Auth\SecretaryRegisterController;
 use App\Http\Controllers\Owner\ApplicationController as OwnerApplicationController;
 use App\Http\Controllers\WalkInRegistrationController;
+use App\Http\Middleware\SecretaryMiddleware;
+use App\Http\Middleware\EnsureSelectedClinic;
 
 
 //Public Routes
@@ -118,6 +123,11 @@ Route::prefix('admin')
      });
 
      //Secretary Routes
+// Secretary clinic selection (multi-clinic secretaries)
+Route::middleware(['auth', 'force.password.change', SecretaryMiddleware::class])->group(function () {
+     Route::get('/choose-clinic', [ClinicSelectionController::class, 'index'])->name('secretary.choose-clinic');
+     Route::post('/choose-clinic/select', [ClinicSelectionController::class, 'select'])->name('secretary.choose-clinic.select');
+});
 
         Route::prefix('secretary')
      ->middleware(['auth', 'force.password.change', \App\Http\Middleware\SecretaryMiddleware::class, \App\Http\Middleware\EnsureSelectedClinic::class])
@@ -147,6 +157,7 @@ Route::prefix('admin')
 
          Route::get('/clinics/{clinic}/queue', [\App\Http\Controllers\Secretary\QueueController::class,'queue'])->name('queue.index');
         Route::post('/{clinic}/{entry}/call', [\App\Http\Controllers\Secretary\QueueController::class, 'call'])->name('queue.call');
+     Route::post('/{clinic}/{entry}/done-next', [\App\Http\Controllers\Secretary\QueueController::class, 'doneNext'])->name('queue.done_next');
         Route::post('/{clinic}/{entry}/reschedule', [\App\Http\Controllers\Secretary\QueueController::class, 'reschedule'])->name('queue.reschedule');
          Route::post('/{clinic}/{entry}/cancel', [\App\Http\Controllers\Secretary\QueueController::class, 'cancel'])->name('queue.cancel');
          Route::post('/{clinic}/{entry}/no-show', [\App\Http\Controllers\Secretary\QueueController::class, 'noShow'])->name('queue.no_show');
@@ -183,6 +194,14 @@ Route::prefix('admin')
 
 
 //Doctor Routes
+
+Route::middleware(['auth'])->group(function () {
+      Route::get('/doctor/choose-clinic', [DocClinicSelectionController::class, 'index'])
+           ->name('doctor.choose-clinic');
+
+      Route::post('/doctor/choose-clinic/select', [DocClinicSelectionController::class, 'select'])
+           ->name('doctor.choose-clinic.select');
+});
 
 Route::prefix('doctor')
       ->name('doctor.')

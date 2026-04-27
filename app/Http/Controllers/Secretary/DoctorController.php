@@ -2,188 +2,206 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Http\Controllers\Concerns\InteractsWithActiveClinic;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSelectedClinic;
+use App\Http\Middleware\SecretaryMiddleware;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Service;
 
 class DoctorController extends Controller
 {
+    use InteractsWithActiveClinic;
+
     public function __construct()
     {
-        $this->middleware('auth');
-
-        $this->middleware(function($req, $next) {
-            if (! $req->user()?->is_secretary) {
-                abort(403,'Forbidden');
-            }
-            return $next($req);
-        });
+        $this->middleware(['auth', SecretaryMiddleware::class, EnsureSelectedClinic::class]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $clinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id');
-        $doctors = User::where('is_doctor', true)
-            ->whereHas('clinics', function($q) use ($clinicIds){
-                $q->whereIn('clinics.id', $clinicIds);
+        $activeClinicId = $this->activeClinicId($request);
+
+        $doctors = User::query()
+            ->where('is_doctor', true)
+            ->whereHas('clinics', function ($q) use ($activeClinicId) {
+                $q->where('clinics.id', $activeClinicId);
             })
-            ->with(['clinics:id,name', 'services:id,name'])
+            ->with([
+                'clinics' => function ($q) use ($activeClinicId) {
+                    $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
+                },
+                'services:id,name',
+            ])
             ->orderBy('name')
             ->paginate(15);
 
         return view('secretary.doctors.index', compact('doctors'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $user = auth()->user();
-        $activeClinicId = session('active_clinic_id');
-        $clinicIds = $user->secretaryClinics()->pluck('clinics.id')->all();
+        $activeClinicId = $this->activeClinicId($request);
+        $services = $this->servicesForActiveClinic($activeClinicId);
 
-        $serviceQuery = Service::query();
-        if ($activeClinicId && in_array($activeClinicId, $clinicIds)) {
-            $serviceQuery->whereHas('clinics', function($q) use ($activeClinicId){
-                $q->where('clinics.id',$activeClinicId);
-            });
-        } else {
-            $serviceQuery->whereHas('clinics', function($q) use ($clinicIds){
-                $q->whereIn('clinics.id',$clinicIds);
-            });
-        }
-        $services = $serviceQuery->orderBy('name')->get();
-        return view('secretary.doctors.create', compact('services','activeClinicId'));
+        return view('secretary.doctors.create', compact('services', 'activeClinicId'));
     }
 
-    public function store(Request $req)
-{
-    $data = $req->validate([
-        'first_name'       => 'required|string|max:255',
-        'last_name'        => 'required|string|max:255',
-        'email'            => 'required|email|unique:users,email',
-        'password'         => 'required|string|min:6|confirmed',
-        'service_ids'      => 'array',
-        'service_ids.*'    => 'exists:services,id',
-        'phone'            => 'nullable|string|max:50',
-        'address'          => 'nullable|string|max:500',
-    ]);
+    public function store(Request $request)
+    {
+        $activeClinicId = $this->activeClinicId($request);
 
-    $doctor = User::create([
-        'name'       => trim($data['first_name'].' '.$data['last_name']),
-        'first_name' => $data['first_name'],
-        'last_name'  => $data['last_name'],
-        'email'      => $data['email'],
-        'password'   => Hash::make($data['password']),
-        'phone'      => $data['phone'] ?? null,
-        'address'    => $data['address'] ?? null,
-        'is_doctor'  => true,
-    ]);
+        $data = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6|confirmed',
+            'service_ids' => 'array',
+            'service_ids.*' => 'exists:services,id',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
+        ]);
 
-    $activeClinicId = session('active_clinic_id');
-    $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id')->all();
-    if ($activeClinicId && in_array($activeClinicId, $secretaryClinicIds)) {
+        $doctor = User::create([
+            'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'phone' => $data['phone'] ?? null,
+            'address' => $data['address'] ?? null,
+            'is_doctor' => true,
+        ]);
+
         $doctor->clinics()->sync([$activeClinicId]);
-    } else {
-        $doctor->clinics()->sync($secretaryClinicIds);
+
+        $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
+        $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
+        $doctor->services()->sync($chosen);
+
+        return redirect()->route('secretary.doctors.index')
+            ->with('status', 'Doctor added.');
     }
 
-    $allowedServiceIds = Service::whereHas('clinics', function($q) use ($secretaryClinicIds){
-        $q->whereIn('clinics.id', $secretaryClinicIds);
-    })->pluck('id')->all();
-    $chosen = array_intersect($data['service_ids'] ?? [], $allowedServiceIds);
-    $doctor->services()->sync($chosen);
-
-    return redirect()->route('secretary.doctors.index')
-                     ->with('status','Doctor added.');
-}
-
-    public function edit(User $doctor)
+    public function edit(Request $request, User $doctor)
     {
-        abort_unless($doctor->is_doctor,404);
+        $activeClinicId = $this->activeClinicId($request);
+        $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
+        $services = $this->servicesForActiveClinic($activeClinicId);
 
-        $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id');
-        if (! $doctor->clinics()->whereIn('clinics.id', $secretaryClinicIds)->exists()) {
-            abort(403,'Doctor not in your assigned clinics.');
+        return view('secretary.doctors.edit', compact('doctor', 'services', 'activeClinicId'));
+    }
+
+    public function update(Request $request, User $doctor)
+    {
+        $activeClinicId = $this->activeClinicId($request);
+        $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
+
+        $data = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $doctor->id,
+            'password' => 'nullable|string|min:6|confirmed',
+            'service_ids' => 'array',
+            'service_ids.*' => 'exists:services,id',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        $payload = [
+            'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'address' => $data['address'] ?? null,
+        ];
+
+        if (!empty($data['password'])) {
+            $payload['password'] = Hash::make($data['password']);
         }
 
-        $user = auth()->user();
-        $activeClinicId = session('active_clinic_id');
-        $clinicIds = $user->secretaryClinics()->pluck('clinics.id')->all();
-        $serviceQuery = Service::query();
-        if ($activeClinicId && in_array($activeClinicId, $clinicIds)) {
-            $serviceQuery->whereHas('clinics', function($q) use ($activeClinicId){
-                $q->where('clinics.id',$activeClinicId);
-            });
-        } else {
-            $serviceQuery->whereHas('clinics', function($q) use ($clinicIds){
-                $q->whereIn('clinics.id',$clinicIds);
-            });
-        }
-        $services = $serviceQuery->orderBy('name')->get();
-        return view('secretary.doctors.edit', compact('doctor','services','activeClinicId'));
+        $doctor->update($payload);
+
+        $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
+
+        $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
+        $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
+        $doctor->services()->sync($chosen);
+
+        return redirect()->route('secretary.doctors.index')
+            ->with('status', 'Doctor updated.');
     }
 
-    public function update(Request $req, User $doctor)
-{
-    abort_unless($doctor->is_doctor,404);
-
-    $data = $req->validate([
-        'first_name'       => 'required|string|max:255',
-        'last_name'        => 'required|string|max:255',
-        'email'            => 'required|email|unique:users,email,'.$doctor->id,
-        'password'         => 'nullable|string|min:6|confirmed',
-        'service_ids'      => 'array',
-        'service_ids.*'    => 'exists:services,id',
-        'phone'            => 'nullable|string|max:50',
-        'address'          => 'nullable|string|max:500',
-    ]);
-
-    $doctor->update([
-        'name'     => trim($data['first_name'].' '.$data['last_name']),
-        'first_name'=> $data['first_name'],
-        'last_name' => $data['last_name'],
-        'email'    => $data['email'],
-        'phone'    => $data['phone'] ?? null,
-        'address'  => $data['address'] ?? null,
-        'password' => $data['password']
-                        ? Hash::make($data['password'])
-                        : $doctor->password,
-    ]);
-
-    $secretaryClinicIds = auth()->user()->secretaryClinics()->pluck('clinics.id')->all();
-    $activeClinicId = session('active_clinic_id');
-    if ($activeClinicId && in_array($activeClinicId, $secretaryClinicIds)) {
-        $doctor->clinics()->sync([$activeClinicId]);
-    } else {
-        $doctor->clinics()->sync($secretaryClinicIds);
-    }
-    $allowedServiceIds = Service::whereHas('clinics', function($q) use ($secretaryClinicIds){
-        $q->whereIn('clinics.id', $secretaryClinicIds);
-    })->pluck('id')->all();
-    $chosen = array_intersect($data['service_ids'] ?? [], $allowedServiceIds);
-    $doctor->services()->sync($chosen);
-
-    return redirect()->route('secretary.doctors.index')
-                     ->with('status','Doctor updated.');
-}
-
-    public function destroy(User $doctor)
+    public function destroy(Request $request, User $doctor)
     {
-        abort_unless($doctor->is_doctor, 404);
+        $activeClinicId = $this->activeClinicId($request);
+        $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
+
+        if ($doctor->clinics()->count() > 1) {
+            $doctor->clinics()->detach($activeClinicId);
+
+            return back()->with('status', 'Doctor unassigned from active clinic.');
+        }
+
         $doctor->delete();
-        return back()->with('status','Doctor removed.');
+
+        return back()->with('status', 'Doctor removed.');
     }
 
-    public function show(User $doctor)
+    public function show(Request $request, User $doctor)
     {
-        abort_unless($doctor->is_doctor,404);
-        $doctor->load(['clinics:id,name','services:id,name','doctorSchedules.clinic:id,name']);
+        $activeClinicId = $this->activeClinicId($request);
+        $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
+        $doctor->load([
+            'clinics' => function ($q) use ($activeClinicId) {
+                $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
+            },
+            'services:id,name',
+            'doctorSchedules' => function ($q) use ($activeClinicId) {
+                $q->where('clinic_id', $activeClinicId)->with('clinic:id,name');
+            },
+        ]);
 
         $scheduleByDay = $doctor->doctorSchedules
-            ->sortBy(fn($s)=>[$s->day_of_week,$s->start_time])
+            ->sortBy(fn ($s) => [$s->day_of_week, $s->start_time])
             ->groupBy('day_of_week');
 
-        return view('secretary.doctors.show', compact('doctor','scheduleByDay'));
+        return view('secretary.doctors.show', compact('doctor', 'scheduleByDay'));
+    }
+
+    private function doctorInActiveClinicOrAbort(User $doctor, int $activeClinicId): User
+    {
+        abort_unless($doctor->is_doctor, 404);
+
+        $belongsToClinic = $doctor->clinics()
+            ->where('clinics.id', $activeClinicId)
+            ->exists();
+
+        abort_unless($belongsToClinic, 403, 'Doctor not in your active clinic.');
+
+        return $doctor;
+    }
+
+    private function servicesForActiveClinic(int $activeClinicId)
+    {
+        return Service::query()
+            ->whereHas('clinics', function ($q) use ($activeClinicId) {
+                $q->where('clinics.id', $activeClinicId);
+            })
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function serviceIdsForActiveClinic(int $activeClinicId): array
+    {
+        return Service::query()
+            ->whereHas('clinics', function ($q) use ($activeClinicId) {
+                $q->where('clinics.id', $activeClinicId);
+            })
+            ->pluck('id')
+            ->all();
     }
 }
