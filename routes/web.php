@@ -181,6 +181,7 @@ Route::middleware(['auth', 'force.password.change', SecretaryMiddleware::class])
                 });
 
          Route::get('services', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'index'])->name('services.index');
+         Route::get('services/search', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'search'])->name('services.search');
          Route::post('clinics/{clinic}/services/attach', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'attach'])->name('services.attach');
          Route::delete('clinics/{clinic}/services/{service}', [\App\Http\Controllers\Secretary\ClinicServiceController::class,'detach'])->name('services.detach');
 

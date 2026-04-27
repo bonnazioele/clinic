@@ -2,12 +2,20 @@
 @section('title','Clinic Services')
 @section('content')
 <div class="container py-4">
+  @php
+    $hasAvailableServices = $clinic && isset($availableServices) && $availableServices->isNotEmpty();
+  @endphp
   @include('partials.alerts')
   <div class="medical-card p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h2 class="fw-bold text-primary mb-0 d-flex align-items-center">
         <i class="bi bi-gear-wide-connected medical-icon me-2"></i>Clinic Services
       </h2>
+      @if($hasAvailableServices)
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#attachServicesModal">
+          <i class="bi bi-plus-circle me-2"></i>Add Service
+        </button>
+      @endif
     </div>
   </div>
 
@@ -15,7 +23,7 @@
     <div class="alert alert-warning">You are not assigned to any clinics.</div>
   @else
     <div class="row g-4">
-      <div class="col-lg-7">
+      <div class="col-12">
         <div class="medical-card p-4 h-100">
           <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center">
             <i class="bi bi-link-45deg medical-icon me-2"></i>
@@ -85,126 +93,332 @@
           @endif
         </div>
       </div>
-      <div class="col-lg-5">
-        <div class="medical-card p-4 h-100">
-          <h5 class="fw-semibold mb-3 text-primary d-flex align-items-center">
-            <i class="bi bi-plus-circle medical-icon me-2"></i>Attach from Master List
-          </h5>
-          @if($availableServices->isEmpty())
-            <div class="text-muted">All services already attached.</div>
-          @else
-            <form method="POST" action="{{ route('secretary.services.attach',$clinic) }}">
-              @csrf
-              <div class="mb-3">
-                <label for="serviceSelect" class="form-label fw-semibold d-inline-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-list-check"></i>
-                  <span>Select Services</span>
-                </label>
+    </div>
 
-                <div id="serviceSelectSkeleton" class="form-control select-placeholder-skeleton">Choose services...</div>
-    <select id="serviceSelect"
-      name="service_ids[]"
-      class="form-select enhance-hidden @error('service_ids') is-invalid @enderror"
-      multiple required>
-                  @foreach($availableServices as $svc)
-                    <option value="{{ $svc->id }}">{{ $svc->name }}</option>
-                  @endforeach
-                </select>
-                @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+    @if($hasAvailableServices)
+    <div class="modal fade" id="attachServicesModal" tabindex="-1" aria-labelledby="attachServicesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <form method="POST" action="{{ route('secretary.services.attach', $clinic) }}" id="attachServicesForm">
+            @csrf
+            <div class="modal-header border-bottom">
+              <div>
+                <h5 class="modal-title fw-bold mb-1" id="attachServicesModalLabel">
+                  <i class="bi bi-plus-circle-fill text-success me-2"></i>Add Services
+                </h5>
+                <p class="text-muted small mb-0">Search the master list, select one or more, set durations, then Save.</p>
               </div>
-              <div class="mb-3">
-                <label for="duration_minutes" class="form-label fw-semibold d-inline-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-stopwatch"></i>
-                  <span>Default Duration (minutes)</span>
-                </label>
-                <input id="duration_minutes" type="number" name="duration_minutes" value="30" min="5" max="480" class="form-control @error('duration_minutes') is-invalid @enderror">
-                @error('duration_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <label for="serviceSearchInput" class="form-label fw-semibold">
+                    <i class="bi bi-search me-1"></i>Search Services
+                  </label>
+                  <div class="input-group mb-3">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="serviceSearchInput" placeholder="Type service name to search..." autocomplete="off">
+                  </div>
+
+                  <div id="serviceSearchStatus" class="small text-muted d-none"></div>
+                  <div id="serviceSearchResults" class="border rounded" style="max-height: 350px; overflow-y: auto;">
+                    <div class="text-muted small p-3 text-center">Start typing to search for services...</div>
+                  </div>
+                  <div class="d-flex justify-content-center mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="serviceSearchLoadMore">
+                      <i class="bi bi-arrow-down-circle me-1"></i>Load more
+                    </button>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-semibold mb-0">
+                      <i class="bi bi-check2-square me-1"></i>Selected Services
+                      <span class="badge bg-primary ms-1" id="selectedServicesCount">0</span>
+                    </label>
+                  </div>
+                  <div class="d-flex align-items-center gap-2 mb-3">
+                    <label class="form-label small mb-0 text-muted">Apply to all:</label>
+                    <input type="number" id="bulkDurationInput" class="form-control form-control-sm" style="width: 80px;" value="30" min="5" max="480" placeholder="min">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="applyBulkDuration">
+                      <i class="bi bi-arrow-repeat"></i> Apply
+                    </button>
+                  </div>
+                  <div id="selectedServicesList" class="border rounded bg-light" style="min-height: 100px; max-height: 350px; overflow-y: auto;">
+                    <div class="text-muted small p-3 text-center" id="noServicesPlaceholder">
+                      <i class="bi bi-inbox me-1"></i>No services selected. Click on services from the left to add them.
+                    </div>
+                  </div>
+                  @error('service_ids')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+                </div>
+
+                <input type="hidden" name="duration_minutes" id="defaultDurationMinutes" value="30">
               </div>
-              <div class="d-flex gap-2">
-                <button class="btn btn-success"><i class="bi bi-plus-circle me-2"></i>Attach Selected</button>
-              </div>
-            </form>
-          @endif
-          <p class="small text-muted mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Removal blocked if service already used in appointments.</p>
+            </div>
+            <div class="modal-footer border-top">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-lg me-1"></i>Cancel
+              </button>
+              <button type="submit" class="btn btn-success" id="submitAttachBtn" disabled>
+                <i class="bi bi-plus-circle me-2"></i>Save Selected Services
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
+    @endif
   @endif
 </div>
 @endsection
 
-@push('styles')
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-<link rel="preconnect" href="https://code.jquery.com">
-<link rel="dns-prefetch" href="https://code.jquery.com">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<style>
-  /* Custom style for Select2 to blend with Bootstrap */
-  .select2-container .select2-selection--multiple {
-    min-height: 48px;
-    border: 1px solid #ced4da;
-    border-radius: 0.375rem;
-    padding: 4px 8px;
-  }
-  .select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: #0d6efd;
-    border: none;
-    color: #fff;
-    padding: 2px 8px;
-    margin-top: 4px;
-  }
-  /* Prevent flash of native select before Select2 initializes */
-  .enhance-hidden { visibility: hidden; }
-  /* Placeholder skeleton that mimics a form-control */
-  .select-placeholder-skeleton {
-    display: flex;
-    align-items: center;
-    min-height: 48px;
-    color: #6c757d; /* text-muted */
-    pointer-events: none;
-  }
-</style>
-@endpush
-
 @push('scripts')
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
   (function() {
-    function enhanceServiceSelect() {
-      var sel = document.getElementById('serviceSelect');
-      if (!sel) return;
-      var skeleton = document.getElementById('serviceSelectSkeleton');
+    var modal = document.getElementById('attachServicesModal');
+    if (!modal) return;
 
-      // If Select2 is available, initialize once; otherwise, show native select
-      if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-        var $sel = window.jQuery(sel);
-        if (!$sel.hasClass('select2-hidden-accessible')) {
-          $sel.select2({
-            placeholder: 'Choose services...',
-            allowClear: true,
-            width: '100%'
-          });
-        }
-        $sel.removeClass('enhance-hidden');
-        if (skeleton) skeleton.classList.add('d-none');
-      } else {
-        // Fallback: ensure the control remains visible even if Select2 fails to load
-        sel.classList.remove('enhance-hidden');
-        if (skeleton) skeleton.classList.add('d-none');
+    var input = document.getElementById('serviceSearchInput');
+    var results = document.getElementById('serviceSearchResults');
+    var status = document.getElementById('serviceSearchStatus');
+    var loadMoreBtn = document.getElementById('serviceSearchLoadMore');
+    var selectedList = document.getElementById('selectedServicesList');
+    var selectedCount = document.getElementById('selectedServicesCount');
+    var submitBtn = document.getElementById('submitAttachBtn');
+    var bulkDurationInput = document.getElementById('bulkDurationInput');
+    var applyBulkDurationBtn = document.getElementById('applyBulkDuration');
+    var defaultDurationInput = document.getElementById('defaultDurationMinutes');
+
+    var nextPageUrl = null;
+    var debounceTimer = null;
+    var selectedServices = new Map();
+
+    function setStatus(text) {
+      if (!status) return;
+      if (!text) {
+        status.classList.add('d-none');
+        status.textContent = '';
+        return;
       }
+      status.textContent = text;
+      status.classList.remove('d-none');
     }
 
-    // Run on multiple lifecycle events to handle refresh, back/forward cache, or PJAX/Turbo
-    document.addEventListener('DOMContentLoaded', enhanceServiceSelect);
-    window.addEventListener('load', enhanceServiceSelect);
-    window.addEventListener('pageshow', enhanceServiceSelect);
-    document.addEventListener('turbo:load', enhanceServiceSelect);
-    document.addEventListener('turbolinks:load', enhanceServiceSelect);
-    document.addEventListener('livewire:load', enhanceServiceSelect);
-    // Safety fallback: retry shortly after first pass
-    setTimeout(enhanceServiceSelect, 800);
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function isServiceSelected(id) { return selectedServices.has(Number(id)); }
+
+    function updateSelectedCount() {
+      var count = selectedServices.size;
+      if (selectedCount) selectedCount.textContent = count;
+      if (submitBtn) submitBtn.disabled = count === 0;
+    }
+
+    function renderSelectedServices() {
+      if (!selectedList) return;
+      selectedList.innerHTML = '';
+
+      if (selectedServices.size === 0) {
+        selectedList.innerHTML = '<div class="text-muted small p-3 text-center" id="noServicesPlaceholder"><i class="bi bi-inbox me-1"></i>No services selected. Click on services to add them.</div>';
+        updateSelectedCount();
+        return;
+      }
+
+      selectedServices.forEach(function(svc, id) {
+        var row = document.createElement('div');
+        row.className = 'selected-service-row d-flex align-items-center gap-2 p-2 border-bottom bg-white';
+        row.setAttribute('data-service-id', id);
+
+        row.innerHTML =
+          '<div class="flex-grow-1">' +
+            '<span class="fw-semibold">' + escapeHtml(svc.name) + '</span>' +
+            (svc.description ? '<div class="small text-muted text-truncate" style="max-width: 300px;">' + escapeHtml(svc.description) + '</div>' : '') +
+          '</div>' +
+          '<div class="d-flex align-items-center gap-2">' +
+            '<div class="input-group input-group-sm" style="width: 100px;">' +
+              '<input type="number" class="form-control form-control-sm duration-input" name="duration_minutes_by_service[' + id + ']" value="' + (svc.duration || 30) + '" min="5" max="480" placeholder="min">' +
+              '<span class="input-group-text">min</span>' +
+            '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger remove-service-btn" title="Remove"><i class="bi bi-trash"></i></button>' +
+          '</div>' +
+          '<input type="hidden" name="service_ids[]" value="' + id + '">';
+
+        selectedList.appendChild(row);
+      });
+
+      selectedList.querySelectorAll('.remove-service-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var row = btn.closest('.selected-service-row');
+          var serviceId = Number(row.getAttribute('data-service-id'));
+          selectedServices.delete(serviceId);
+          renderSelectedServices();
+          updateSearchResultsState();
+        });
+      });
+
+      selectedList.querySelectorAll('.duration-input').forEach(function(inp) {
+        inp.addEventListener('change', function() {
+          var row = inp.closest('.selected-service-row');
+          var serviceId = Number(row.getAttribute('data-service-id'));
+          var svc = selectedServices.get(serviceId);
+          if (svc) { svc.duration = parseInt(inp.value, 10) || 30; selectedServices.set(serviceId, svc); }
+        });
+      });
+
+      updateSelectedCount();
+    }
+
+    function addService(svc) {
+      var id = Number(svc.id);
+      if (selectedServices.has(id)) return;
+      selectedServices.set(id, {
+        id: id,
+        name: svc.name || '',
+        description: svc.description || '',
+        duration: parseInt(bulkDurationInput.value, 10) || 30
+      });
+      renderSelectedServices();
+      updateSearchResultsState();
+    }
+
+    function updateSearchResultsState() {
+      if (!results) return;
+      results.querySelectorAll('.search-result-item').forEach(function(item) {
+        var serviceId = Number(item.getAttribute('data-service-id'));
+        if (isServiceSelected(serviceId)) {
+          item.classList.add('bg-success', 'bg-opacity-10');
+          item.querySelector('.add-service-btn').classList.add('d-none');
+          item.querySelector('.added-badge').classList.remove('d-none');
+        } else {
+          item.classList.remove('bg-success', 'bg-opacity-10');
+          item.querySelector('.add-service-btn').classList.remove('d-none');
+          item.querySelector('.added-badge').classList.add('d-none');
+        }
+      });
+    }
+
+    function renderSearchResults(items, append) {
+      if (!results) return;
+      if (!append) results.innerHTML = '';
+
+      if (!items || !items.length) {
+        if (!append) results.innerHTML = '<div class="text-muted small p-3 text-center"><i class="bi bi-search me-1"></i>No services found.</div>';
+        return;
+      }
+
+      items.forEach(function(svc) {
+        var id = Number(svc.id);
+        var isSelected = isServiceSelected(id);
+        var description = (svc.description || '').toString();
+
+        var item = document.createElement('div');
+        item.className = 'search-result-item d-flex align-items-center gap-2 p-2 border-bottom cursor-pointer' + (isSelected ? ' bg-success bg-opacity-10' : '');
+        item.setAttribute('data-service-id', id);
+
+        item.innerHTML =
+          '<div class="flex-grow-1">' +
+            '<div class="fw-semibold">' + escapeHtml(String(svc.name || '')) + '</div>' +
+            (description ? '<div class="small text-muted text-truncate" style="max-width: 350px;">' + escapeHtml(description) + '</div>' : '') +
+          '</div>' +
+          '<button type="button" class="btn btn-sm btn-outline-success add-service-btn' + (isSelected ? ' d-none' : '') + '"><i class="bi bi-plus-lg"></i></button>' +
+          '<span class="badge bg-success added-badge' + (isSelected ? '' : ' d-none') + '"><i class="bi bi-check-lg me-1"></i>Added</span>';
+
+        item.querySelector('.add-service-btn').addEventListener('click', function(e) {
+          e.stopPropagation();
+          addService({ id: id, name: svc.name, description: description });
+        });
+
+        item.addEventListener('click', function(e) {
+          if (e.target.closest('.add-service-btn') || e.target.closest('.added-badge')) return;
+          if (!isServiceSelected(id)) addService({ id: id, name: svc.name, description: description });
+        });
+
+        results.appendChild(item);
+      });
+    }
+
+    function updateLoadMoreVisibility() {
+      if (!loadMoreBtn) return;
+      if (nextPageUrl) loadMoreBtn.classList.remove('d-none');
+      else loadMoreBtn.classList.add('d-none');
+    }
+
+    function fetchResults(url, append) {
+      setStatus('Searching...');
+      return fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .then(function(resp) { return resp.json(); })
+        .then(function(payload) {
+          renderSearchResults(payload.data || [], append);
+          nextPageUrl = payload.next_page_url || null;
+          updateLoadMoreVisibility();
+          setStatus('');
+        })
+        .catch(function() {
+          setStatus('Search failed. Please try again.');
+          nextPageUrl = null;
+          updateLoadMoreVisibility();
+        });
+    }
+
+    function doSearch(append) {
+      var term = (input && input.value ? input.value : '').trim();
+      var url = '{{ route('secretary.services.search') }}' + '?q=' + encodeURIComponent(term);
+      return fetchResults(url, !!append);
+    }
+
+    if (input) {
+      input.addEventListener('input', function() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+          nextPageUrl = null;
+          updateLoadMoreVisibility();
+          doSearch(false);
+        }, 300);
+      });
+    }
+
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', function() {
+        if (!nextPageUrl) return;
+        fetchResults(nextPageUrl, true);
+      });
+    }
+
+    if (applyBulkDurationBtn) {
+      applyBulkDurationBtn.addEventListener('click', function() {
+        var duration = parseInt(bulkDurationInput.value, 10) || 30;
+        if (duration < 5) duration = 5;
+        if (duration > 480) duration = 480;
+
+        selectedServices.forEach(function(svc, id) { svc.duration = duration; selectedServices.set(id, svc); });
+        if (defaultDurationInput) defaultDurationInput.value = duration;
+        renderSelectedServices();
+      });
+    }
+
+    modal.addEventListener('shown.bs.modal', function() {
+      if (input) { input.value = ''; input.focus(); }
+      selectedServices.clear();
+      renderSelectedServices();
+      nextPageUrl = null;
+      updateLoadMoreVisibility();
+      doSearch(false);
+    });
+
+    modal.addEventListener('hidden.bs.modal', function() {
+      selectedServices.clear();
+      if (results) results.innerHTML = '<div class="text-muted small p-3 text-center">Start typing to search for services...</div>';
+      renderSelectedServices();
+    });
   })();
 </script>
 @endpush

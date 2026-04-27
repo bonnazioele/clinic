@@ -63,7 +63,8 @@ class ClinicServiceController extends Controller
                         ->on('cd.clinic_id', '=', 'qe.clinic_id');
                 })
                 ->where('qe.clinic_id', $clinic->id)
-                ->whereIn('qe.status', ['waiting', 'now_serving', 'rescheduled'])
+                ->whereDate('a.appointment_date', now()->toDateString())
+                ->whereIn('qe.status', ['waiting', 'now_serving'])
                 ->whereNotNull('a.doctor_id')
                 ->whereIn('a.service_id', $serviceIds)
                 ->where('u.is_doctor', true)
@@ -91,16 +92,58 @@ class ClinicServiceController extends Controller
         $data = $request->validate([
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
-            'duration_minutes' => 'nullable|integer|min:5|max:480'
+            'duration_minutes' => 'nullable|integer|min:5|max:480',
+            'duration_minutes_by_service' => 'nullable|array',
+            'duration_minutes_by_service.*' => 'nullable|integer|min:5|max:480',
         ]);
-        $duration = $data['duration_minutes'] ?? 30;
+
+        $defaultDuration = (int) ($data['duration_minutes'] ?? 30);
+        $durationsByService = $data['duration_minutes_by_service'] ?? [];
+
         foreach ($data['service_ids'] as $sid) {
             if (! $clinic->services()->where('services.id',$sid)->exists()) {
+                $duration = (int) ($durationsByService[$sid] ?? $defaultDuration);
+                if ($duration < 5 || $duration > 480) {
+                    $duration = $defaultDuration;
+                }
+
                 $clinic->services()->attach($sid, ['duration_minutes' => $duration]);
             }
         }
+
         return redirect()->route('secretary.services.index')
             ->with('status','Service(s) attached to clinic.');
+    }
+
+    public function search(Request $request)
+    {
+        $clinic = $this->activeClinic($request);
+
+        $term = trim((string) $request->query('q', ''));
+        $attachedIds = $clinic->services()->pluck('services.id');
+
+        $query = Service::query()
+            ->whereNotIn('id', $attachedIds)
+            ->when($term !== '', function ($q) use ($term) {
+                $q->where(function ($inner) use ($term) {
+                    $inner->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('description', 'like', '%' . $term . '%');
+                });
+            })
+            ->orderBy('name');
+
+        $results = $query->paginate(15)->appends(['q' => $term]);
+
+        return response()->json([
+            'data' => $results->map(function (Service $service) {
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'description' => $service->description,
+                ];
+            })->values(),
+            'next_page_url' => $results->nextPageUrl(),
+        ]);
     }
 
     public function detach(Request $request, Clinic $clinic, Service $service)
