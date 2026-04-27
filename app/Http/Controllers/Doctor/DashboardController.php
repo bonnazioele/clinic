@@ -31,7 +31,10 @@ class DashboardController extends Controller
 
         $queue = QueueEntry::with('appointment.user','clinic')
             ->whereIn('clinic_id', $clinics->pluck('id'))
-            ->where('status','waiting')
+            ->whereHas('appointment', function ($q) use ($doctor) {
+                $q->where('doctor_id', $doctor->id);
+            })
+            ->whereIn('status', ['waiting', 'now_serving'])
             ->orderBy('created_at')
             ->get();
 

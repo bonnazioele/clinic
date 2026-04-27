@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Secretary;
 
 use App\Events\QueueUpdated;
-use App\Http\Controllers\Concerns\InteractsWithActiveClinic;
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class QueueController extends Controller
 {
-    use InteractsWithActiveClinic;
+    use InteractsWithClinic;
 
     public function overview(Request $request)
     {

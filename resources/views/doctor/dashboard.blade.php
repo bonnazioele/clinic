@@ -75,6 +75,10 @@
               <div>
                 <span class="badge bg-warning text-dark me-2">#{{ $q->queue_number }}</span>
                 {{ $q->appointment?->user?->name ?? 'Patient' }}
+                <div class="text-muted mt-1">
+                  <i class="bi bi-diagram-3 me-1"></i>
+                  Queue: {{ $q->clinic?->name ?? 'Unassigned clinic' }}
+                </div>
               </div>
               <span class="text-muted"><i class="bi bi-clock me-1"></i>{{ $q->created_at->diffForHumans(null,true) }}</span>
             </div>

@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Patient;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\Clinic;
 use App\Models\Appointment;
@@ -60,12 +62,21 @@ class AppointmentController extends Controller
         ]);
 
         $date      = \Carbon\Carbon::parse($data['date']);
+        $dateString = $date->toDateString();
         $dayOfWeek = $date->dayOfWeek;
 
         $schedules = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
+            ->where(function ($q) use ($dateString) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $dateString);
+            })
+            ->where(function ($q) use ($dateString) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $dateString);
+            })
             ->orderBy('start_time')
             ->get(['id','start_time','end_time']);
 
@@ -114,7 +125,7 @@ class AppointmentController extends Controller
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
-            while ($cursor < $end) { 
+            while ($cursor < $end) {
                 $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
                 if ($slotEnd > $end) {
                     break;
@@ -155,12 +166,21 @@ class AppointmentController extends Controller
         ]);
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+        $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
             ->where('day_of_week', $day)
             ->where('is_active', true)
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $appointmentDate);
+            })
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $appointmentDate);
+            })
             ->where('start_time', '<=', $time)
             ->where('end_time', '>', $time)
             ->exists();
@@ -192,7 +212,7 @@ class AppointmentController extends Controller
             ]);
         }
 
-        
+
         $sameClinicConflict = Appointment::where('user_id', Auth::id())
             ->where('clinic_id', $data['clinic_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
@@ -267,9 +287,9 @@ class AppointmentController extends Controller
         if ($appointment->user_id !== Auth::id()) {
             abort(403,'Forbidden');
         }
-        
+
         $appointment->load(['clinic.services','doctor','service']);
-        
+
         $clinic = $appointment->clinic;
         $clinic->load(['services','doctors']);
         return view('appointments.edit', [
@@ -295,13 +315,22 @@ class AppointmentController extends Controller
         ]);
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+        $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = $data['appointment_time'];
-        $clinicId = $appointment->clinic_id; 
+        $clinicId = $appointment->clinic_id;
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)
             ->where('day_of_week', $day)
             ->where('is_active', true)
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $appointmentDate);
+            })
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $appointmentDate);
+            })
             ->where('start_time','<=',$time)
             ->where('end_time','>',$time)
             ->exists();

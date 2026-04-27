@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSelectedClinic;
 use App\Models\Clinic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,9 +12,16 @@ use Illuminate\Support\Facades\Storage;
 
 class ClinicProfileController extends Controller
 {
-    public function edit(Clinic $clinic)
+    use InteractsWithClinic;
+
+    public function __construct()
     {
-        if (! Auth::user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
+        $this->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class, EnsureSelectedClinic::class]);
+    }
+
+    public function edit(Request $request, Clinic $clinic)
+    {
+        if ((int) $clinic->id !== $this->activeClinicId($request)) {
             abort(403);
         }
         return view('secretary.clinic.edit', compact('clinic'));
@@ -20,7 +29,7 @@ class ClinicProfileController extends Controller
 
     public function update(Request $request, Clinic $clinic)
     {
-        if (! Auth::user()->secretaryClinics()->where('clinics.id', $clinic->id)->exists()) {
+        if ((int) $clinic->id !== $this->activeClinicId($request)) {
             abort(403);
         }
 

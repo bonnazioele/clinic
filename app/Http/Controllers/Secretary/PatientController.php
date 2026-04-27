@@ -2,22 +2,25 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSelectedClinic;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
+    use InteractsWithClinic;
+
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware(['auth', EnsureSelectedClinic::class]);
         $this->middleware(function ($request, $next) {
             if (! $request->user()?->is_secretary) {
                 abort(403, 'Forbidden');
@@ -28,13 +31,7 @@ class PatientController extends Controller
 
     public function index(Request $request)
     {
-        $clinic = $this->resolveActiveClinic($request);
-
-        if (! $clinic) {
-            return redirect()
-                ->route('secretary.dashboard')
-                ->with('warning', 'Please select an active clinic to view patients.');
-        }
+        $clinic = $this->activeClinic($request);
 
         $search = trim((string) $request->input('q', ''));
 
@@ -88,47 +85,13 @@ class PatientController extends Controller
 
     public function create(Request $request)
     {
-        [$activeClinic, $clinicServices] = $this->resolveClinicContext($request);
+        $activeClinic = $this->activeClinic($request);
+        $clinicServices = $activeClinic->services()->orderBy('name')->get();
 
         return view('secretary.patients.create', [
             'activeClinic' => $activeClinic,
             'clinicServices' => $clinicServices,
         ]);
-    }
-
-    protected function resolveClinicContext(Request $request): array
-    {
-        $user = $request->user();
-        if (! $user || ! $user->is_secretary) {
-            return [null, collect()];
-        }
-
-        $activeClinic = View::shared('activeClinic');
-
-        if (! $activeClinic) {
-            $activeClinicId = (int) $request->session()->get('active_clinic_id');
-
-            if ($activeClinicId) {
-                $activeClinic = $user->secretaryClinics()
-                    ->where('clinics.id', $activeClinicId)
-                    ->first();
-            }
-
-            if (! $activeClinic) {
-                $activeClinic = $user->secretaryClinics()->orderBy('name')->first();
-                if ($activeClinic) {
-                    $request->session()->put('active_clinic_id', $activeClinic->id);
-                }
-            }
-        }
-
-        if (! $activeClinic) {
-            return [null, collect()];
-        }
-
-        $services = $activeClinic->services()->orderBy('name')->get();
-
-        return [$activeClinic, $services];
     }
 
     public function store(Request $request)
@@ -159,12 +122,10 @@ class PatientController extends Controller
 
         session()->flash('generated_password', $plainPassword);
 
-        $activeClinicId = (int) $request->session()->get('active_clinic_id');
-        if ($activeClinicId > 0 && $request->user()->secretaryClinics()->where('clinics.id', $activeClinicId)->exists()) {
-            $patient->clinicsAsPatient()->syncWithoutDetaching([
-                $activeClinicId => ['registered_by' => $request->user()->id],
-            ]);
-        }
+        $activeClinicId = $this->activeClinicId($request);
+        $patient->clinicsAsPatient()->syncWithoutDetaching([
+            $activeClinicId => ['registered_by' => $request->user()->id],
+        ]);
 
         return redirect()
             ->route('secretary.patients.create')
@@ -173,13 +134,7 @@ class PatientController extends Controller
 
     public function edit(Request $request, User $patient)
     {
-        $clinic = $this->resolveActiveClinic($request);
-
-        if (! $clinic) {
-            return redirect()
-                ->route('secretary.dashboard')
-                ->with('warning', 'Please select an active clinic to manage patients.');
-        }
+        $clinic = $this->activeClinic($request);
 
         $this->ensurePatientBelongsToClinic($patient, $clinic);
 
@@ -191,13 +146,7 @@ class PatientController extends Controller
 
     public function update(Request $request, User $patient)
     {
-        $clinic = $this->resolveActiveClinic($request);
-
-        if (! $clinic) {
-            return redirect()
-                ->route('secretary.dashboard')
-                ->with('warning', 'Please select an active clinic to manage patients.');
-        }
+        $clinic = $this->activeClinic($request);
 
         $this->ensurePatientBelongsToClinic($patient, $clinic);
 
@@ -229,13 +178,7 @@ class PatientController extends Controller
 
     public function destroy(Request $request, User $patient)
     {
-        $clinic = $this->resolveActiveClinic($request);
-
-        if (! $clinic) {
-            return redirect()
-                ->route('secretary.dashboard')
-                ->with('warning', 'Please select an active clinic to manage patients.');
-        }
+        $clinic = $this->activeClinic($request);
 
         $this->ensurePatientBelongsToClinic($patient, $clinic);
 
@@ -249,23 +192,6 @@ class PatientController extends Controller
         return redirect()
             ->route('secretary.patients.index')
             ->with('status', $patientName.' has been removed.');
-    }
-
-    protected function resolveActiveClinic(Request $request): ?Clinic
-    {
-        $user = $request->user();
-        if (! $user) {
-            return null;
-        }
-
-        $activeClinicId = (int) $request->session()->get('active_clinic_id');
-        if (! $activeClinicId) {
-            return null;
-        }
-
-        return $user->secretaryClinics()
-            ->where('clinics.id', $activeClinicId)
-            ->first();
     }
 
     protected function ensurePatientBelongsToClinic(User $patient, Clinic $clinic): void

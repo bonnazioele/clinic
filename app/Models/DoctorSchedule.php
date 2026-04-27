@@ -13,6 +13,8 @@ class DoctorSchedule extends Model
         'doctor_id',
         'clinic_id',
         'day_of_week', 
+        'start_date',
+        'end_date',
         'start_time',
         'end_time',
         'is_active'
@@ -20,6 +22,8 @@ class DoctorSchedule extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function doctor()
