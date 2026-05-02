@@ -8,7 +8,9 @@ use App\Http\Middleware\EnsureSelectedClinic;
 use App\Http\Middleware\SecretaryMiddleware;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\DoctorSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class DoctorController extends Controller
@@ -33,7 +35,9 @@ class DoctorController extends Controller
                 'clinics' => function ($q) use ($activeClinicId) {
                     $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
                 },
-                'services:id,name',
+                'services' => function ($q) use ($activeClinicId) {
+                    $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+                },
             ])
             ->orderBy('name')
             ->paginate(15);
@@ -75,11 +79,13 @@ class DoctorController extends Controller
             'is_doctor' => true,
         ]);
 
-        $doctor->clinics()->sync([$activeClinicId]);
-
         $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
         $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
-        $doctor->services()->sync($chosen);
+
+        DB::transaction(function () use ($doctor, $activeClinicId, $chosen) {
+            $doctor->clinics()->sync([$activeClinicId]);
+            $doctor->syncServicesForClinic($activeClinicId, $chosen);
+        });
 
         return redirect()->route('secretary.doctors.index')
             ->with('status', 'Doctor added.');
@@ -89,6 +95,9 @@ class DoctorController extends Controller
     {
         $activeClinicId = $this->activeClinicId($request);
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
+        $doctor->load(['services' => function ($q) use ($activeClinicId) {
+            $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+        }]);
         $services = $this->servicesForActiveClinic($activeClinicId);
 
         return view('secretary.doctors.edit', compact('doctor', 'services', 'activeClinicId'));
@@ -123,13 +132,14 @@ class DoctorController extends Controller
             $payload['password'] = Hash::make($data['password']);
         }
 
-        $doctor->update($payload);
-
-        $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
-
         $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
         $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
-        $doctor->services()->sync($chosen);
+
+        DB::transaction(function () use ($doctor, $payload, $activeClinicId, $chosen) {
+            $doctor->update($payload);
+            $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
+            $doctor->syncServicesForClinic($activeClinicId, $chosen);
+        });
 
         return redirect()->route('secretary.doctors.index')
             ->with('status', 'Doctor updated.');
@@ -141,7 +151,18 @@ class DoctorController extends Controller
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
 
         if ($doctor->clinics()->count() > 1) {
-            $doctor->clinics()->detach($activeClinicId);
+            DB::transaction(function () use ($doctor, $activeClinicId) {
+                DoctorSchedule::where('doctor_id', $doctor->id)
+                    ->where('clinic_id', $activeClinicId)
+                    ->delete();
+
+                DB::table('doctor_service')
+                    ->where('doctor_id', $doctor->id)
+                    ->where('clinic_id', $activeClinicId)
+                    ->delete();
+
+                $doctor->clinics()->detach($activeClinicId);
+            });
 
             return back()->with('status', 'Doctor unassigned from active clinic.');
         }
@@ -159,7 +180,9 @@ class DoctorController extends Controller
             'clinics' => function ($q) use ($activeClinicId) {
                 $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
             },
-            'services:id,name',
+            'services' => function ($q) use ($activeClinicId) {
+                $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+            },
             'doctorSchedules' => function ($q) use ($activeClinicId) {
                 $q->where('clinic_id', $activeClinicId)->with('clinic:id,name');
             },

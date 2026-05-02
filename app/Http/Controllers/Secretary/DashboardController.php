@@ -51,7 +51,7 @@ class DashboardController extends Controller
 
         $clinicsWithDoctors = Clinic::query()
             ->forIds([$activeClinicId])
-            ->withDashboardDoctorLaneRelations()
+            ->withDashboardDoctorLaneRelations($activeClinicId)
             ->orderBy('name')
             ->get(['id', 'name']);
 

@@ -51,7 +51,10 @@ class ClinicServiceController extends Controller
                 ->pluck('total', 'service_id');
 
             $activeDoctorCounts = DB::table('clinic_doctor as cd')
-                ->join('doctor_service as ds', 'ds.doctor_id', '=', 'cd.doctor_id')
+                ->join('doctor_service as ds', function ($join) {
+                    $join->on('ds.doctor_id', '=', 'cd.doctor_id')
+                        ->on('ds.clinic_id', '=', 'cd.clinic_id');
+                })
                 ->join('users as u', 'u.id', '=', 'cd.doctor_id')
                 ->where('cd.clinic_id', $clinic->id)
                 ->whereIn('ds.service_id', $serviceIds)
@@ -156,6 +159,7 @@ class ClinicServiceController extends Controller
         return DB::table('clinic_doctor as cd')
             ->join('doctor_service as ds', function ($join) use ($service) {
                 $join->on('ds.doctor_id', '=', 'cd.doctor_id')
+                    ->on('ds.clinic_id', '=', 'cd.clinic_id')
                     ->where('ds.service_id', '=', $service->id);
             })
             ->join('users as u', 'u.id', '=', 'cd.doctor_id')
@@ -183,12 +187,12 @@ class ClinicServiceController extends Controller
 
             $clinic->services()->detach($service->id);
 
-            if ($linkedDoctorIds->isNotEmpty()) {
-                DB::table('doctor_service')
-                    ->where('service_id', $service->id)
-                    ->whereIn('doctor_id', $linkedDoctorIds)
-                    ->delete();
+            DB::table('doctor_service')
+                ->where('clinic_id', $clinic->id)
+                ->where('service_id', $service->id)
+                ->delete();
 
+            if ($linkedDoctorIds->isNotEmpty()) {
                 if (Schema::hasTable('doctor_service_schedule')) {
                     $scheduleQuery = DB::table('doctor_service_schedule')
                         ->where('service_id', $service->id);

@@ -164,6 +164,12 @@
           </li>
         @else
 
+          @if(auth()->user()->is_secretary || auth()->user()->is_doctor)
+            <li class="nav-item d-flex align-items-center me-2">
+              @include('partials.active_clinic_switcher')
+            </li>
+          @endif
+
           <li class="nav-item me-2">
             @php
               $dashRoute = 'dashboard';

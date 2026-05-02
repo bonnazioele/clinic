@@ -1,4 +1,6 @@
-@php($clinics = auth()->check() && auth()->user()->is_secretary ? auth()->user()->secretaryClinics()->orderBy('name')->get() : collect())
+@php
+    $clinics = auth()->check() && auth()->user()->is_secretary ? auth()->user()->secretaryClinics()->orderBy('name')->get() : collect();
+@endphp
 @if($clinics->count() > 1)
 <form action="{{ route('secretary.active-clinic.update') }}" method="POST" class="d-inline" id="clinic-switcher-form">
     @csrf

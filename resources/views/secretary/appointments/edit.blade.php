@@ -35,7 +35,7 @@
       <label class="form-label">Service</label>
       <select name="service_id"
               class="form-select @error('service_id') is-invalid @enderror">
-        @foreach(\App\Models\Service::all() as $s)
+        @foreach($services as $s)
           <option value="{{ $s->id }}"
             @selected(old('service_id',$appointment->service_id)==$s->id)>
             {{ $s->name }}

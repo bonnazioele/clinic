@@ -144,7 +144,7 @@
                 </td>
                 <td class="py-3 ps-4">
                   @if($u->relationLoaded('services') && $u->services->isNotEmpty())
-                    {{ $u->services->pluck('name')->join(', ') }}
+                    {{ $u->services->pluck('name')->unique()->join(', ') }}
                   @else
                     <span class="text-muted">—</span>
                   @endif

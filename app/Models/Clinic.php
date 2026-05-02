@@ -108,12 +108,18 @@ class Clinic extends Model
         return $query->whereIn('id', $clinicIds);
     }
 
-    public function scopeWithDashboardDoctorLaneRelations($query)
+    public function scopeWithDashboardDoctorLaneRelations($query, ?int $clinicId = null)
     {
         return $query->with([
-            'doctors' => function ($doctorQuery) {
+            'doctors' => function ($doctorQuery) use ($clinicId) {
                 $doctorQuery->select('users.id', 'users.name')
-                    ->with(['services:id,name'])
+                    ->with(['services' => function ($serviceQuery) use ($clinicId) {
+                        $serviceQuery->select('services.id', 'services.name');
+
+                        if ($clinicId !== null) {
+                            $serviceQuery->wherePivot('clinic_id', $clinicId);
+                        }
+                    }])
                     ->orderBy('users.name');
             },
         ]);
@@ -129,4 +135,3 @@ class Clinic extends Model
         return strtolower($this->queue_mode ?? 'fcfs') === strtolower($mode);
     }
 }
-

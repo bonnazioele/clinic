@@ -38,6 +38,7 @@ class ClinicSelectionController extends Controller
 
         $data = $request->validate([
             'clinic_id' => ['required', 'integer', 'exists:clinics,id'],
+            'return_to' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $clinicId = (int) $data['clinic_id'];
@@ -49,6 +50,11 @@ class ClinicSelectionController extends Controller
         }
 
         $request->session()->put('active_clinic_id', $clinicId);
+
+        $returnTo = $data['return_to'] ?? null;
+        if (is_string($returnTo) && str_starts_with($returnTo, url('/'))) {
+            return redirect()->to($returnTo)->with('status', 'Active clinic changed.');
+        }
 
         return redirect()->route('doctor.dashboard');
     }

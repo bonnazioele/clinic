@@ -1,7 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
-@php($permitTypes = $permitTypes ?? config('clinic_permits.types', []))
+@php
+  $permitTypes = $permitTypes ?? config('clinic_permits.types', []);
+@endphp
 
 <div class="container py-4">
   <div class="row justify-content-center">
@@ -218,7 +220,9 @@
 
               <div class="row g-3">
                 @foreach($permitTypes as $permit)
-                  @php($key = $permit['key'])
+                  @php
+                    $key = $permit['key'];
+                  @endphp
                   <div class="col-md-4">
                     <div class="border rounded p-3 h-100 shadow-sm">
                       <div class="d-flex align-items-center mb-2">

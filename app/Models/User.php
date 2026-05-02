@@ -109,7 +109,21 @@ public function queueEntries()
             'doctor_service',
             'doctor_id',
             'service_id'
-        );
+        )->withPivot('clinic_id');
+    }
+
+    public function servicesForClinic(int $clinicId)
+    {
+        return $this->services()->wherePivot('clinic_id', $clinicId);
+    }
+
+    public function syncServicesForClinic(int $clinicId, array $serviceIds): void
+    {
+        $syncPayload = collect($serviceIds)
+            ->mapWithKeys(fn ($serviceId) => [(int) $serviceId => ['clinic_id' => $clinicId]])
+            ->all();
+
+        $this->servicesForClinic($clinicId)->sync($syncPayload);
     }
 
     public function dashboardServiceLabel(?QueueEntry $nowServing = null, ?QueueEntry $nextCandidate = null): string

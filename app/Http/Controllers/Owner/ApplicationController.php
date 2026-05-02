@@ -34,7 +34,16 @@ class ApplicationController extends Controller
             'clinic_email'  => ['required','email','max:255', Rule::unique('clinics','email')->whereNull('deleted_at')],
             'contact_first_name' => ['required','string','max:255'],
             'contact_last_name'  => ['required','string','max:255'],
-            'contact_person_email' => ['required','email','max:255', Rule::unique('users','email')],
+            'contact_person_email' => [
+                'required',
+                'email',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->canReuseContactEmail((string) $value)) {
+                        $fail('The contact person email has already been taken.');
+                    }
+                },
+            ],
             'latitude'      => ['nullable','numeric','between:-90,90'],
             'longitude'     => ['nullable','numeric','between:-180,180'],
             'logo'          => ['nullable','image','mimes:jpeg,png,jpg,gif,svg','max:2048'],
@@ -107,5 +116,29 @@ class ApplicationController extends Controller
         });
 
         return redirect()->route('owner.apply.thanks');
+    }
+
+    private function canReuseContactEmail(string $email): bool
+    {
+        $existingUser = User::where('email', $email)->first();
+
+        if (! $existingUser) {
+            return true;
+        }
+
+        if (! $existingUser->is_secretary) {
+            return false;
+        }
+
+        $hasActiveOwnedClinic = Clinic::query()
+            ->where('created_by_user_id', $existingUser->id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        $hasActiveSecretaryClinic = $existingUser->secretaryClinics()
+            ->whereNull('clinics.deleted_at')
+            ->exists();
+
+        return ! $hasActiveOwnedClinic && ! $hasActiveSecretaryClinic;
     }
 }

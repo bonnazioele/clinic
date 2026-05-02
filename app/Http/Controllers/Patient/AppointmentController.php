@@ -8,6 +8,7 @@ use App\Models\Clinic;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Notifications\PatientAppointmentBooked;
 use App\Notifications\SecretaryAppointmentBooked;
@@ -49,6 +50,9 @@ class AppointmentController extends Controller
         $clinics = Clinic::with(['services','doctors.services'])
             ->where('status', 'active')
             ->get();
+
+        $this->applyClinicScopedDoctorServices($clinics);
+
         return view('appointments.create', compact('clinics'));
     }
 
@@ -64,6 +68,20 @@ class AppointmentController extends Controller
         $date      = \Carbon\Carbon::parse($data['date']);
         $dateString = $date->toDateString();
         $dayOfWeek = $date->dayOfWeek;
+
+        if (! empty($data['service_id']) && ! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $data['clinic_id'],
+            (int) $data['service_id']
+        )) {
+            return response()->json([
+                'date' => $date->toDateString(),
+                'weekday' => $date->format('l'),
+                'slots' => [],
+                'schedule' => [],
+                'message' => 'Selected doctor does not offer this service at this clinic.'
+            ]);
+        }
 
         $schedules = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
@@ -168,6 +186,16 @@ class AppointmentController extends Controller
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
+
+        if (! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $data['clinic_id'],
+            (int) $data['service_id']
+        )) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+            ]);
+        }
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
@@ -292,6 +320,7 @@ class AppointmentController extends Controller
 
         $clinic = $appointment->clinic;
         $clinic->load(['services','doctors']);
+        $this->applyClinicScopedDoctorServices(collect([$clinic]));
         return view('appointments.edit', [
             'appointment' => $appointment,
             'clinic' => $clinic,
@@ -318,6 +347,16 @@ class AppointmentController extends Controller
         $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = $data['appointment_time'];
         $clinicId = $appointment->clinic_id;
+
+        if (! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $clinicId,
+            (int) $data['service_id']
+        )) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+            ]);
+        }
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)
@@ -378,5 +417,40 @@ class AppointmentController extends Controller
         $appointment->delete();
 
         return back()->with('status', 'Appointment cancelled and slot freed.');
+    }
+
+    private function doctorOffersServiceForClinic(int $doctorId, int $clinicId, int $serviceId): bool
+    {
+        return DB::table('doctor_service as ds')
+            ->join('clinic_doctor as cd', function ($join) {
+                $join->on('cd.doctor_id', '=', 'ds.doctor_id')
+                    ->on('cd.clinic_id', '=', 'ds.clinic_id');
+            })
+            ->join('clinic_service as cs', function ($join) {
+                $join->on('cs.clinic_id', '=', 'ds.clinic_id')
+                    ->on('cs.service_id', '=', 'ds.service_id');
+            })
+            ->where('ds.doctor_id', $doctorId)
+            ->where('ds.clinic_id', $clinicId)
+            ->where('ds.service_id', $serviceId)
+            ->exists();
+    }
+
+    private function applyClinicScopedDoctorServices($clinics): void
+    {
+        foreach ($clinics as $clinic) {
+            if (! $clinic->relationLoaded('doctors')) {
+                continue;
+            }
+
+            foreach ($clinic->doctors as $doctor) {
+                $doctor->setRelation(
+                    'services',
+                    $doctor->servicesForClinic((int) $clinic->id)
+                        ->orderBy('services.name')
+                        ->get(['services.id', 'services.name'])
+                );
+            }
+        }
     }
 }

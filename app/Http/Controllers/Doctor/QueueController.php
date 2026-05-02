@@ -6,12 +6,9 @@ use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
 use App\Events\QueueUpdated;
 use App\Http\Middleware\EnsureSelectedClinic;
-use App\Models\Appointment;
-use App\Models\Clinic;
 use App\Models\QueueEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class QueueController extends Controller
 {
