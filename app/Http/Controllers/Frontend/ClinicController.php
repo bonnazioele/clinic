@@ -13,37 +13,37 @@ use Illuminate\Support\Facades\Storage;
 
 class ClinicController extends Controller
 {
-    // =========================================================================
-    // PUBLIC LISTING
-    // =========================================================================
-
     public function index(Request $req)
     {
+        $services = Service::orderBy('name')->get();
+
         $query = Clinic::with('services')
             ->whereIn('status', ['approved', 'active']);
 
         if ($req->filled('service_id')) {
-            $query->whereHas('services', fn ($q) => $q->where('services.id', $req->service_id));
+            $query->whereHas('services', function ($q) use ($req) {
+                $q->where('services.id', $req->service_id);
+            });
         }
 
         if ($req->filled('name')) {
             $name = trim($req->name);
+
             $query->where(function ($q) use ($name) {
                 $q->where('name', 'like', '%' . $name . '%')
-                  ->orWhere('address', 'like', '%' . $name . '%');
+                    ->orWhere('address', 'like', '%' . $name . '%');
             });
         }
 
-        // location keyword search
         if ($req->filled('location')) {
             $location = trim($req->location);
+
             $query->where(function ($q) use ($location) {
                 $q->where('name', 'like', '%' . $location . '%')
-                  ->orWhere('address', 'like', '%' . $location . '%');
+                    ->orWhere('address', 'like', '%' . $location . '%');
             });
         }
 
-        // search nearby clinics using lat/lng
         if ($req->filled('lat') && $req->filled('lng')) {
             $lat = (float) $req->lat;
             $lng = (float) $req->lng;
@@ -66,14 +66,9 @@ class ClinicController extends Controller
         }
 
         $clinics = $query->paginate(10)->withQueryString();
-        $services = Service::orderBy('name')->get(['id', 'name']);
 
         return view('clinics.index', compact('clinics', 'services'));
     }
-
-    // =========================================================================
-    // REGISTRATION
-    // =========================================================================
 
     public function create()
     {
@@ -103,7 +98,6 @@ class ClinicController extends Controller
             'services.*'           => 'integer|exists:services,id',
         ]);
 
-        // auto-geocode from address if lat/lng not provided
         if (empty($validated['gps_latitude']) || empty($validated['gps_longitude'])) {
             $coords = $this->geocodeAddress($validated['address']);
 
@@ -121,26 +115,22 @@ class ClinicController extends Controller
             $validated['cover_image'] = $request->file('cover_image')->store('clinics/covers', 'public');
         }
 
+        $selectedServices = $validated['services'] ?? [];
+        unset($validated['services']);
+
         $validated['created_by_user_id'] = Auth::id();
         $validated['status'] = 'pending';
 
-        $services = $validated['services'] ?? [];
-        unset($validated['services']);
-
         $clinic = Clinic::create($validated);
 
-        if ($services) {
-            $clinic->services()->sync($services);
+        if (!empty($selectedServices)) {
+            $clinic->services()->sync($selectedServices);
         }
 
         return redirect()
             ->route('clinics.index')
             ->with('success', 'Clinic registered successfully. It will be visible once approved.');
     }
-
-    // =========================================================================
-    // SHOW
-    // =========================================================================
 
     public function show(Request $request, Clinic $clinic)
     {
@@ -155,7 +145,9 @@ class ClinicController extends Controller
 
         if ($user) {
             $canEdit = $user->is_secretary
-                && $clinic->secretaries()->where('clinic_secretary.secretary_id', $user->id)->exists();
+                && $clinic->secretaries()
+                    ->where('clinic_secretary.secretary_id', $user->id)
+                    ->exists();
         }
 
         return response()->json([
@@ -170,7 +162,7 @@ class ClinicController extends Controller
             'logo_url'        => $clinic->logo ? asset('storage/' . $clinic->logo) : null,
             'cover_image_url' => $clinic->cover_image ? asset('storage/' . $clinic->cover_image) : null,
             'services'        => $clinic->services->map(fn ($s) => [
-                'id' => $s->id,
+                'id'   => $s->id,
                 'name' => $s->name,
             ]),
             'doctors'         => $clinic->doctors->map(fn ($d) => [
@@ -181,10 +173,6 @@ class ClinicController extends Controller
             'edit_url' => $canEdit ? route('secretary.clinic.edit', $clinic) : null,
         ]);
     }
-
-    // =========================================================================
-    // EDIT / UPDATE
-    // =========================================================================
 
     public function edit(Clinic $clinic)
     {
@@ -232,6 +220,7 @@ class ClinicController extends Controller
             if ($clinic->logo) {
                 Storage::disk('public')->delete($clinic->logo);
             }
+
             $validated['logo'] = $request->file('logo')->store('clinics/logos', 'public');
         }
 
@@ -239,27 +228,25 @@ class ClinicController extends Controller
             if ($clinic->cover_image) {
                 Storage::disk('public')->delete($clinic->cover_image);
             }
+
             $validated['cover_image'] = $request->file('cover_image')->store('clinics/covers', 'public');
         }
 
-        $services = $validated['services'] ?? [];
+        $selectedServices = $validated['services'] ?? [];
         unset($validated['services']);
 
         $clinic->update($validated);
-        $clinic->services()->sync($services);
+        $clinic->services()->sync($selectedServices);
 
         return redirect()
             ->route('secretary.clinic.edit', $clinic)
             ->with('success', 'Clinic updated successfully.');
     }
 
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
-
     private function geocodeAddress(string $address): ?array
     {
         $address = trim($address);
+
         if ($address === '') {
             return null;
         }
@@ -283,7 +270,7 @@ class ClinicController extends Controller
 
         $first = $response->json()[0] ?? null;
 
-        if (! $first || !isset($first['lat'], $first['lon'])) {
+        if (! $first || ! isset($first['lat'], $first['lon'])) {
             return null;
         }
 
@@ -298,8 +285,11 @@ class ClinicController extends Controller
         $user = Auth::user();
 
         abort_unless(
-            $user && $user->is_secretary
-            && $clinic->secretaries()->where('clinic_secretary.secretary_id', $user->id)->exists(),
+            $user
+            && $user->is_secretary
+            && $clinic->secretaries()
+                ->where('clinic_secretary.secretary_id', $user->id)
+                ->exists(),
             403,
             'You are not authorized to manage this clinic.'
         );

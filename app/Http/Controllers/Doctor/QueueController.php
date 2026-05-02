@@ -52,7 +52,8 @@ class QueueController extends Controller
         return view('doctor.queue.index', compact('waiting'));
     }
 
-    public function serve(Request $request, QueueEntry $entry)
+
+public function serve(Request $request, QueueEntry $entry)
 {
     $doctor = Auth::user();
     $activeClinic = $this->activeClinic($request);
@@ -82,9 +83,6 @@ class QueueController extends Controller
             'status' => 'served',
             'served_at' => now(),
             'patient_disposition' => 'completed',
-            'doctor_notes' => $data['doctor_notes'] ?? null,
-            'prescription' => $data['prescription'] ?? null,
-            'follow_up_at' => $data['follow_up_at'] ?? null,
         ]);
 
         if ($fresh->appointment && $fresh->appointment->status !== 'completed') {

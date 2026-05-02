@@ -17,14 +17,14 @@ class AppointmentObserver
     /**
      * Handle the Appointment "updated" event.
      */
-    public function updated(Appointment $appointment)
+public function updated(Appointment $appointment)
 {
     if ($appointment->isDirty('status') && $appointment->status === 'completed') {
         $appointment->user->patientHistories()->create([
             'clinic_name'   => $appointment->clinic->name,
-            'doctor'        => $appointment->doctor->name ?? null,
+            'doctor_name'   => $appointment->doctor->name ?? null,
             'diagnosis'     => $appointment->service->name,
-            'treatment'     => null, // fill in if you have a treatment field on appointments
+            'treatment'     => null,
             'date_of_visit' => $appointment->appointment_date,
             'document_path' => null,
         ]);
