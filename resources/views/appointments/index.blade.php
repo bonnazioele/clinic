@@ -11,7 +11,7 @@
   }
 
   .appointments-page {
-    width: 100%;
+    width: 95%;
     max-width: none;
     padding: 1.5rem 0 2rem;
   }
@@ -80,7 +80,7 @@
   .book-main-btn {
     border-radius: 16px;
     padding: 0.75rem 1.15rem;
-    font-weight: 800;
+    font-weight: 500;
     box-shadow: 0 14px 28px rgba(13, 110, 253, 0.22);
   }
 
@@ -102,7 +102,7 @@
     gap: 0.65rem;
     margin: 0;
     color: #0f172a;
-    font-weight: 900;
+    font-weight: 500;
     letter-spacing: -0.035em;
   }
 
@@ -121,7 +121,7 @@
     background: #eaf3ff;
     color: #0d6efd;
     font-size: 0.85rem;
-    font-weight: 900;
+    font-weight: 500;
   }
 
   .queue-panel {
@@ -174,31 +174,31 @@
   .queue-title {
     margin: 0 0 0.2rem;
     color: #0f172a;
-    font-weight: 900;
+    font-weight: 500;
     font-size: 1.08rem;
   }
 
   .queue-meta {
     color: #334155;
-    font-weight: 650;
+    font-weight: 500;
     line-height: 1.5;
   }
 
   .queue-meta span {
     color: #0d6efd;
-    font-weight: 900;
+    font-weight: 500;
   }
 
   .queue-time {
     color: #64748b;
     font-size: 0.92rem;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .queue-btn {
     border-radius: 14px;
     padding: 0.6rem 1rem;
-    font-weight: 800;
+    font-weight: 500;
     white-space: nowrap;
   }
 
@@ -287,7 +287,7 @@
     border-radius: 999px;
     padding: 0.45rem 0.78rem;
     font-size: 0.8rem;
-    font-weight: 900;
+    font-weight: 500;
     white-space: nowrap;
   }
 
@@ -317,7 +317,7 @@
   .info-label {
     font-size: 0.78rem;
     color: #64748b;
-    font-weight: 800;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin-bottom: 0.1rem;
@@ -325,7 +325,7 @@
 
   .info-value {
     font-size: 0.92rem;
-    font-weight: 800;
+    font-weight: 500;
     color: #0f172a;
     line-height: 1.35;
   }
@@ -333,7 +333,7 @@
   .info-subvalue {
     font-size: 0.82rem;
     color: #64748b;
-    font-weight: 700;
+    font-weight: 500;
   }
 
   .appointment-actions {
@@ -348,7 +348,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    font-weight: 900;
+    font-weight: 500;
     color: #0f9f6e;
   }
 
@@ -364,7 +364,7 @@
 
   .action-buttons .btn {
     border-radius: 14px;
-    font-weight: 800;
+    font-weight: 500;
   }
 
   .empty-state {
@@ -393,13 +393,13 @@
   .empty-title {
     margin: 0 0 0.35rem;
     color: #0f172a;
-    font-weight: 950;
+    font-weight: 500;
   }
 
   .empty-text {
     color: #64748b;
     margin-bottom: 1.1rem;
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .past-accordion {
@@ -419,7 +419,7 @@
     background: #ffffff;
     box-shadow: none;
     color: #0f172a;
-    font-weight: 950;
+    font-weight: 500;
     font-size: 1.08rem;
     letter-spacing: -0.025em;
   }
@@ -459,14 +459,14 @@
     display: none;
     color: #64748b;
     font-size: 0.74rem;
-    font-weight: 900;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
   .past-value {
     color: #0f172a;
-    font-weight: 800;
+    font-weight: 500;
     line-height: 1.35;
   }
 
@@ -480,7 +480,7 @@
     border: 1px solid rgba(191, 219, 254, 0.9);
     background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.9));
     color: #334155;
-    font-weight: 650;
+    font-weight: 500;
   }
 
   .reminder-box i {
