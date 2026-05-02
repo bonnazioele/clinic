@@ -498,8 +498,8 @@
 </head>
 <body>
   <div class="patient-page">
-    @include('partials.patient-navbar')
-    @include('partials.patient-sidebar')
+    @include('partials.navbars.patient-navbar')
+    @include('partials.sidebars.patient-sidebar')
 
     <main class="patient-main">
       @yield('content')

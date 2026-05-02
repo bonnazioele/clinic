@@ -194,7 +194,7 @@
     <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
        class="sidebar-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
       <i class="bi bi-house-heart"></i>
-      <span>Dashboard</span>
+      <span>Home</span>
     </a>
 
     <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}"
@@ -215,7 +215,7 @@
       <span>Clinics</span>
     </a>
 
-    <a href="{{ Route::has('profile.edit') ? route('profile.edit') : url('/profile') }}"
+    <a href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}"
        class="sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
       <i class="bi bi-person"></i>
       <span>Profile</span>
