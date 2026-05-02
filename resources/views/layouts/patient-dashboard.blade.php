@@ -27,19 +27,46 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
       background: var(--bg);
       color: var(--text);
+      overflow-x: hidden;
     }
 
     .patient-shell {
-      display: flex;
       min-height: 100vh;
       background:
         radial-gradient(circle at top right, rgba(13,110,253,.08), transparent 35%),
         linear-gradient(180deg, #f9fcff 0%, #f1f7ff 100%);
+    }
+
+    .patient-navbar {
+      height: 78px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 24px;
+      margin: 0px 0px 22px 0px;
+      /* position: sticky; */
+      top: 18px;
+      z-index: 200;
+    }
+
+    .patient-layout {
+      display: flex;
+      align-items: flex-start;
+      min-height: calc(100vh - 124px);
     }
 
     .patient-sidebar {
@@ -51,9 +78,9 @@
       flex-direction: column;
       align-items: center;
       position: sticky;
-      top: 0;
-      height: 100vh;
-      z-index: 50;
+      top: 122px;
+      height: calc(100vh - 122px);
+      z-index: 80;
       box-shadow: 8px 0 28px rgba(2, 8, 23, .18);
     }
 
@@ -67,6 +94,7 @@
       font-size: 32px;
       margin-bottom: 28px;
       text-decoration: none;
+      transition: .2s ease;
     }
 
     .sidebar-nav {
@@ -102,6 +130,12 @@
       color: #0d6efd;
     }
 
+    .sidebar-link.active:hover,
+    .sidebar-logo.active:hover {
+      background: #0d6efd;
+      color: #fff;
+    }
+
     .sidebar-link:not(.active),
     .sidebar-logo:not(.active) {
       background: transparent;
@@ -115,25 +149,8 @@
     .patient-main {
       flex: 1;
       min-width: 0;
-      padding: 24px 36px 40px;
+      padding: 0 36px 40px;
       zoom: 0.8;
-    }
-
-    .patient-navbar {
-      height: 78px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 0 24px;
-      margin-bottom: 22px;
-      position: sticky;
-      top: 18px;
-      z-index: 40;
     }
 
     .nav-brand {
@@ -304,7 +321,7 @@
     }
 
     .dashboard-container {
-      max-width: 1540px;
+      max-width: 100%;
       margin: 0 auto;
     }
 
@@ -329,10 +346,23 @@
       background: rgba(255,255,255,.12);
     }
 
-    .stat-blue { background: linear-gradient(135deg, #0866f2, #2993ff); }
-    .stat-green { background: linear-gradient(135deg, #087b3d, #2bbf6a); }
-    .stat-yellow { background: linear-gradient(135deg, #ffd85a, #ffc107); color: #162033; }
-    .stat-cyan { background: linear-gradient(135deg, #a9efff, #d9f8ff); color: #123047; }
+    .stat-blue {
+      background: linear-gradient(135deg, #0866f2, #2993ff);
+    }
+
+    .stat-green {
+      background: linear-gradient(135deg, #087b3d, #2bbf6a);
+    }
+
+    .stat-yellow {
+      background: linear-gradient(135deg, #ffd85a, #ffc107);
+      color: #162033;
+    }
+
+    .stat-cyan {
+      background: linear-gradient(135deg, #a9efff, #d9f8ff);
+      color: #123047;
+    }
 
     .stat-content {
       display: flex;
@@ -613,16 +643,19 @@
     }
 
     @media (max-width: 992px) {
+      .patient-navbar {
+        margin: 18px 18px 18px 18px;
+        top: 12px;
+      }
+
       .patient-sidebar {
         width: 74px;
+        top: 112px;
+        height: calc(100vh - 112px);
       }
 
       .patient-main {
-        padding: 22px 18px;
-      }
-
-      .patient-navbar {
-        top: 12px;
+        padding: 0 18px 32px;
       }
 
       .appointment-row {
@@ -654,13 +687,30 @@
         display: block;
       }
 
+      .patient-navbar {
+        position: static;
+        height: auto;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+        margin: 12px;
+        border-radius: 18px;
+      }
+
+      .patient-layout {
+        display: block;
+        min-height: auto;
+      }
+
       .patient-sidebar {
-        width: 100%;
+        width: calc(100% - 24px);
         height: auto;
         position: static;
         flex-direction: row;
         justify-content: space-between;
         padding: 12px;
+        margin: 0 12px 16px;
+        border-radius: 18px;
       }
 
       .sidebar-logo {
@@ -683,12 +733,9 @@
         margin-top: 0;
       }
 
-      .patient-navbar {
-        position: static;
-        height: auto;
-        flex-direction: column;
-        align-items: stretch;
-        padding: 16px;
+      .patient-main {
+        padding: 0 12px 26px;
+        zoom: 1;
       }
 
       .topbar-actions {
@@ -715,140 +762,143 @@
 
 <body>
   <div class="patient-shell">
-    <aside class="patient-sidebar">
-      <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
-         class="sidebar-logo {{ request()->routeIs('dashboard') ? 'active' : '' }}"
-         title="Dashboard">
-        <i class="bi bi-heart-pulse"></i>
+
+    <nav class="patient-navbar">
+      <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}" class="nav-brand">
+        <span class="nav-brand-icon">
+          <i class="bi bi-heart-pulse"></i>
+        </span>
+        <span class="nav-brand-text">CliniQ</span>
       </a>
 
-      <nav class="sidebar-nav">
-        <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
-           class="sidebar-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
-           title="Dashboard">
-          <i class="bi bi-house-heart"></i>
+      <div class="topbar-actions">
+        <a href="{{ Route::has('notifications.index') ? route('notifications.index') : '#' }}" class="notification-btn" title="Notifications">
+          <i class="bi bi-bell"></i>
         </a>
 
-        <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}"
-           class="sidebar-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}"
-           title="Appointments">
-          <i class="bi bi-calendar-check"></i>
-        </a>
-
-        <a href="{{ Route::has('queue.status') ? route('queue.status') : url('/queue/status') }}"
-           class="sidebar-link {{ request()->routeIs('queue.*') ? 'active' : '' }}"
-           title="Queue">
-          <i class="bi bi-people"></i>
-        </a>
-
-        <a href="{{ Route::has('clinics.index') ? route('clinics.index') : url('/clinics') }}"
-           class="sidebar-link {{ request()->routeIs('clinics.*') ? 'active' : '' }}"
-           title="Clinics">
-          <i class="bi bi-hospital"></i>
-        </a>
-
-        <a href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}"
-           class="sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}"
-           title="Profile">
-          <i class="bi bi-person"></i>
-        </a>
-      </nav>
-
-      <div class="sidebar-bottom">
-        <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}">
-          @csrf
-          <button type="submit" class="sidebar-link border-0 bg-transparent" title="Logout">
-            <i class="bi bi-box-arrow-right"></i>
-          </button>
-        </form>
-      </div>
-    </aside>
-
-    <main class="patient-main">
-      <nav class="patient-navbar">
-        <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}" class="nav-brand">
-          <span class="nav-brand-icon">
-            <i class="bi bi-heart-pulse"></i>
+        <button class="avatar-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="avatar-circle">
+            {{ strtoupper(substr(Auth::user()->name ?? 'P', 0, 1)) }}
           </span>
-          <span class="nav-brand-text">CliniQ</span>
+          <span class="d-none d-md-inline fw-semibold">
+            {{ Auth::user()->name ?? 'Patient' }}
+          </span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a class="dropdown-item" href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}">
+              <i class="bi bi-person me-2"></i>Profile
+            </a>
+          </li>
+
+          <li><hr class="dropdown-divider"></li>
+
+          <li>
+            <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}" class="d-inline w-100">
+              @csrf
+              <button type="submit" class="dropdown-item text-danger">
+                <i class="bi bi-box-arrow-right me-2"></i>Logout
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="patient-layout">
+      <aside class="patient-sidebar">
+        <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
+           class="sidebar-logo {{ request()->routeIs('dashboard') ? 'active' : '' }}"
+           title="Dashboard">
+          <i class="bi bi-heart-pulse"></i>
         </a>
 
-        <div class="topbar-actions">
-          <a href="{{ Route::has('notifications.index') ? route('notifications.index') : '#' }}" class="notification-btn" title="Notifications">
-            <i class="bi bi-bell"></i>
+        <nav class="sidebar-nav">
+          <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
+             class="sidebar-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
+             title="Dashboard">
+            <i class="bi bi-house-heart"></i>
           </a>
 
-          <button class="avatar-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="avatar-circle">
-              {{ strtoupper(substr(Auth::user()->name ?? 'P', 0, 1)) }}
-            </span>
-            <span class="d-none d-md-inline fw-semibold">
-              {{ Auth::user()->name ?? 'Patient' }}
-            </span>
-            <i class="bi bi-chevron-down"></i>
-          </button>
+          <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}"
+             class="sidebar-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}"
+             title="Appointments">
+            <i class="bi bi-calendar-check"></i>
+          </a>
 
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <a class="dropdown-item" href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}">
-                <i class="bi bi-person me-2"></i>Profile
-              </a>
-            </li>
+          <a href="{{ Route::has('queue.status') ? route('queue.status') : url('/queue/status') }}"
+             class="sidebar-link {{ request()->routeIs('queue.*') ? 'active' : '' }}"
+             title="Queue">
+            <i class="bi bi-people"></i>
+          </a>
 
-            <li><hr class="dropdown-divider"></li>
+          <a href="{{ Route::has('clinics.index') ? route('clinics.index') : url('/clinics') }}"
+             class="sidebar-link {{ request()->routeIs('clinics.*') ? 'active' : '' }}"
+             title="Clinics">
+            <i class="bi bi-hospital"></i>
+          </a>
 
-            <li>
-              <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}" class="d-inline w-100">
-                @csrf
-                <button type="submit" class="dropdown-item text-danger">
-                  <i class="bi bi-box-arrow-right me-2"></i>Logout
-                </button>
-              </form>
-            </li>
-          </ul>
+          <a href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}"
+             class="sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}"
+             title="Profile">
+            <i class="bi bi-person"></i>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}">
+            @csrf
+            <button type="submit" class="sidebar-link border-0 bg-transparent" title="Logout">
+              <i class="bi bi-box-arrow-right"></i>
+            </button>
+          </form>
         </div>
-      </nav>
+      </aside>
 
-      <div class="welcome-card">
-        <div class="welcome-content">
-          @php
-            $title = 'Patient Dashboard';
-            $subtitle = "Here's what's happening with your health journey.";
+      <main class="patient-main">
+        <div class="welcome-card">
+          <div class="welcome-content">
+            @php
+              $title = 'Patient Dashboard';
+              $subtitle = "Here's what's happening with your health journey.";
 
-            if (request()->routeIs('appointments.*')) {
-                $title = 'My Appointments';
-                $subtitle = 'View and manage your appointments';
-            } elseif (request()->routeIs('queue.*')) {
-                $title = 'Queue';
-                $subtitle = 'Track your queue status';
-            } elseif (request()->routeIs('clinics.*')) {
-                $title = 'Clinics';
-                $subtitle = 'Browse clinics and services';
-            } elseif (request()->routeIs('profile.*')) {
-                $title = 'My Profile';
-                $subtitle = 'Manage your account';
-            }
-          @endphp
+              if (request()->routeIs('appointments.*')) {
+                  $title = 'My Appointments';
+                  $subtitle = 'View and manage your appointments';
+              } elseif (request()->routeIs('queue.*')) {
+                  $title = 'Queue';
+                  $subtitle = 'Track your queue status';
+              } elseif (request()->routeIs('clinics.*')) {
+                  $title = 'Clinics';
+                  $subtitle = 'Browse clinics and services';
+              } elseif (request()->routeIs('profile.*')) {
+                  $title = 'My Profile';
+                  $subtitle = 'Manage your account';
+              }
+            @endphp
 
-          @if(request()->routeIs('dashboard'))
-            <h1>Welcome back, {{ Auth::user()->name ?? 'Patient' }}! 👋</h1>
-            <p><i class="bi bi-heart-pulse me-2"></i>{{ $subtitle }}</p>
-          @else
-            <h1>{{ $title }}</h1>
-            <p><i class="bi bi-info-circle me-2"></i>{{ $subtitle }}</p>
+            @if(request()->routeIs('dashboard'))
+              <h1>Welcome back, {{ Auth::user()->name ?? 'Patient' }}! 👋</h1>
+              <p><i class="bi bi-heart-pulse me-2"></i>{{ $subtitle }}</p>
+            @else
+              <h1>{{ $title }}</h1>
+              <p><i class="bi bi-info-circle me-2"></i>{{ $subtitle }}</p>
+            @endif
+          </div>
+
+          @if(!request()->routeIs('appointments.create') && Route::has('appointments.create'))
+            <a href="{{ route('appointments.create') }}" class="book-appointment-btn">
+              <i class="bi bi-calendar-plus"></i>
+              <span>Book Appointment</span>
+            </a>
           @endif
         </div>
 
-        @if(!request()->routeIs('appointments.create') && Route::has('appointments.create'))
-          <a href="{{ route('appointments.create') }}" class="book-appointment-btn">
-            <i class="bi bi-calendar-plus"></i>
-            <span>Book Appointment</span>
-          </a>
-        @endif
-      </div>
-
-      @yield('content')
-    </main>
+        @yield('content')
+      </main>
+    </div>
   </div>
 
   <button class="back-top" onclick="window.scrollTo({top:0, behavior:'smooth'})">
