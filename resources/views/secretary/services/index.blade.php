@@ -68,6 +68,7 @@
                   <td>{{ $activeDoctorCount }}</td>
                   <td>{{ $doctorInQueueCount }}</td>
                   <td class="text-end">
+<<<<<<< Updated upstream
                     <div class="d-inline-flex gap-1">
                       <form method="POST" action="{{ route('secretary.services.detach',[$clinic,$s]) }}"
                             data-confirm="{{ $requiresDetachWarning ? 'This service has active appointments and assigned doctors. Proceeding will: Cancel all appointments and notify affected patients. Unlink doctors and clear their related schedules. Close active queues and waitlists. Do you want to proceed?' : 'Do you want to proceed?' }}"
@@ -85,6 +86,16 @@
                         <button class="btn btn-sm btn-outline-warning"><i class="bi bi-link-45deg me-1"></i>Detach</button>
                       </form>
                     </div>
+=======
+                    <form method="POST" action="{{ route('secretary.services.detach',[$clinic,$s]) }}"
+                          class="d-inline"
+                          data-confirm="Detach this service from the clinic? Patients with upcoming appointments keep their bookings."
+                          data-confirm-title="Detach Service"
+                          data-confirm-btn="Detach">
+                      @csrf @method('DELETE')
+                      <button class="btn btn-sm btn-outline-warning"><i class="bi bi-link-45deg me-1"></i>Detach</button>
+                    </form>
+>>>>>>> Stashed changes
                   </td>
                 </tr>
                 @endforeach

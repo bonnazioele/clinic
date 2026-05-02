@@ -22,6 +22,7 @@ class QueueController extends Controller
     public function index(Request $request)
     {
         $doctor = Auth::user();
+<<<<<<< Updated upstream
         $activeClinic = $this->activeClinic($request);
 
         $waitingQuery = QueueEntry::with('appointment.user','clinic')
@@ -32,6 +33,28 @@ class QueueController extends Controller
             ->whereIn('status', ['waiting','now_serving']);
 
         if ($activeClinic->queue_mode === 'priority') {
+=======
+        $assignedClinics = $doctor->clinics()->orderBy('name')->get(['clinics.id', 'clinics.name']);
+        $clinicIds = $assignedClinics->pluck('id');
+
+        $selectedClinicId = (int) $request->input('clinic_id', 0);
+        if ($selectedClinicId > 0 && ! $clinicIds->contains($selectedClinicId)) {
+            $selectedClinicId = 0;
+        }
+
+        $waitingQuery = QueueEntry::with('appointment.user','clinic')
+            ->whereIn('clinic_id', $clinicIds)
+            ->whereIn('status', ['waiting','now_serving']);
+
+        if ($selectedClinicId > 0) {
+            $waitingQuery->where('clinic_id', $selectedClinicId);
+        }
+
+        $clinicModes = \App\Models\Clinic::whereIn('id', $selectedClinicId > 0 ? [$selectedClinicId] : $clinicIds)
+            ->pluck('queue_mode')
+            ->unique();
+        if ($clinicModes->count() === 1 && $clinicModes->first() === 'priority') {
+>>>>>>> Stashed changes
             $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
                 ->select('queue_entries.*')
                 ->orderByRaw("CASE WHEN queue_entries.status = 'now_serving' THEN 0 ELSE 1 END")
@@ -46,7 +69,7 @@ class QueueController extends Controller
         }
         $waiting = $waitingQuery->get();
 
-        return view('doctor.queue.index', compact('waiting'));
+        return view('doctor.queue.index', compact('waiting', 'assignedClinics', 'selectedClinicId'));
     }
 
 

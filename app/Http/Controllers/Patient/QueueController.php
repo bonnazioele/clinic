@@ -25,7 +25,7 @@ class QueueController extends Controller
     {
         $existingEntry = QueueEntry::where('clinic_id', $clinic->id)
             ->where('user_id', Auth::id())
-            ->where('status', 'waiting')
+            ->whereIn('status', ['waiting', 'now_serving'])
             ->first();
 
         if ($existingEntry) {
@@ -70,7 +70,7 @@ class QueueController extends Controller
             abort_unless($entry->user_id === Auth::id(), 403);
 
             $ahead = QueueEntry::where('clinic_id', $entry->clinic_id)
-                ->where('status','waiting')
+                ->whereIn('status', ['waiting', 'now_serving'])
                 ->where('queue_number','<', $entry->queue_number)
                 ->count();
 
@@ -78,7 +78,7 @@ class QueueController extends Controller
         } else {
             $userQueues = QueueEntry::with(['clinic', 'appointment'])
                 ->where('user_id', Auth::id())
-                ->where('status', 'waiting')
+                ->whereIn('status', ['waiting', 'now_serving'])
                 ->orderBy('created_at', 'desc')
                 ->get();
 

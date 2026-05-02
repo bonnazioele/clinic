@@ -32,7 +32,7 @@
       <div class="col-md-4">
         @php $waitingTotal = collect($queueByClinic)->sum('waiting'); @endphp
         <div class="p-3 border rounded bg-warning text-dark">
-          <div class="small">Waiting Across Clinics</div>
+          <div class="small">Active Across Clinics</div>
           <div class="h4 mb-0">{{ $waitingTotal }}</div>
         </div>
       </div>
@@ -60,7 +60,7 @@
                   <a href="{{ route('admin.clinics.show', $c) }}" class="text-decoration-none">{{ $c->name }}</a>
                 </div>
                 <div class="d-flex gap-2">
-                  <span class="badge bg-warning text-dark">Waiting: {{ $queueByClinic[$c->id]['waiting'] ?? 0 }}</span>
+                  <span class="badge bg-warning text-dark">Active: {{ $queueByClinic[$c->id]['waiting'] ?? 0 }}</span>
                   <span class="badge bg-success">Served Today: {{ $queueByClinic[$c->id]['servedToday'] ?? 0 }}</span>
                 </div>
               </li>

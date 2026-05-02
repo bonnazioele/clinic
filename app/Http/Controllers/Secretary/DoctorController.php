@@ -60,44 +60,98 @@ class DoctorController extends Controller
         $data = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+
+            /*
+             * Do NOT use unique:users,email here.
+             * Same email should reuse the same doctor account.
+             */
+            'email' => 'required|email|max:255',
+
+            /*
+             * Password is only required if the doctor account does not exist yet.
+             */
+            'password' => 'nullable|string|min:6|confirmed',
+
             'service_ids' => 'array',
             'service_ids.*' => 'exists:services,id',
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
         ]);
 
-        $doctor = User::create([
-            'name' => trim($data['first_name'] . ' ' . $data['last_name']),
-            'first_name' => $data['first_name'],
-            'last_name' => $data['last_name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'phone' => $data['phone'] ?? null,
-            'address' => $data['address'] ?? null,
-            'is_doctor' => true,
-        ]);
+        $email = strtolower(trim($data['email']));
+
+        $doctor = User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($doctor) {
+            if (! $doctor->is_doctor) {
+                return back()
+                    ->withErrors([
+                        'email' => 'This email already belongs to a non-doctor account.',
+                    ])
+                    ->withInput();
+            }
+
+            $alreadyInClinic = $doctor->clinics()
+                ->where('clinics.id', $activeClinicId)
+                ->exists();
+
+            if ($alreadyInClinic) {
+                return back()
+                    ->withErrors([
+                        'email' => 'This doctor is already assigned to this clinic.',
+                    ])
+                    ->withInput();
+            }
+        } else {
+            if (empty($data['password'])) {
+                return back()
+                    ->withErrors([
+                        'password' => 'Password is required for a new doctor account.',
+                    ])
+                    ->withInput();
+            }
+
+            $doctor = User::create([
+                'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'email' => $email,
+                'password' => Hash::make($data['password']),
+                'phone' => $data['phone'] ?? null,
+                'address' => $data['address'] ?? null,
+                'is_doctor' => true,
+            ]);
+        }
 
         $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
         $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
 
         DB::transaction(function () use ($doctor, $activeClinicId, $chosen) {
-            $doctor->clinics()->sync([$activeClinicId]);
+            /*
+             * Important:
+             * syncWithoutDetaching keeps the doctor in other clinics.
+             * Do not use sync() here.
+             */
+            $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
+
             $doctor->syncServicesForClinic($activeClinicId, $chosen);
         });
 
         return redirect()->route('secretary.doctors.index')
-            ->with('status', 'Doctor added.');
+            ->with('status', 'Doctor added to clinic.');
     }
 
     public function edit(Request $request, User $doctor)
     {
         $activeClinicId = $this->activeClinicId($request);
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
-        $doctor->load(['services' => function ($q) use ($activeClinicId) {
-            $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
-        }]);
+
+        $doctor->load([
+            'services' => function ($q) use ($activeClinicId) {
+                $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+            },
+        ]);
+
         $services = $this->servicesForActiveClinic($activeClinicId);
 
         return view('secretary.doctors.edit', compact('doctor', 'services', 'activeClinicId'));
@@ -123,12 +177,13 @@ class DoctorController extends Controller
             'name' => trim($data['first_name'] . ' ' . $data['last_name']),
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
-            'email' => $data['email'],
+            'email' => strtolower(trim($data['email'])),
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
+            'is_doctor' => true,
         ];
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $payload['password'] = Hash::make($data['password']);
         }
 
@@ -137,7 +192,12 @@ class DoctorController extends Controller
 
         DB::transaction(function () use ($doctor, $payload, $activeClinicId, $chosen) {
             $doctor->update($payload);
+
+            /*
+             * Keep doctor attached to other clinics.
+             */
             $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
+
             $doctor->syncServicesForClinic($activeClinicId, $chosen);
         });
 
@@ -176,6 +236,7 @@ class DoctorController extends Controller
     {
         $activeClinicId = $this->activeClinicId($request);
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
+
         $doctor->load([
             'clinics' => function ($q) use ($activeClinicId) {
                 $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');

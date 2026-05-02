@@ -575,12 +575,54 @@
     <div class="container-fluid appointments-page px-0">
       @include('partials.alerts')
 
+<<<<<<< Updated upstream
       <div class="appointments-shell">
         <div class="appointments-hero">
           <div class="appointments-hero-row">
             <div class="appointments-title-wrap">
               <div class="appointments-title-icon">
                 <i class="bi bi-calendar2-check"></i>
+=======
+
+      @php
+        $activeQueues = auth()->user()->queueEntries()
+          ->whereIn('status', ['waiting', 'now_serving'])
+          ->with('clinic')
+          ->orderBy('created_at', 'desc')
+          ->get();
+      @endphp
+
+      @if($activeQueues->count() > 0)
+        <div class="alert alert-info border-0 rounded-3 mb-4">
+          <h6 class="fw-semibold mb-3">
+            <i class="bi bi-people me-2"></i>Current Queue Status
+          </h6>
+          <div class="row g-3">
+            @foreach($activeQueues as $queueEntry)
+              <div class="col-md-6">
+                <div class="d-flex align-items-center justify-content-between p-3 bg-white rounded">
+                  <div>
+                    <div class="fw-semibold">{{ $queueEntry->clinic->name }}</div>
+                    <div class="text-muted small">
+                      <i class="bi bi-hash me-1"></i>Queue #{{ $queueEntry->queue_number }}
+                    </div>
+                    <div class="text-muted small">
+                      <i class="bi bi-clock me-1"></i>Joined at {{ $queueEntry->formatted_created_time }}
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    @php($queueIsNowServing = $queueEntry->status === 'now_serving')
+                    <span class="badge {{ $queueIsNowServing ? 'bg-primary text-white' : 'bg-warning text-dark' }} mb-2 d-inline-block">
+                      <i class="bi {{ $queueIsNowServing ? 'bi-megaphone' : 'bi-clock' }} me-1"></i>{{ $queueIsNowServing ? 'Now Serving' : 'Waiting' }}
+                    </span>
+                    <br>
+                    <a href="{{ route('queue.status.entry', $queueEntry) }}"
+                       class="btn btn-sm btn-primary">
+                      <i class="bi bi-eye me-1"></i>View Details
+                    </a>
+                  </div>
+                </div>
+>>>>>>> Stashed changes
               </div>
 
               <div>
@@ -615,6 +657,7 @@
                   Current Queue Status
                 </h4>
 
+<<<<<<< Updated upstream
                 <span class="count-pill">{{ $activeQueues->count() }} Active</span>
               </div>
 
@@ -624,6 +667,77 @@
                     <div class="queue-left">
                       <div class="queue-icon">
                         <i class="bi bi-heart-pulse"></i>
+=======
+      @if($upcoming->isEmpty())
+        <div class="alert alert-info text-center rounded-3">
+          No upcoming appointments.
+          <a href="{{ route('appointments.create') }}" class="text-decoration-none fw-semibold">Book one now</a>.
+        </div>
+      @else
+        <div class="table-responsive mb-5">
+          <table class="table align-middle table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Clinic</th>
+                <th>Service</th>
+                <th>Doctor</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach($upcoming as $a)
+                <tr>
+                  <td class="fw-semibold">{{ $a->clinic->name }}</td>
+                  <td>{{ $a->service->name }}</td>
+                  <td>{{ $a->doctor ? ('Dr. ' . $a->doctor->name) : '—' }}</td>
+                  <td>{{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}</td>
+                  <td>{{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}</td>
+                  <td>
+                    <span class="badge rounded-pill {{ $a->status_badge_class }}">
+                      {{ $a->status_label }}
+                    </span>
+                  </td>
+                  <td>
+                    @if($a->status === 'scheduled')
+                      <div class="d-flex gap-2">
+                        @php
+                          // Check if user is in queue for this appointment
+                          $inQueue = \App\Models\QueueEntry::where('appointment_id', $a->id)
+                            ->whereIn('status', ['waiting', 'now_serving'])
+                            ->first();
+                        @endphp
+
+                        @if($inQueue)
+                          @php($inQueueNowServing = $inQueue->status === 'now_serving')
+                          <span class="badge {{ $inQueueNowServing ? 'bg-primary text-white' : 'bg-success text-white' }}">
+                            <i class="bi {{ $inQueueNowServing ? 'bi-megaphone' : 'bi-check-circle' }} me-1"></i>{{ $inQueueNowServing ? 'Now Serving' : 'In Queue' }} #{{ $inQueue->queue_number }}
+                          </span>
+                          <a href="{{ route('queue.status.entry', $inQueue) }}"
+                             class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="bi bi-eye me-1"></i>View Status
+                          </a>
+                        @else
+                          <span class="badge bg-secondary text-white">
+                            <i class="bi bi-clock me-1"></i>Queue Pending
+                          </span>
+                        @endif
+
+                        <form method="POST"
+                          action="{{ route('appointments.destroy', $a) }}"
+                          class="d-inline"
+                          data-confirm="Cancel this appointment? You will also be removed from the queue."
+                          data-confirm-title="Cancel Appointment"
+                          data-confirm-btn="Cancel Appointment">
+                          @csrf
+                          @method('DELETE')
+                          <button class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                          </button>
+                        </form>
+>>>>>>> Stashed changes
                       </div>
 
                       <div>

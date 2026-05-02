@@ -4,13 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  const scheduleTypeInput = document.getElementById('schedule_type');
-  const recurringFields = document.getElementById('recurringFields');
-  const oneTimeFields = document.getElementById('oneTimeFields');
-  const recurringRadio = document.getElementById('scheduleRecurring');
-  const oneTimeRadio = document.getElementById('scheduleOneTime');
   const dayCheckboxes = Array.from(form.querySelectorAll('input[name="days[]"]'));
-  const oneTimeDate = document.getElementById('one_time_date');
   const timeBlocksWrap = document.getElementById('timeBlocksWrap');
   const addTimeBlockBtn = document.getElementById('addTimeBlockBtn');
   const scheduleFormMessage = document.getElementById('scheduleFormMessage');
@@ -19,11 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const formMethod = document.getElementById('formMethod');
   const scheduleIdInput = document.getElementById('schedule_id');
   const dayOfWeekInput = document.getElementById('day_of_week');
-  const serviceSelect = document.getElementById('service_ids');
-  const limitRecurringPeriod = document.getElementById('limitRecurringPeriod');
-  const recurringPeriodFields = document.getElementById('recurringPeriodFields');
-  const startDateInput = document.getElementById('start_date');
-  const endDateInput = document.getElementById('end_date');
+  const serviceSelect = document.getElementById('service_id');
   const deleteModalEl = document.getElementById('deleteScheduleModal');
   const confirmDeleteBtn = document.getElementById('confirmDeleteScheduleBtn');
   const deleteModal = deleteModalEl && window.bootstrap ? new window.bootstrap.Modal(deleteModalEl) : null;
@@ -144,42 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function setScheduleType(type) {
-    scheduleTypeInput.value = type;
-    if (type === 'one_time') {
-      recurringFields.classList.add('d-none');
-      oneTimeFields.classList.remove('d-none');
-      if (limitRecurringPeriod) limitRecurringPeriod.checked = false;
-      if (recurringPeriodFields) recurringPeriodFields.classList.add('d-none');
-      if (startDateInput) startDateInput.value = '';
-      if (endDateInput) endDateInput.value = '';
-      dayCheckboxes.forEach(cb => { cb.checked = false; });
-    } else {
-      recurringFields.classList.remove('d-none');
-      oneTimeFields.classList.add('d-none');
-      if (oneTimeDate) oneTimeDate.value = '';
-      if (limitRecurringPeriod?.checked) {
-        recurringPeriodFields?.classList.remove('d-none');
-      }
-    }
-  }
-
-  function setRecurringPeriodEnabled(enabled) {
-    if (!limitRecurringPeriod || !recurringPeriodFields) return;
-    limitRecurringPeriod.checked = enabled;
-    recurringPeriodFields.classList.toggle('d-none', !enabled);
-    if (!enabled) {
-      if (startDateInput) startDateInput.value = '';
-      if (endDateInput) endDateInput.value = '';
-    }
-  }
-
-  recurringRadio.addEventListener('change', () => setScheduleType('recurring'));
-  oneTimeRadio.addEventListener('change', () => setScheduleType('one_time'));
-  limitRecurringPeriod?.addEventListener('change', () => {
-    setRecurringPeriodEnabled(limitRecurringPeriod.checked);
-  });
-
   addTimeBlockBtn.addEventListener('click', () => {
     const row = addTimeBlock();
     row.querySelector('input[type="time"]')?.focus();
@@ -216,33 +170,26 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
-  function validateTypeSelection() {
-    const type = scheduleTypeInput.value;
-    if (type === 'one_time') {
-      if (!oneTimeDate.value) {
-        showMessage('Pick a specific date for the one-time schedule.');
-        return false;
-      }
-      return true;
-    }
-
+  function validateDaySelection() {
     const selectedDays = dayCheckboxes.filter(cb => cb.checked);
     if (!selectedDays.length) {
-      showMessage('Select at least one day for a recurring schedule.');
+      showMessage('Select at least one day for your recurring schedule.');
       return false;
     }
     return true;
   }
 
-  form.addEventListener('submit', event => {
-    if (!validateTypeSelection() || !validateBlocks()) {
-      event.preventDefault();
-      return;
+  function validateServiceSelection() {
+    if (!serviceSelect || serviceSelect.value) {
+      return true;
     }
+    showMessage('Please select a service.');
+    return false;
+  }
 
-    if (scheduleTypeInput.value === 'recurring' && limitRecurringPeriod && !limitRecurringPeriod.checked) {
-      if (startDateInput) startDateInput.value = '';
-      if (endDateInput) endDateInput.value = '';
+  form.addEventListener('submit', event => {
+    if (!validateServiceSelection() || !validateDaySelection() || !validateBlocks()) {
+      event.preventDefault();
     }
   });
 
@@ -254,14 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dayOfWeekInput) dayOfWeekInput.value = '';
     submitLabel.textContent = 'Save schedule';
     cancelEditBtn.classList.add('d-none');
-    setScheduleType('recurring');
-    setRecurringPeriodEnabled(false);
     ensureAtLeastOneBlock();
     // Reset service selection
     if (serviceSelect) {
-      Array.from(serviceSelect.options).forEach(option => {
-        option.selected = false;
-      });
+      serviceSelect.value = '';
     }
     hideMessage();
   }
@@ -277,11 +220,8 @@ document.addEventListener('DOMContentLoaded', () => {
       hideMessage();
 
       const id = row.dataset.id;
-      const scheduleType = row.dataset.scheduleType || 'recurring';
-      const clinicId = row.dataset.clinicId;
+      const serviceId = row.dataset.serviceId || '';
       const day = row.dataset.day;
-      const startDate = row.dataset.startDate || '';
-      const endDate = row.dataset.endDate || '';
       const startTime = row.dataset.startTime || '';
       const endTime = row.dataset.endTime || '';
 
@@ -292,26 +232,13 @@ document.addEventListener('DOMContentLoaded', () => {
       submitLabel.textContent = 'Update schedule';
       cancelEditBtn.classList.remove('d-none');
 
-      setScheduleType(scheduleType);
       ensureAtLeastOneBlock();
 
-      // Note: Services are clinic-specific, so we don't pre-select them
-      // The doctor can choose new services if they want to modify them
       if (serviceSelect) {
-        Array.from(serviceSelect.options).forEach(option => {
-          option.selected = false;
-        });
+        serviceSelect.value = serviceId;
       }
 
-      if (scheduleType === 'one_time') {
-        oneTimeDate.value = startDate;
-      } else {
-        dayCheckboxes.forEach(cb => { cb.checked = Number(cb.value) === Number(day); });
-        const hasRange = Boolean(startDate || endDate);
-        setRecurringPeriodEnabled(hasRange);
-        if (startDateInput) startDateInput.value = startDate;
-        if (endDateInput) endDateInput.value = endDate;
-      }
+      dayCheckboxes.forEach(cb => { cb.checked = Number(cb.value) === Number(day); });
 
       const firstRow = blockRows()[0];
       if (firstRow) {
@@ -340,8 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   ensureAtLeastOneBlock();
-  setRecurringPeriodEnabled(Boolean(startDateInput?.value || endDateInput?.value));
-  setScheduleType(scheduleTypeInput.value || 'recurring');
   updateBreakNotes();
 
   const calendarEl = document.getElementById('doctorScheduleCalendar');
@@ -366,21 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       events.forEach(schedule => {
         if (!schedule.is_active) return;
-
-        if (schedule.schedule_type === 'one_time') {
-          const date = toDate(schedule.start_date);
-          if (!date || date < rangeStart || date > rangeEnd) return;
-          const stamp = formatDate(date);
-          rendered.push({
-            id: `schedule-${schedule.id}-${stamp}`,
-            title: schedule.service,
-            start: `${stamp}T${schedule.start_time}:00`,
-            end: `${stamp}T${schedule.end_time}:00`,
-            display: 'block',
-            extendedProps: { scheduleId: schedule.id, clinic: schedule.service }
-          });
-          return;
-        }
 
         const startAnchor = new Date(rangeStart.getTime());
         const dayDiff = (schedule.day_of_week - startAnchor.getDay() + 7) % 7;

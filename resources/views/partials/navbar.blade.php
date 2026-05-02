@@ -109,6 +109,12 @@
           @elseif(auth()->user()->is_doctor)
 
             <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('doctor.appointments.*')) active @endif"
+                 href="{{ route('doctor.appointments.index') }}">
+                <i class="bi bi-calendar-check me-1"></i>Upcoming Appointments
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link @if(request()->routeIs('doctor.queue.*')) active @endif"
                  href="{{ route('doctor.queue.index') }}">
                 <i class="bi bi-list-ol me-1"></i>Queue
@@ -138,6 +144,12 @@
               <a class="nav-link @if(request()->routeIs('queue.status')) active @endif"
                  href="{{ route('queue.status') }}">
                 <i class="bi bi-clock me-1"></i>Queue Status
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link @if(request()->routeIs('reports.*')) active @endif"
+                 href="{{ route('reports.index') }}">
+                <i class="bi bi-bar-chart-line me-1"></i>Reports
               </a>
             </li>
           @endif

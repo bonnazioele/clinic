@@ -9,27 +9,13 @@ use App\Models\DoctorSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class ScheduleController extends Controller
 {
     use InteractsWithClinic;
 
     private const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    private function dateMatchesAllowedDays(?string $date, array $allowedDays): bool
-    {
-        if ($date === null || $date === '' || empty($allowedDays)) {
-            return true;
-        }
-
-        try {
-            $day = Carbon::parse($date)->dayOfWeek;
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        return in_array((int) $day, $allowedDays, true);
-    }
 
     public function __construct()
     {
@@ -59,21 +45,15 @@ class ScheduleController extends Controller
     public function store(Request $request)
     {
         $doctor = Auth::user();
-        $activeClinicId = $this->activeClinicId($request);
+<<<<<<< Updated upstream
         $assignedClinicIds = $doctor->clinics()->pluck('clinics.id')->map(fn ($id) => (int) $id)->all();
         $clinicNames = $doctor->clinics()->pluck('clinics.name', 'clinics.id');
         $doctorServiceIds = $doctor->services()->pluck('services.id')->map(fn ($id) => (int) $id)->all();
 
         $data = $request->validate([
-            'service_ids'  => 'nullable|array|min:1',
-            'service_ids.*' => 'integer|exists:services,id',
-            'schedule_type' => 'required|in:recurring,one_time',
+            'service_id'  => 'required|integer|exists:services,id',
             'days'        => 'nullable|array|min:1',
             'days.*'      => 'integer|min:0|max:6',
-            'day_of_week' => 'nullable|integer|min:0|max:6',
-            'one_time_date' => 'nullable|date',
-            'start_date'  => 'nullable|date',
-            'end_date'    => 'nullable|date|after_or_equal:start_date',
             'start_time'  => 'nullable|date_format:H:i',
             'end_time'    => 'nullable|date_format:H:i',
             'time_blocks' => 'nullable|array',
@@ -82,74 +62,40 @@ class ScheduleController extends Controller
             'is_active'   => 'nullable|boolean'
         ]);
 
-        $scheduleType = $data['schedule_type'];
-        $startDate = $data['start_date'] ?? null;
-        $endDate = $data['end_date'] ?? null;
+        $scheduleType = 'recurring';
+        $startDate = null;
+        $endDate = null;
         $isActive = $request->boolean('is_active', true);
+        $selectedServiceId = (int) $data['service_id'];
 
-        $selectedServiceIds = collect($data['service_ids'] ?? [])
-            ->filter()
+        if (! in_array($selectedServiceId, $doctorServiceIds, true)) {
+            return back()->withErrors(['service_id' => 'Please select a service you offer.'])->withInput();
+        }
+
+        $selectedClinicIds = $doctor->services()
+            ->where('services.id', $selectedServiceId)
+            ->pluck('clinic_id')
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
 
-        if ($selectedServiceIds->isEmpty()) {
-            return back()->withErrors(['service_ids' => 'Please select at least one service.'])->withInput();
-        }
-
-        $invalidServiceIds = $selectedServiceIds->diff($doctorServiceIds);
-        if ($invalidServiceIds->isNotEmpty()) {
-            return back()->withErrors(['service_ids' => 'Please select only services you offer.'])->withInput();
-        }
-
-        // Get all clinics for the selected services
-        $selectedClinicIds = collect();
-        foreach ($selectedServiceIds as $serviceId) {
-            $serviceClinics = $doctor->services()
-                ->where('services.id', $serviceId)
-                ->pluck('clinic_id');
-            $selectedClinicIds = $selectedClinicIds->merge($serviceClinics);
-        }
-        $selectedClinicIds = $selectedClinicIds->unique()->values();
-
         if ($selectedClinicIds->isEmpty()) {
-            return back()->withErrors(['service_ids' => 'The selected service(s) are not assigned to any clinics.'])->withInput();
+            return back()->withErrors(['service_id' => 'The selected service is not assigned to any clinic.'])->withInput();
         }
 
         $invalidClinicIds = $selectedClinicIds->diff($assignedClinicIds);
         if ($invalidClinicIds->isNotEmpty()) {
-            return back()->withErrors(['service_ids' => 'The selected service(s) belong to clinics not assigned to your account.'])->withInput();
+            return back()->withErrors(['service_id' => 'The selected service belongs to a clinic not assigned to your account.'])->withInput();
         }
 
-        if ($scheduleType === 'one_time') {
-            if (empty($data['one_time_date'])) {
-                return back()->withErrors(['one_time_date' => 'Please choose a specific date for the one-time schedule.'])->withInput();
-            }
-
-            $oneTimeDate = Carbon::parse($data['one_time_date'])->toDateString();
-            $startDate = $oneTimeDate;
-            $endDate = $oneTimeDate;
-            $selectedDays = collect([Carbon::parse($oneTimeDate)->dayOfWeek]);
-        } else {
-            $selectedDays = collect($data['days'] ?? [])
-                ->push($data['day_of_week'] ?? null)
-                ->filter(static fn ($value) => $value !== null)
-                ->map(static fn ($value) => (int) $value)
-                ->unique()
-                ->sort()
-                ->values();
-        }
+        $selectedDays = collect($data['days'] ?? [])
+            ->map(static fn ($value) => (int) $value)
+            ->unique()
+            ->sort()
+            ->values();
 
         if ($selectedDays->isEmpty()) {
             return back()->withErrors(['days' => 'Please select at least one day.'])->withInput();
-        }
-
-        $allowedDays = $selectedDays->all();
-        if (! $this->dateMatchesAllowedDays($startDate, $allowedDays)) {
-            return back()->withErrors(['start_date' => 'Start date must fall on one of the selected day(s).'])->withInput();
-        }
-        if (! $this->dateMatchesAllowedDays($endDate, $allowedDays)) {
-            return back()->withErrors(['end_date' => 'End date must fall on one of the selected day(s).'])->withInput();
         }
 
         $timeBlocks = $this->validatedTimeBlocks($data, true);
@@ -159,29 +105,20 @@ class ScheduleController extends Controller
 
         $overlapDays = [];
         if ($isActive) {
-            foreach ($selectedServiceIds as $serviceId) {
-                // Get clinics where this service is offered
-                $serviceClinics = $doctor->services()
-                    ->where('services.id', $serviceId)
-                    ->pluck('clinic_id')
-                    ->unique()
-                    ->values();
+            foreach ($selectedClinicIds as $clinicId) {
+                foreach ($selectedDays as $day) {
+                    foreach ($timeBlocks as $block) {
+                        $overlap = $this->overlappingScheduleQuery(
+                            doctorId: (int) $doctor->id,
+                            day: (int) $day,
+                            startTime: $block['start_time'],
+                            endTime: $block['end_time'],
+                            startDate: $startDate,
+                            endDate: $endDate
+                        )->exists();
 
-                foreach ($serviceClinics as $clinicId) {
-                    foreach ($selectedDays as $day) {
-                        foreach ($timeBlocks as $block) {
-                            $overlap = $this->overlappingScheduleQuery(
-                                doctorId: (int) $doctor->id,
-                                day: (int) $day,
-                                startTime: $block['start_time'],
-                                endTime: $block['end_time'],
-                                startDate: $startDate,
-                                endDate: $endDate
-                            )->exists();
-
-                            if ($overlap) {
-                                $overlapDays[] = (string) ($clinicId ? ($clinicNames[$clinicId] ?? 'Clinic') : 'Clinic').': '.(self::DAY_LABELS[$day] ?? ('Day '.$day));
-                            }
+                        if ($overlap) {
+                            $overlapDays[] = (string) ($clinicId ? ($clinicNames[$clinicId] ?? 'Clinic') : 'Clinic').': '.(self::DAY_LABELS[$day] ?? ('Day '.$day));
                         }
                     }
                 }
@@ -195,36 +132,100 @@ class ScheduleController extends Controller
                 ->withInput();
         }
 
-        foreach ($selectedServiceIds as $serviceId) {
-            // Get clinics where this service is offered
-            $serviceClinics = $doctor->services()
-                ->where('services.id', $serviceId)
-                ->pluck('clinic_id')
-                ->unique()
-                ->values();
-
-            foreach ($serviceClinics as $clinicId) {
-                foreach ($selectedDays as $day) {
-                    foreach ($timeBlocks as $block) {
-                        DoctorSchedule::create([
-                            'doctor_id'  => $doctor->id,
-                            'service_id' => $serviceId,
-                            'clinic_id'  => $clinicId,
-                            'schedule_type' => $scheduleType,
-                            'day_of_week'=> $day,
-                            'start_date' => $startDate,
-                            'end_date'   => $endDate,
-                            'start_time' => $block['start_time'],
-                            'end_time'   => $block['end_time'],
-                            'is_active'  => $isActive,
-                        ]);
-                    }
+        foreach ($selectedClinicIds as $clinicId) {
+            foreach ($selectedDays as $day) {
+                foreach ($timeBlocks as $block) {
+                    DoctorSchedule::create([
+                        'doctor_id'  => $doctor->id,
+                        'service_id' => $selectedServiceId,
+                        'clinic_id'  => $clinicId,
+                        'schedule_type' => $scheduleType,
+                        'day_of_week'=> $day,
+                        'start_date' => $startDate,
+                        'end_date'   => $endDate,
+                        'start_time' => $block['start_time'],
+                        'end_time'   => $block['end_time'],
+                        'is_active'  => $isActive,
+                    ]);
                 }
             }
         }
 
         $suffix = $selectedDays->count() > 1 ? 's' : '';
         return back()->with('status', 'Schedule added for '.$selectedDays->count().' day'.$suffix.' and '.count($timeBlocks).' time block(s).');
+=======
+
+        $validator = Validator::make($request->all(), [
+            'clinic_id'   => 'required|exists:clinics,id',
+            'day_of_weeks' => 'nullable|array|min:1',
+            'day_of_weeks.*' => 'integer|min:0|max:6|distinct',
+            'day_of_week' => 'nullable|integer|min:0|max:6',
+            'start_time'  => 'required|date_format:H:i',
+            'end_time'    => 'required|date_format:H:i|after:start_time',
+            'is_active'   => 'nullable|boolean'
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            if (! $request->filled('day_of_week') && empty($request->input('day_of_weeks', []))) {
+                $validator->errors()->add('day_of_weeks', 'Please select at least one day.');
+            }
+        });
+
+        $data = $validator->validate();
+
+        $days = collect($data['day_of_weeks'] ?? [])
+            ->map(fn ($day) => (int) $day);
+
+        if ($days->isEmpty() && isset($data['day_of_week'])) {
+            $days = collect([(int) $data['day_of_week']]);
+        }
+
+        $days = $days->unique()->values();
+
+        if (! $doctor->clinics()->where('clinics.id', $data['clinic_id'])->exists()) {
+            return back()->withErrors(['clinic_id' => 'You are not associated with this clinic.'])->withInput();
+        }
+
+        $overlapDays = [];
+        foreach ($days as $day) {
+            $overlap = DoctorSchedule::where('doctor_id', $doctor->id)
+                ->where('clinic_id', $data['clinic_id'])
+                ->where('day_of_week', $day)
+                ->where(function($q) use ($data) {
+                    $q->whereBetween('start_time', [$data['start_time'], $data['end_time']])
+                      ->orWhereBetween('end_time', [$data['start_time'], $data['end_time']])
+                      ->orWhere(function($q2) use ($data){
+                          $q2->where('start_time', '<=', $data['start_time'])
+                             ->where('end_time', '>=', $data['end_time']);
+                      });
+                })
+                ->exists();
+
+            if ($overlap) {
+                $overlapDays[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][$day] ?? (string) $day;
+            }
+        }
+
+        if (! empty($overlapDays)) {
+            return back()->withErrors([
+                'start_time' => 'Overlapping schedule entry for: '.implode(', ', $overlapDays).'.',
+            ])->withInput();
+        }
+
+        foreach ($days as $day) {
+            DoctorSchedule::create([
+                'doctor_id'  => $doctor->id,
+                'clinic_id'  => $data['clinic_id'],
+                'day_of_week'=> $day,
+                'start_time' => $data['start_time'],
+                'end_time'   => $data['end_time'],
+                'is_active'  => $request->boolean('is_active', true),
+            ]);
+        }
+
+        $count = $days->count();
+        return back()->with('status', $count > 1 ? "{$count} schedules added." : 'Schedule added.');
+>>>>>>> Stashed changes
     }
 
     public function destroy(DoctorSchedule $schedule)
@@ -258,11 +259,7 @@ class ScheduleController extends Controller
         }
 
         $data = $request->validate([
-            'schedule_type' => 'required|in:recurring,one_time',
             'day_of_week' => 'required|integer|min:0|max:6',
-            'one_time_date' => 'nullable|date',
-            'start_date'  => 'nullable|date',
-            'end_date'    => 'nullable|date|after_or_equal:start_date',
             'start_time'  => 'nullable|date_format:H:i',
             'end_time'    => 'nullable|date_format:H:i',
             'time_blocks' => 'nullable|array',
@@ -271,25 +268,10 @@ class ScheduleController extends Controller
             'is_active'   => 'nullable|boolean'
         ]);
 
-        $scheduleType = $data['schedule_type'];
-        $startDate = $data['start_date'] ?? null;
-        $endDate = $data['end_date'] ?? null;
+        $scheduleType = 'recurring';
+        $startDate = null;
+        $endDate = null;
         $isActive = $request->boolean('is_active', true);
-
-        if ($scheduleType === 'one_time' && ! empty($data['one_time_date'])) {
-            $oneTimeDate = Carbon::parse($data['one_time_date'])->toDateString();
-            $startDate = $oneTimeDate;
-            $endDate = $oneTimeDate;
-            $data['day_of_week'] = Carbon::parse($oneTimeDate)->dayOfWeek;
-        }
-
-        $allowedDays = [(int) $data['day_of_week']];
-        if (! $this->dateMatchesAllowedDays($startDate, $allowedDays)) {
-            return back()->withErrors(['start_date' => 'Start date must match the selected day of week.'])->withInput();
-        }
-        if (! $this->dateMatchesAllowedDays($endDate, $allowedDays)) {
-            return back()->withErrors(['end_date' => 'End date must match the selected day of week.'])->withInput();
-        }
 
         $timeBlocks = $this->validatedTimeBlocks($data, false);
         $block = $timeBlocks[0];
@@ -311,8 +293,8 @@ class ScheduleController extends Controller
         $schedule->update([
             'schedule_type' => $scheduleType,
             'day_of_week'=> $data['day_of_week'],
-            'start_date' => $startDate,
-            'end_date'   => $endDate,
+            'start_date' => null,
+            'end_date'   => null,
             'start_time' => $block['start_time'],
             'end_time'   => $block['end_time'],
             'is_active'  => $isActive,
@@ -372,31 +354,6 @@ class ScheduleController extends Controller
                 continue;
             }
 
-            if ($schedule->schedule_type === 'one_time') {
-                $eventDate = $schedule->start_date ? Carbon::parse($schedule->start_date) : $effectiveStart->copy();
-                if ($eventDate->betweenIncluded($effectiveStart, $effectiveEnd)) {
-                    $events[] = [
-                        'id' => 'schedule-'.$schedule->id.'-'.$eventDate->format('Ymd'),
-                        'title' => $schedule->service?->name ?? '—',
-                        'start' => $eventDate->copy()->setTimeFromTimeString($schedule->start_time)->toIso8601String(),
-                        'end' => $eventDate->copy()->setTimeFromTimeString($schedule->end_time)->toIso8601String(),
-                        'display' => 'block',
-                        'extendedProps' => [
-                            'clinic' => $schedule->clinic?->name ?? 'Clinic',
-                            'service' => $schedule->service?->name ?? null,
-                            'scheduleId' => $schedule->id,
-                            'schedule_type' => $schedule->schedule_type,
-                            'day_of_week' => $schedule->day_of_week,
-                            'start_date' => $schedule->start_date,
-                            'end_date' => $schedule->end_date,
-                            'start_time' => substr($schedule->start_time, 0, 5),
-                            'end_time' => substr($schedule->end_time, 0, 5),
-                        ],
-                    ];
-                }
-                continue;
-            }
-
             $cursor = $effectiveStart->copy()->nextOrSame($schedule->day_of_week);
             while ($cursor->lte($effectiveEnd)) {
                 $events[] = [
@@ -409,7 +366,6 @@ class ScheduleController extends Controller
                         'clinic' => $schedule->clinic?->name ?? 'Clinic',
                         'service' => $schedule->service?->name ?? null,
                         'scheduleId' => $schedule->id,
-                        'schedule_type' => $schedule->schedule_type,
                         'day_of_week' => $schedule->day_of_week,
                         'start_date' => $schedule->start_date,
                         'end_date' => $schedule->end_date,

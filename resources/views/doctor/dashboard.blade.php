@@ -2,7 +2,7 @@
 @section('title','Doctor Dashboard')
 @section('content')
 <div class="container py-4">
-  
+
   <div class="row mb-4">
     <div class="col-12">
       <div class="medical-card p-4 text-center">
@@ -24,7 +24,7 @@
           </div>
           <div class="col-md-3">
             <div class="p-4 rounded" style="background:#ffc107;">
-              <div class="fs-3 fw-bold">{{ $queue->count() }}</div>
+              <div class="fs-3 fw-bold">{{ $totalQueueCount }}</div>
               <div class="mt-1">People in Queue</div>
             </div>
           </div>
@@ -67,7 +67,17 @@
     </div>
     <div class="col-lg-4">
       <div class="dashboard-card h-100">
-        <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-people medical-icon me-2"></i>Active Queue</h5>
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+          <h5 class="fw-semibold mb-0 d-flex align-items-center"><i class="bi bi-people medical-icon me-2"></i>Active Queue</h5>
+          <form method="GET" action="{{ route('doctor.dashboard') }}" class="d-flex align-items-center gap-2">
+            <select name="clinic_id" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="0" @selected(empty($selectedClinicId))>All assigned clinics</option>
+              @foreach($clinics as $clinic)
+                <option value="{{ $clinic->id }}" @selected((int) $selectedClinicId === (int) $clinic->id)>{{ $clinic->name }}</option>
+              @endforeach
+            </select>
+          </form>
+        </div>
         @php $shown = 0; @endphp
         @forelse($queue as $q)
           @if($shown < 8)
@@ -75,17 +85,26 @@
               <div>
                 <span class="badge bg-warning text-dark me-2">#{{ $q->queue_number }}</span>
                 {{ $q->appointment?->user?->name ?? 'Patient' }}
+                <div class="text-muted mt-1"><i class="bi bi-building me-1"></i>{{ $q->clinic?->name ?? 'Clinic' }}</div>
               </div>
-              <span class="text-muted"><i class="bi bi-clock me-1"></i>{{ $q->created_at->diffForHumans(null,true) }}</span>
+              <div class="text-end">
+                <span class="badge bg-{{ $q->status_badge_class }} {{ in_array($q->status_badge_class,['warning','info']) ? 'text-dark' : '' }}">{{ $q->status_label }}</span>
+                <div class="text-muted mt-1"><i class="bi bi-clock me-1"></i>{{ $q->created_at->diffForHumans(null,true) }}</div>
+              </div>
             </div>
             @php $shown++; @endphp
           @endif
         @empty
-          <p class="text-muted small mb-0">No one waiting.</p>
+          <p class="text-muted small mb-0">No active queue in your assigned clinic(s).</p>
         @endforelse
         @if($queue->count() > 8)
           <p class="text-muted small mb-0">+{{ $queue->count() - 8 }} more…</p>
         @endif
+        <div class="mt-3">
+          <a href="{{ route('doctor.queue.index', ['clinic_id' => $selectedClinicId ?: null]) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-list-ol me-1"></i>Open full queue
+          </a>
+        </div>
       </div>
     </div>
     <div class="col-lg-4">

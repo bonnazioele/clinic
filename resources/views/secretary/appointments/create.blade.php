@@ -192,8 +192,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (!activeClinicId || !clinicMap[activeClinicId]) {
-        handleMissingClinicContext();
-        return;
+        const fallbackClinicId = Number(Object.keys(clinicMap)[0] || 0);
+        if (fallbackClinicId && clinicMap[fallbackClinicId]) {
+            activeClinicId = fallbackClinicId;
+            if (form) {
+                form.dataset.activeClinic = String(fallbackClinicId);
+            }
+            if (clinicSummary) {
+                clinicSummary.dataset.activeClinic = String(fallbackClinicId);
+            }
+        } else {
+            handleMissingClinicContext();
+            return;
+        }
     }
 
     function populatePatients() {

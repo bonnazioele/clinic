@@ -16,7 +16,7 @@
     <div class="col-md-6">
       <div class="p-4 border rounded bg-warning text-dark">
         <h4 class="fw-semibold">{{ $totalWaiting }}</h4>
-        <small>Total Waiting</small>
+        <small>Total Active</small>
       </div>
     </div>
     <div class="col-md-6">
@@ -49,7 +49,7 @@
             <div class="col-md-6 col-lg-4">
               <div class="clinic-card h-100 p-4">
                 <div class="d-flex justify-content-end mb-3">
-                  <span class="badge bg-warning text-dark">{{ $clinic->waiting_count }} waiting</span>
+                  <span class="badge bg-warning text-dark">{{ $clinic->waiting_count }} active</span>
                 </div>
 
                 <div class="mb-3">
@@ -60,6 +60,9 @@
                         <div class="d-flex align-items-center justify-content-between">
                           <div>
                             <span class="fw-semibold">#{{ $entry->queue_number }}</span>
+                            <span class="badge {{ $entry->status === 'now_serving' ? 'bg-primary text-white' : 'bg-warning text-dark' }} ms-2">
+                              {{ $entry->status === 'now_serving' ? 'Now Serving' : 'Waiting' }}
+                            </span>
                             <small class="text-muted d-block">{{ $entry->display_name }}</small>
                           </div>
                           <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ $entry->formatted_created_time }}</small>

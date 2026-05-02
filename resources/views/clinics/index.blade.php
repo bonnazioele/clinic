@@ -414,5 +414,10 @@
       .replace(/"/g,'&quot;')
       .replace(/'/g,'&#039;');
   }
+<<<<<<< Updated upstream
   </script>
+=======
+})();
+</script>
+>>>>>>> Stashed changes
 @endpush

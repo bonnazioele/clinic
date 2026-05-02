@@ -186,6 +186,7 @@ class ClinicServiceController extends Controller
 
         return back()->with('status', $successMessage);
     }
+<<<<<<< Updated upstream
 
     private function activeQueueCount(Clinic $clinic, Service $service): int
     {
@@ -270,4 +271,6 @@ class ClinicServiceController extends Controller
             }
         }
     }
+=======
+>>>>>>> Stashed changes
 }

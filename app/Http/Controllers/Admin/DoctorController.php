@@ -49,7 +49,7 @@ class DoctorController extends Controller
         $queueByClinic = [];
         foreach ($doctor->clinics as $clinic) {
             $waiting = \App\Models\QueueEntry::where('clinic_id', $clinic->id)
-                ->where('status','waiting')->count();
+                ->whereIn('status', ['waiting', 'now_serving'])->count();
             $servedToday = \App\Models\QueueEntry::where('clinic_id', $clinic->id)
                 ->where('status','served')
                 ->whereDate('served_at', today())->count();

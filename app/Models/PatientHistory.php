@@ -25,7 +25,7 @@ class PatientHistory extends Model
 
     public function patient()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function getDoctorNameAttribute(): ?string

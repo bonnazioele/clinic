@@ -14,17 +14,8 @@ class ActiveClinicController extends Controller
         if (! $user || ! $user->is_secretary) {
             abort(403);
         }
-
-        $data = $request->validate([
-            'clinic_id' => 'required|integer'
-        ]);
-
-        $clinicId = (int)$data['clinic_id'];
-        $assigned = $user->secretaryClinics()->where('clinics.id',$clinicId)->exists();
-        if (! $assigned) {
-            return back()->withErrors(['clinic_id' => 'Clinic not assigned to you.']);
-        }
-        $request->session()->put('active_clinic_id', $clinicId);
-        return back()->with('status','Active clinic changed.');
+        // In-session clinic switching is disabled. To change active clinic, log out and sign in.
+        return redirect()->route('secretary.dashboard')
+            ->with('status', 'In-session clinic switching is disabled. To change clinic, please log out and sign in.');
     }
 }

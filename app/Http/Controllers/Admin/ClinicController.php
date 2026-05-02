@@ -22,7 +22,6 @@ class ClinicController extends Controller
 
     public function index(Request $request)
     {
-        // Show all clinics by default; filter by status if provided
         $query = Clinic::with(['services', 'secretaries']);
 
         if ($request->filled('name')) {
@@ -93,7 +92,7 @@ class ClinicController extends Controller
                 'logo' => $logoPath,
                 'gps_latitude' => $data['latitude'],
                 'gps_longitude' => $data['longitude'],
-                'status' => 'approved',
+                'status' => 'active',
             ]);
 
             $clinic->services()->sync($data['service_ids'] ?? []);
@@ -288,7 +287,7 @@ class ClinicController extends Controller
                 $owner->save();
             }
 
-            $clinic->status = 'approved';
+            $clinic->status = 'active';
             $clinic->created_by_user_id = $owner->id;
             $clinic->save();
 

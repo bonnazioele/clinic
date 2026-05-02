@@ -22,6 +22,12 @@ class ClinicSelectionController extends Controller
             abort(403, 'No clinics are assigned to your account.');
         }
 
+        $activeClinicId = (int) $request->session()->get('active_clinic_id');
+        if ($activeClinicId > 0 && $clinics->contains('id', $activeClinicId)) {
+            return redirect()->route('doctor.dashboard')
+                ->with('status', 'To switch clinics, please log out and sign in again.');
+        }
+
         return view('secretary.choose-clinic', [
             'clinics' => $clinics,
             'currentClinicId' => (int) $request->session()->get('active_clinic_id'),
@@ -40,6 +46,13 @@ class ClinicSelectionController extends Controller
             'clinic_id' => ['required', 'integer', 'exists:clinics,id'],
             'return_to' => ['nullable', 'string', 'max:2048'],
         ]);
+
+        $activeClinicId = (int) $request->session()->get('active_clinic_id');
+        $hasActiveClinic = $activeClinicId > 0 && $user->clinics()->where('clinics.id', $activeClinicId)->exists();
+        if ($hasActiveClinic) {
+            return redirect()->route('doctor.dashboard')
+                ->with('status', 'To switch clinics, please log out and sign in again.');
+        }
 
         $clinicId = (int) $data['clinic_id'];
 

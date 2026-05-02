@@ -8,7 +8,17 @@
         <h2 class="fw-bold text-primary mb-1 d-flex align-items-center"><i class="bi bi-list-ol medical-icon me-2"></i>Queue</h2>
         <p class="text-muted mb-0">Patients currently waiting or now serving</p>
       </div>
-      <span class="badge bg-primary"><i class="bi bi-people me-1"></i>{{ $waiting->count() }} waiting</span>
+      <div class="d-flex align-items-center gap-2">
+        <form method="GET" action="{{ route('doctor.queue.index') }}" class="d-flex align-items-center gap-2">
+          <select name="clinic_id" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="0" @selected(empty($selectedClinicId))>All assigned clinics</option>
+            @foreach($assignedClinics as $clinic)
+              <option value="{{ $clinic->id }}" @selected((int) $selectedClinicId === (int) $clinic->id)>{{ $clinic->name }}</option>
+            @endforeach
+          </select>
+        </form>
+        <span class="badge bg-primary"><i class="bi bi-people me-1"></i>{{ $waiting->count() }} active</span>
+      </div>
     </div>
   </div>
 
@@ -18,6 +28,7 @@
         <thead>
           <tr>
             <th class="px-4 py-3">#</th>
+            <th class="px-4 py-3">Clinic</th>
             <th class="px-4 py-3">Patient</th>
             <th class="px-4 py-3">Appointment Time</th>
             <th class="px-4 py-3">Status</th>
@@ -29,6 +40,7 @@
           @forelse($waiting as $entry)
             <tr @class(['table-warning'=> $entry->status==='now_serving'])>
               <td class="px-4 py-3"><span class="badge bg-warning text-dark">#{{ $entry->queue_number }}</span></td>
+              <td class="px-4 py-3">{{ $entry->clinic?->name ?? 'Clinic' }}</td>
               <td class="px-4 py-3">{{ $entry->appointment?->user?->name ?? 'Patient' }}</td>
               <td class="px-4 py-3">{{ $entry->appointment?->appointment_time ? time12($entry->appointment->appointment_time) : '-' }}</td>
               <td class="px-4 py-3">

@@ -87,6 +87,7 @@ Route::middleware(['auth'])
 
     Route::get('/queue/status', [QueueController::class, 'status'])->name('queue.status');
     Route::get('/queue/status/{entry}', [QueueController::class, 'status'])->name('queue.status.entry');
+     Route::get('/reports', [\App\Http\Controllers\UserReportController::class, 'index'])->name('reports.index');
     Route::post('/queue/join/{clinic}', [QueueController::class, 'join'])->name('queue.join');
      Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])->name('queue.leave');
 
@@ -205,6 +206,7 @@ Route::prefix('doctor')
       ->name('doctor.')
       ->group(function(){
            Route::get('/dashboard', [\App\Http\Controllers\Doctor\DashboardController::class,'index'])->name('dashboard');
+          Route::get('/appointments', [\App\Http\Controllers\Doctor\AppointmentController::class,'index'])->name('appointments.index');
            Route::get('/queue', [\App\Http\Controllers\Doctor\QueueController::class,'index'])->name('queue.index');
            Route::post('/queue/{entry}/serve', [\App\Http\Controllers\Doctor\QueueController::class,'serve'])->name('queue.serve');
 

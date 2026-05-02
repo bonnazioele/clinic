@@ -11,13 +11,13 @@
   <div class="medical-card p-4">
     <div class="d-flex justify-content-between mb-3">
       <h5><i class="bi bi-people me-2"></i>Active Queue</h5>
-      <span class="badge bg-primary">{{ $waiting->count() }} waiting</span>
+      <span class="badge bg-primary">{{ $waiting->count() }} active</span>
     </div>
 
     @if($waiting->isEmpty())
       <div class="text-center py-5">
         <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
-        <h6 class="mt-3">Queue is Empty</h6>
+        <h6 class="mt-3">No Active Queue Entries</h6>
       </div>
     @else
     <div class="table-responsive">
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const reschedModalEl = document.getElementById('reschedModal');
   if (!reschedModalEl) return;
   const reschedModal = new bootstrap.Modal(reschedModalEl);
-  
+
   document.querySelectorAll('[data-bs-target="#reschedModal"][data-action-url]').forEach(btn => {
     btn.addEventListener('click', () => {
       const url = btn.getAttribute('data-action-url');
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = reschedModalEl.querySelector('form');
     form.setAttribute('action', actionUrl);
   });
-  
+
   const hasErrors = reschedModalEl.querySelector('.text-danger');
   if (hasErrors) {
     const stored = (() => { try { return localStorage.getItem('lastReschedActionUrl'); } catch(e) { return null; }})();

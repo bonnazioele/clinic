@@ -42,7 +42,7 @@
             
             <div class="mb-3">
               <label class="form-label">Address <span class="text-danger">*</span></label>
-              <textarea name="address"
+              <textarea id="clinic_address" name="address"
                         class="form-control @error('address') is-invalid @enderror"
                         rows="3"
                         required>{{ old('address', $clinic->address) }}</textarea>
@@ -111,35 +111,34 @@
             
             <div class="mb-3">
               <label class="form-label">Location <span class="text-danger">*</span></label>
-              <small class="text-muted d-block mb-2">Click on the map or drag the marker to set the clinic's location</small>
+              <small class="text-muted d-block mb-2">Search for your clinic location, then pick a result to auto-set coordinates.</small>
+              <label for="location_search" class="form-label small">Search Location</label>
+              <input
+                type="text"
+                id="location_search"
+                class="form-control"
+                placeholder="Search barangay, street, city, or landmark"
+                autocomplete="off"
+              >
+              <div id="locationSearchResults" class="list-group mt-2 d-none"></div>
+              <small class="text-muted d-block mt-2">You can also click the map or drag the marker for precise pinning.</small>
               <div id="mapPicker" style="height: 300px;" class="border rounded"></div>
             </div>
 
-            
-            <div class="row">
-              <div class="col">
-                <label class="form-label">Latitude <span class="text-danger">*</span></label>
-                <input type="text"
-                       id="lat"
-                       name="latitude"
-                       class="form-control @error('latitude') is-invalid @enderror"
-                       value="{{ old('latitude', $clinic->gps_latitude) }}"
-                       readonly
-                       required>
-                @error('latitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
-              </div>
-              <div class="col">
-                <label class="form-label">Longitude <span class="text-danger">*</span></label>
-                <input type="text"
-                       id="lng"
-                       name="longitude"
-                       class="form-control @error('longitude') is-invalid @enderror"
-                       value="{{ old('longitude', $clinic->gps_longitude) }}"
-                       readonly
-                       required>
-                @error('longitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
-              </div>
-            </div>
+            <input type="hidden"
+                   id="lat"
+                   name="latitude"
+                   class="@error('latitude') is-invalid @enderror"
+                   value="{{ old('latitude', $clinic->gps_latitude) }}"
+                   required>
+            <input type="hidden"
+                   id="lng"
+                   name="longitude"
+                   class="@error('longitude') is-invalid @enderror"
+                   value="{{ old('longitude', $clinic->gps_longitude) }}"
+                   required>
+            @error('latitude')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            @error('longitude')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
             
             <div class="mb-3">
@@ -281,8 +280,11 @@
     updatePanel();
 
     // Initialize map with existing coordinates
-  var initialLat = {{ $clinic->gps_latitude ?: '10.3157' }};
-  var initialLng = {{ $clinic->gps_longitude ?: '123.8854' }};
+  var initialLat = {{ old('latitude', $clinic->gps_latitude) ?: '10.3157' }};
+  var initialLng = {{ old('longitude', $clinic->gps_longitude) ?: '123.8854' }};
+    const locationSearchInput = document.getElementById('location_search');
+    const locationResults = document.getElementById('locationSearchResults');
+    const addressInput = document.getElementById('clinic_address');
 
     var map = L.map('mapPicker').setView([initialLat, initialLng], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -297,10 +299,94 @@
       document.getElementById('lng').value = p.lng.toFixed(6);
     }
 
+    function clearLocationResults() {
+      if (!locationResults) return;
+      locationResults.innerHTML = '';
+      locationResults.classList.add('d-none');
+    }
+
+    function renderLocationResults(items) {
+      if (!locationResults) return;
+      if (!items.length) {
+        clearLocationResults();
+        return;
+      }
+
+      locationResults.innerHTML = '';
+      items.forEach(item => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'list-group-item list-group-item-action';
+        button.textContent = item.display_name;
+        button.addEventListener('click', () => {
+          const lat = Number(item.lat);
+          const lng = Number(item.lon);
+          if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return;
+          }
+          marker.setLatLng([lat, lng]);
+          map.setView([lat, lng], 16);
+          updateInputs();
+          if (locationSearchInput) {
+            locationSearchInput.value = item.display_name;
+          }
+          if (addressInput && !addressInput.value.trim()) {
+            addressInput.value = item.display_name;
+          }
+          clearLocationResults();
+        });
+        locationResults.appendChild(button);
+      });
+      locationResults.classList.remove('d-none');
+    }
+
+    async function searchLocation(term) {
+      if (!term || term.length < 3) {
+        clearLocationResults();
+        return;
+      }
+      try {
+        const params = new URLSearchParams({
+          q: term,
+          format: 'jsonv2',
+          limit: '6',
+          addressdetails: '1',
+          countrycodes: 'ph',
+        });
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+        if (!response.ok) {
+          clearLocationResults();
+          return;
+        }
+        const data = await response.json();
+        renderLocationResults(Array.isArray(data) ? data : []);
+      } catch (error) {
+        clearLocationResults();
+      }
+    }
+
+    let locationSearchTimer;
+    locationSearchInput?.addEventListener('input', () => {
+      clearTimeout(locationSearchTimer);
+      const term = locationSearchInput.value.trim();
+      locationSearchTimer = setTimeout(() => searchLocation(term), 280);
+    });
+
+    locationSearchInput?.addEventListener('blur', () => {
+      setTimeout(clearLocationResults, 180);
+    });
+
+    document.addEventListener('click', event => {
+      if (!locationResults || !locationSearchInput) return;
+      if (locationResults.contains(event.target) || locationSearchInput.contains(event.target)) return;
+      clearLocationResults();
+    });
+
     marker.on('dragend', updateInputs);
     map.on('click', function(e){
       marker.setLatLng(e.latlng);
       updateInputs();
+      clearLocationResults();
     });
 
     // Initialize inputs with existing values

@@ -209,66 +209,74 @@
           <input type="hidden" name="_method" id="formMethod" value="POST">
           <input type="hidden" name="schedule_id" id="schedule_id" value="">
           <input type="hidden" name="day_of_week" id="day_of_week" value="">
-          @php $initialScheduleType = old('schedule_type', 'recurring'); @endphp
-          <input type="hidden" name="schedule_type" id="schedule_type" value="{{ $initialScheduleType }}">
 
           <div class="mb-3">
-            <label class="form-label fw-semibold">Service(s)</label>
-            <select name="service_ids[]" id="service_ids" class="form-select clinic-picker @error('service_ids') is-invalid @enderror" multiple>
+            <label class="form-label fw-semibold">Service</label>
+            <select name="service_id" id="service_id" class="form-select @error('service_id') is-invalid @enderror" required>
+              <option value="">Select a service</option>
               @foreach($services as $service)
-                <option value="{{ $service->id }}" @selected(collect(old('service_ids', []))->contains($service->id))>
+                <option value="{{ $service->id }}" @selected((string) old('service_id') === (string) $service->id)>
                   {{ $service->name }}
                 </option>
               @endforeach
             </select>
-            @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            @error('service_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
           </div>
+<<<<<<< Updated upstream
 
           <div class="mb-3">
-            <label class="form-label fw-semibold">Schedule Type</label>
-            <div class="schedule-toggle">
-              <input type="radio" id="scheduleRecurring" name="schedule_type_toggle" value="recurring" @checked($initialScheduleType === 'recurring')>
-              <label for="scheduleRecurring"><i class="bi bi-arrow-repeat me-2"></i>Recurring weekly</label>
-              <input type="radio" id="scheduleOneTime" name="schedule_type_toggle" value="one_time" @checked($initialScheduleType === 'one_time')>
-              <label for="scheduleOneTime"><i class="bi bi-calendar2-date me-2"></i>One-time / specific date</label>
-            </div>
-          </div>
-
-          <div id="recurringFields">
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Days of Week</label>
-              <div class="day-grid">
-                @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $i => $day)
-                  <div>
-                    <input type="checkbox" name="days[]" id="day_{{ $i }}" value="{{ $i }}" @checked(collect(old('days', []))->contains((string) $i) || collect(old('days', []))->contains($i))>
-                    <label for="day_{{ $i }}">{{ $day }}</label>
+            <label class="form-label fw-semibold">Days of Week</label>
+            <div class="day-grid">
+              @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $i => $day)
+                <div>
+                  <input type="checkbox" name="days[]" id="day_{{ $i }}" value="{{ $i }}" @checked(collect(old('days', []))->contains((string) $i) || collect(old('days', []))->contains($i))>
+                  <label for="day_{{ $i }}">{{ $day }}</label>
+                </div>
+              @endforeach
+=======
+          <div id="daySection" class="mb-3">
+            <label class="form-label">Days of Week</label>
+            @php
+              $oldDays = collect(old('day_of_weeks', old('day_of_week') !== null ? [old('day_of_week')] : []))
+                ->map(fn ($v) => (int) $v)
+                ->all();
+            @endphp
+            <div id="multiDayWrapper" class="border rounded p-3">
+              <div class="row g-2">
+                @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $i=>$d)
+                  <div class="col-6 col-md-4">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="day_of_weeks[]"
+                        id="day_{{ $i }}"
+                        value="{{ $i }}"
+                        @checked(in_array($i, $oldDays, true))
+                      >
+                      <label class="form-check-label" for="day_{{ $i }}">{{ $d }}</label>
+                    </div>
                   </div>
                 @endforeach
               </div>
             </div>
-
-            <div class="mb-3">
-              <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" id="limitRecurringPeriod">
-                <label class="form-check-label fw-semibold" for="limitRecurringPeriod">Limit this recurring schedule to a date range</label>
-              </div>
-
-              <div id="recurringPeriodFields" class="row g-3 d-none">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Start Date</label>
-                  <input type="date" name="start_date" id="start_date" class="form-control" value="{{ old('start_date') }}">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">End Date</label>
-                  <input type="date" name="end_date" id="end_date" class="form-control" value="{{ old('end_date') }}">
-                </div>
-              </div>
-            </div>
+            @error('day_of_weeks')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            @error('day_of_weeks.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            <input type="hidden" name="day_of_week" id="day_of_week_edit" value="{{ old('day_of_week') }}" disabled>
+            @error('day_of_week')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
           </div>
-
-          <div id="oneTimeFields" class="d-none mb-3">
-            <label class="form-label fw-semibold">Specific Date</label>
-            <input type="date" name="one_time_date" id="one_time_date" class="form-control" value="{{ old('one_time_date') }}">
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label">Start</label>
+              <input type="time" name="start_time" class="form-control @error('start_time') is-invalid @enderror" value="{{ old('start_time') }}" required />
+              @error('start_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col">
+              <label class="form-label">End</label>
+              <input type="time" name="end_time" class="form-control @error('end_time') is-invalid @enderror" value="{{ old('end_time') }}" required />
+              @error('end_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
+>>>>>>> Stashed changes
+            </div>
           </div>
 
           <div class="mb-3">
@@ -337,8 +345,7 @@
             <thead class="table-light">
               <tr>
                 <th>Service</th>
-                <th>Type</th>
-                <th>Day / Date</th>
+                <th>Day</th>
                 <th>Consultation Hours</th>
                 <th>Effective Period</th>
                 <th>Status</th>
@@ -351,10 +358,7 @@
                   data-id="{{ $schedule->id }}"
                   data-clinic-id="{{ $schedule->clinic_id }}"
                   data-service-id="{{ $schedule->service_id }}"
-                  data-schedule-type="{{ $schedule->schedule_type ?? 'recurring' }}"
                   data-day="{{ $schedule->day_of_week }}"
-                  data-start-date="{{ optional($schedule->start_date)->format('Y-m-d') }}"
-                  data-end-date="{{ optional($schedule->end_date)->format('Y-m-d') }}"
                   data-start-time="{{ substr($schedule->start_time, 0, 5) }}"
                   data-end-time="{{ substr($schedule->end_time, 0, 5) }}"
                   data-active="{{ (int) ($schedule->is_active ?? 1) }}"
@@ -366,18 +370,7 @@
                       <span class="text-muted">—</span>
                     @endif
                   </td>
-                  <td>
-                    <span class="schedule-badge {{ ($schedule->schedule_type ?? 'recurring') === 'one_time' ? 'one-time' : 'recurring' }}">
-                      {{ ($schedule->schedule_type ?? 'recurring') === 'one_time' ? 'One-time' : 'Recurring' }}
-                    </span>
-                  </td>
-                  <td>
-                    @if(($schedule->schedule_type ?? 'recurring') === 'one_time')
-                      {{ optional($schedule->start_date)->format('M d, Y') ?? 'Specific date' }}
-                    @else
-                      {{ ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][$schedule->day_of_week] ?? 'Day' }}
-                    @endif
-                  </td>
+                  <td>{{ ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][$schedule->day_of_week] ?? 'Day' }}</td>
                   <td>
                     @php
                       try {
@@ -406,6 +399,7 @@
                   </td>
                   <td>
                     <div class="d-flex gap-1">
+<<<<<<< Updated upstream
                       <button type="button" class="btn btn-sm btn-outline-primary edit-btn" title="Edit">
                         <i class="bi bi-pencil"></i>
                       </button>
@@ -416,13 +410,31 @@
                           <i class="bi bi-trash"></i>
                         </button>
                       </form>
+=======
+                      <button type="button" class="btn btn-sm btn-outline-primary edit-btn" title="Edit"><i class="bi bi-pencil"></i></button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger delete-schedule-btn"
+                        title="Delete"
+                        data-action="{{ route('doctor.schedules.destroy',$s) }}"
+                        data-clinic="{{ $s->clinic->name }}"
+                        data-day="{{ ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][$s->day_of_week] }}"
+                        data-time="{{ $startFmt }} - {{ $endFmt }}"
+                      >
+                        <i class="bi bi-x"></i>
+                      </button>
+>>>>>>> Stashed changes
                     </div>
                   </td>
                 </tr>
               @empty
+<<<<<<< Updated upstream
                 <tr>
-                  <td colspan="7" class="text-center py-5 text-muted">No schedules have been created yet.</td>
+                  <td colspan="6" class="text-center py-5 text-muted">No schedules have been created yet.</td>
                 </tr>
+=======
+                <tr><td colspan="5" class="text-center py-4 text-muted">No availability set.</td></tr>
+>>>>>>> Stashed changes
               @endforelse
             </tbody>
           </table>
@@ -434,6 +446,7 @@
 
 <div class="modal fade" id="deleteScheduleModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
+<<<<<<< Updated upstream
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Remove schedule?</h5>
@@ -445,6 +458,24 @@
         <button type="button" class="btn btn-danger" id="confirmDeleteScheduleBtn">Remove</button>
       </div>
     </div>
+=======
+    <form method="POST" id="deleteScheduleForm" class="modal-content">
+      @csrf
+      @method('DELETE')
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Remove Schedule</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">Are you sure you want to remove this schedule?</p>
+        <div id="deleteScheduleSummary" class="small text-muted"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Remove</button>
+      </div>
+    </form>
+>>>>>>> Stashed changes
   </div>
 </div>
 @endsection
@@ -452,21 +483,229 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 <script>
+<<<<<<< Updated upstream
   window.doctorScheduleData = {
     activeClinicId: {{ $activeClinic?->id ?? 'null' }},
     storeAction: '{{ route("doctor.schedules.store") }}',
     schedules: {!! json_encode($schedules->map(fn ($schedule) => [
       'id' => $schedule->id,
       'service' => $schedule->service?->name ?? $schedule->clinic?->name ?? 'Clinic',
-      'schedule_type' => $schedule->schedule_type ?? 'recurring',
       'day_of_week' => $schedule->day_of_week,
-      'start_date' => optional($schedule->start_date)->format('Y-m-d'),
-      'end_date' => optional($schedule->end_date)->format('Y-m-d'),
       'start_time' => substr($schedule->start_time, 0, 5),
       'end_time' => substr($schedule->end_time, 0, 5),
       'is_active' => (bool) $schedule->is_active,
     ])->values()) !!}
   };
+=======
+  (function(){
+    const doctorSchedules = @json($doctorSchedulesPayload);
+
+    function normalizeTime(value) {
+      if (!value) return '09:00:00';
+      if (value.length === 5) return value + ':00';
+      if (value.length === 8) return value;
+      return value.padEnd(8, ':00');
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function buildEvents(rangeStart, rangeEnd) {
+      const events = [];
+      doctorSchedules.forEach(schedule => {
+        if (!schedule.is_active) return;
+        const start = new Date(rangeStart.getTime());
+        const dayDiff = (schedule.day_of_week - start.getDay() + 7) % 7;
+        start.setDate(start.getDate() + dayDiff);
+        for (const cursor = new Date(start); cursor <= rangeEnd; cursor.setDate(cursor.getDate() + 7)) {
+          const dateStamp = formatDate(cursor);
+          const startTime = normalizeTime(schedule.start_time);
+          const endTime = normalizeTime(schedule.end_time);
+          events.push({
+            id: `schedule-${schedule.id}-${dateStamp}`,
+            title: schedule.clinic,
+            start: `${dateStamp}T${startTime}`,
+            end: `${dateStamp}T${endTime}`,
+            display: 'block',
+            extendedProps: {
+              clinic: schedule.clinic,
+              scheduleId: schedule.id,
+              day_of_week: schedule.day_of_week,
+              start_time: schedule.start_time,
+              end_time: schedule.end_time,
+            },
+          });
+        }
+      });
+      return events;
+    }
+
+    const form = document.getElementById('scheduleForm');
+    if (!form) return;
+    const methodInput = document.getElementById('formMethod');
+    const scheduleIdInput = document.getElementById('schedule_id');
+    const submitLabel = document.getElementById('submitLabel');
+    const cancelBtn = document.getElementById('cancelEdit');
+    const clinicSelect = form.querySelector('select[name="clinic_id"]');
+    const daySection = document.getElementById('daySection');
+    const multiDayWrapper = document.getElementById('multiDayWrapper');
+    const dayChecks = Array.from(form.querySelectorAll('input[name="day_of_weeks[]"]'));
+    const dayEditInput = form.querySelector('input[name="day_of_week"]');
+    const startInput = form.querySelector('input[name="start_time"]');
+    const endInput = form.querySelector('input[name="end_time"]');
+    const activeInput = form.querySelector('input[name="is_active"]');
+    const deleteModalEl = document.getElementById('deleteScheduleModal');
+    const deleteForm = document.getElementById('deleteScheduleForm');
+    const deleteSummary = document.getElementById('deleteScheduleSummary');
+    const deleteModal = (deleteModalEl && window.bootstrap)
+      ? new bootstrap.Modal(deleteModalEl)
+      : null;
+
+    function setCreateMode(){
+      if (daySection) daySection.classList.remove('d-none');
+      if (multiDayWrapper) multiDayWrapper.classList.remove('d-none');
+      if (dayEditInput) {
+        dayEditInput.disabled = true;
+        dayEditInput.value = '';
+      }
+      dayChecks.forEach(input => {
+        input.disabled = false;
+      });
+    }
+
+    function setEditMode(dayValue){
+      if (daySection) daySection.classList.add('d-none');
+      if (multiDayWrapper) multiDayWrapper.classList.remove('d-none');
+      if (dayEditInput) {
+        dayEditInput.disabled = false;
+        dayEditInput.value = dayValue;
+      }
+      dayChecks.forEach(input => {
+        input.checked = false;
+        input.disabled = true;
+      });
+    }
+
+    function resetForm(){
+      form.action = '{{ route('doctor.schedules.store') }}';
+      methodInput.value = 'POST';
+      scheduleIdInput.value = '';
+      submitLabel.textContent = 'Save';
+      cancelBtn.classList.add('d-none');
+      form.reset();
+      setCreateMode();
+    }
+
+    setCreateMode();
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        const id = tr.dataset.id;
+        clinicSelect.value = tr.dataset.clinic;
+        setEditMode(tr.dataset.day);
+        startInput.value = tr.dataset.start;
+        endInput.value = tr.dataset.end;
+        if (tr.dataset.active !== undefined) {
+          activeInput.checked = tr.dataset.active === '1';
+        }
+        form.action = '{{ route('doctor.schedules.update','__ID__') }}'.replace('__ID__', id);
+        methodInput.value = 'PUT';
+        scheduleIdInput.value = id;
+        submitLabel.textContent = 'Update';
+        cancelBtn.classList.remove('d-none');
+        clinicSelect.focus();
+      });
+    });
+
+    cancelBtn.addEventListener('click', resetForm);
+
+    form.addEventListener('submit', function (event) {
+      if (methodInput.value !== 'POST') return;
+      const selectedCount = dayChecks.filter(input => input.checked).length;
+      if (selectedCount > 0) return;
+      event.preventDefault();
+      window.alert('Please select at least one day.');
+    });
+
+    document.querySelectorAll('.delete-schedule-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!deleteForm || !deleteModal) {
+          return;
+        }
+        const action = btn.getAttribute('data-action');
+        const clinic = btn.getAttribute('data-clinic') || 'Clinic';
+        const day = btn.getAttribute('data-day') || '';
+        const time = btn.getAttribute('data-time') || '';
+
+        deleteForm.setAttribute('action', action || '');
+        if (deleteSummary) {
+          const parts = [clinic, day, time].filter(Boolean);
+          deleteSummary.textContent = parts.join(' • ');
+        }
+        deleteModal.show();
+      });
+    });
+
+    const calendarEl = document.getElementById('doctorScheduleCalendar');
+    if (calendarEl && window.FullCalendar) {
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek'
+        },
+        events(info, successCallback) {
+          const startRange = new Date(info.start.getTime());
+          const endRange = new Date(info.end.getTime());
+          successCallback(buildEvents(startRange, endRange));
+        },
+        nowIndicator: true,
+        eventTimeFormat: { hour: 'numeric', minute: '2-digit', hour12: true },
+        eventClick(info) {
+          const scheduleId = info?.event?.extendedProps?.scheduleId;
+          if (!scheduleId) return;
+          const targetRow = document.querySelector(`tr[data-id="${scheduleId}"]`);
+          if (targetRow) {
+            const editBtn = targetRow.querySelector('.edit-btn');
+            if (editBtn) {
+              editBtn.click();
+              targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        },
+        dateClick(info) {
+          if (!startInput || !endInput) return;
+          if (methodInput.value !== 'PUT') {
+            const target = dayChecks.find(input => Number(input.value) === info.date.getDay());
+            if (target) {
+              target.checked = true;
+            }
+          }
+          if (!clinicSelect.value && clinicSelect.options.length > 1) {
+            clinicSelect.selectedIndex = 1;
+          }
+          if (!startInput.value) {
+            startInput.value = '09:00';
+          }
+          if (!endInput.value) {
+            endInput.value = '10:00';
+          }
+          activeInput.checked = true;
+          clinicSelect.focus();
+        }
+      });
+      calendar.render();
+    }
+  })();
+>>>>>>> Stashed changes
 </script>
 <script src="{{ asset('js/doctor-schedule-manager.js') }}"></script>
 @endpush

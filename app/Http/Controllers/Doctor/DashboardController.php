@@ -33,6 +33,7 @@ class DashboardController extends Controller
             ->orderBy('appointment_time')
             ->get();
 
+<<<<<<< Updated upstream
         $clinics = collect([$activeClinic]);
 
         $queue = QueueEntry::with('appointment.user','clinic')
@@ -49,5 +50,41 @@ class DashboardController extends Controller
             ->count('services.id');
 
         return view('doctor.dashboard', compact('doctor','appointments','queue','clinics','activeClinic','servicesOfferedCount'));
+=======
+        $clinics = $doctor->clinics()->orderBy('name')->get();
+        $assignedClinicIds = $clinics->pluck('id');
+
+        $selectedClinicId = (int) $request->input('clinic_id', 0);
+        if ($selectedClinicId > 0 && ! $assignedClinicIds->contains($selectedClinicId)) {
+            $selectedClinicId = 0;
+        }
+
+        $queueQuery = QueueEntry::with('appointment.user', 'clinic')
+            ->whereIn('clinic_id', $assignedClinicIds)
+            ->whereIn('status', ['waiting', 'now_serving']);
+
+        if ($selectedClinicId > 0) {
+            $queueQuery->where('clinic_id', $selectedClinicId);
+        }
+
+        $queue = (clone $queueQuery)
+            ->orderByRaw("CASE WHEN status = 'now_serving' THEN 0 ELSE 1 END")
+            ->orderBy('queue_number')
+            ->orderBy('created_at')
+            ->get();
+
+        $totalQueueCount = QueueEntry::whereIn('clinic_id', $assignedClinicIds)
+            ->whereIn('status', ['waiting', 'now_serving'])
+            ->count();
+
+        return view('doctor.dashboard', compact(
+            'doctor',
+            'appointments',
+            'queue',
+            'clinics',
+            'selectedClinicId',
+            'totalQueueCount'
+        ));
+>>>>>>> Stashed changes
     }
 }

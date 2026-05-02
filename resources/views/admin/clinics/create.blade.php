@@ -130,22 +130,24 @@
 
             <div class="mb-3">
               <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Location</label>
-              <div class="form-text mb-2">Click on the map or drag the marker to pin the clinic location.</div>
+              <div class="form-text mb-2">Search for your clinic location, then pick a result to auto-set coordinates.</div>
+              <label for="location_search" class="form-label small">Search Location</label>
+              <input
+                type="text"
+                id="location_search"
+                class="form-control"
+                placeholder="Search barangay, street, city, or landmark"
+                autocomplete="off"
+              >
+              <div id="locationSearchResults" class="list-group mt-2 d-none"></div>
+              <div class="form-text mt-2">You can also drag the map marker for a precise pin.</div>
               <div id="mapPicker" class="bg-light"></div>
             </div>
 
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-compass me-1"></i>Latitude <span class="text-danger">*</span></label>
-                <input type="text" id="lat" name="latitude" class="form-control @error('latitude') is-invalid @enderror" value="{{ old('latitude') }}" readonly required>
-                @error('latitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
-              </div>
-              <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-compass me-1"></i>Longitude <span class="text-danger">*</span></label>
-                <input type="text" id="lng" name="longitude" class="form-control @error('longitude') is-invalid @enderror" value="{{ old('longitude') }}" readonly required>
-                @error('longitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
-              </div>
-            </div>
+            <input type="hidden" id="lat" name="latitude" class="@error('latitude') is-invalid @enderror" value="{{ old('latitude') }}" required>
+            <input type="hidden" id="lng" name="longitude" class="@error('longitude') is-invalid @enderror" value="{{ old('longitude') }}" required>
+            @error('latitude')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            @error('longitude')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
             <div class="d-flex flex-wrap gap-2 mt-4 justify-content-end">
               <a href="{{ route('admin.clinics.index') }}" class="btn btn-light">Cancel</a>
@@ -288,6 +290,10 @@ function tryInitMap(attempt = 0) {
 }
 
 function initializeMap() {
+  const locationSearchInput = document.getElementById('location_search');
+  const locationResults = document.getElementById('locationSearchResults');
+  const addressInput = document.getElementById('clinic_address');
+
   const map = L.map('mapPicker').setView([10.3157, 123.8854], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -304,10 +310,93 @@ function initializeMap() {
     if (lngEl) lngEl.value = point.lng.toFixed(6);
   }
 
+  function clearLocationResults() {
+    if (!locationResults) return;
+    locationResults.innerHTML = '';
+    locationResults.classList.add('d-none');
+  }
+
+  function renderLocationResults(items) {
+    if (!locationResults) return;
+    if (!items.length) {
+      clearLocationResults();
+      return;
+    }
+
+    locationResults.innerHTML = '';
+    items.forEach(item => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'list-group-item list-group-item-action';
+      button.textContent = item.display_name;
+      button.addEventListener('click', () => {
+        const lat = Number(item.lat);
+        const lng = Number(item.lon);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+          return;
+        }
+        marker.setLatLng([lat, lng]);
+        map.setView([lat, lng], 16);
+        updateInputs();
+        if (locationSearchInput) {
+          locationSearchInput.value = item.display_name;
+        }
+        if (addressInput && !addressInput.value.trim()) {
+          addressInput.value = item.display_name;
+        }
+        clearLocationResults();
+      });
+      locationResults.appendChild(button);
+    });
+    locationResults.classList.remove('d-none');
+  }
+
+  async function searchLocation(term) {
+    if (!term || term.length < 3) {
+      clearLocationResults();
+      return;
+    }
+    try {
+      const params = new URLSearchParams({
+        q: term,
+        format: 'jsonv2',
+        limit: '6',
+        addressdetails: '1',
+        countrycodes: 'ph',
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+      if (!response.ok) {
+        clearLocationResults();
+        return;
+      }
+      const data = await response.json();
+      renderLocationResults(Array.isArray(data) ? data : []);
+    } catch (error) {
+      clearLocationResults();
+    }
+  }
+
+  let locationSearchTimer;
+  locationSearchInput?.addEventListener('input', () => {
+    clearTimeout(locationSearchTimer);
+    const term = locationSearchInput.value.trim();
+    locationSearchTimer = setTimeout(() => searchLocation(term), 280);
+  });
+  locationSearchInput?.addEventListener('blur', () => {
+    setTimeout(clearLocationResults, 180);
+  });
+
+  document.addEventListener('click', event => {
+    if (!locationResults || !locationSearchInput) return;
+    if (locationResults.contains(event.target) || locationSearchInput.contains(event.target)) return;
+    clearLocationResults();
+  });
+
   marker.on('dragend', updateInputs);
   map.on('click', e => {
     marker.setLatLng(e.latlng);
     updateInputs();
+    clearLocationResults();
   });
 
   const oldLat = parseFloat('{{ old('latitude') }}');

@@ -40,6 +40,8 @@ class ClinicProfileController extends Controller
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'queue_mode' => 'required|in:fcfs,priority',
+            'latitude' => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude' => 'nullable|numeric|between:-180,180|required_with:latitude',
         ]);
 
         if ($request->hasFile('logo')) {
@@ -54,6 +56,10 @@ class ClinicProfileController extends Controller
             }
             $data['cover_image'] = $request->file('cover_image')->store('clinic-covers', 'public');
         }
+
+        $data['gps_latitude'] = $request->filled('latitude') ? $data['latitude'] : $clinic->gps_latitude;
+        $data['gps_longitude'] = $request->filled('longitude') ? $data['longitude'] : $clinic->gps_longitude;
+        unset($data['latitude'], $data['longitude']);
 
     $clinic->update($data);
 

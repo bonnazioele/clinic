@@ -183,7 +183,7 @@ class AppointmentController extends Controller
     public function destroy(Appointment $appointment)
     {
         \App\Models\QueueEntry::where('appointment_id', $appointment->id)
-            ->where('status', 'waiting')
+            ->whereIn('status', ['waiting', 'now_serving'])
             ->update(['status' => 'cancelled']);
 
         $appointment->delete();
