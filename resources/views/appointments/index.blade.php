@@ -3,6 +3,7 @@
 @section('title', 'My Appointments')
 
 @push('styles')
+@push('styles')
 <style>
   .patient-tab-shell,
   .patient-tab-content {
@@ -11,26 +12,26 @@
   }
 
   .appointments-page {
-    width: 95%;
+    width: 96%;
     max-width: none;
-    padding: 1.5rem 0 2rem;
+    padding: 0.75rem 0 1.25rem;
   }
 
   .appointments-shell {
     width: 100%;
-    border-radius: 30px;
+    border-radius: 22px;
     border: 1px solid rgba(226, 232, 240, 0.95);
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.94);
     box-shadow:
-      0 24px 70px rgba(15, 23, 42, 0.10),
+      0 16px 42px rgba(15, 23, 42, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.75);
     overflow: hidden;
   }
 
   .appointments-hero {
-    padding: 2rem 2rem 1.25rem;
+    padding: 1.25rem 1.5rem 1rem;
     background:
-      radial-gradient(circle at top left, rgba(13, 110, 253, 0.14), transparent 34%),
+      radial-gradient(circle at top left, rgba(13, 110, 253, 0.12), transparent 32%),
       linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.92));
     border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   }
@@ -38,72 +39,74 @@
   .appointments-hero-row {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.85rem;
     align-items: flex-start;
   }
 
   .appointments-title-wrap {
     display: flex;
     align-items: flex-start;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .appointments-title-icon {
-    width: 58px;
-    height: 58px;
-    flex: 0 0 58px;
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
     display: grid;
     place-items: center;
-    border-radius: 18px;
+    border-radius: 15px;
     color: #ffffff;
     background: linear-gradient(135deg, #0d6efd, #1287ff);
-    box-shadow: 0 16px 35px rgba(13, 110, 253, 0.28);
-    font-size: 1.65rem;
+    box-shadow: 0 10px 24px rgba(13, 110, 253, 0.24);
+    font-size: 1.35rem;
   }
 
   .appointments-title {
     margin: 0;
     color: #071225;
-    font-weight: 500;
-    letter-spacing: -0.055em;
-    font-size: 25;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    font-size: 1.55rem;
     line-height: 1.05;
   }
 
   .appointments-subtitle {
-    margin: 0.45rem 0 0;
+    margin: 0.35rem 0 0;
     color: #64748b;
-    font-size: 1.02rem;
+    font-size: 0.9rem;
     font-weight: 500;
   }
 
   .book-main-btn {
-    border-radius: 16px;
-    padding: 0.75rem 1.15rem;
-    font-weight: 500;
-    box-shadow: 0 14px 28px rgba(13, 110, 253, 0.22);
+    border-radius: 13px;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 10px 22px rgba(13, 110, 253, 0.18);
   }
 
   .appointments-body {
-    padding: 1.5rem 2rem 2rem;
+    padding: 1.15rem 1.5rem 1.5rem;
   }
 
   .section-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 0.8rem;
+    margin-bottom: 0.75rem;
   }
 
   .section-heading {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.5rem;
     margin: 0;
     color: #0f172a;
-    font-weight: 500;
-    letter-spacing: -0.035em;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-size: 1.05rem;
   }
 
   .section-heading i {
@@ -114,122 +117,124 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 34px;
-    height: 30px;
-    padding: 0 0.7rem;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 0.55rem;
     border-radius: 999px;
     background: #eaf3ff;
     color: #0d6efd;
-    font-size: 0.85rem;
-    font-weight: 500;
+    font-size: 0.75rem;
+    font-weight: 700;
   }
 
   .queue-panel {
-    padding: 1.25rem;
-    border-radius: 24px;
+    padding: 0.9rem;
+    border-radius: 18px;
     border: 1px solid rgba(125, 211, 252, 0.7);
     background:
       linear-gradient(135deg, rgba(239, 249, 255, 0.95), rgba(224, 247, 255, 0.78));
-    margin-bottom: 1.6rem;
+    margin-bottom: 1.15rem;
   }
 
   .queue-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .queue-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem;
-    min-height: 112px;
-    border-radius: 22px;
+    gap: 0.85rem;
+    padding: 0.8rem;
+    min-height: 88px;
+    border-radius: 17px;
     border: 1px solid rgba(226, 232, 240, 0.95);
     background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
   }
 
   .queue-left {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     min-width: 0;
   }
 
   .queue-icon {
-    width: 58px;
-    height: 58px;
-    flex: 0 0 58px;
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
     display: grid;
     place-items: center;
     border-radius: 999px;
     background: #e8f2ff;
     color: #0d6efd;
-    font-size: 1.75rem;
+    font-size: 1.4rem;
   }
 
   .queue-title {
-    margin: 0 0 0.2rem;
+    margin: 0 0 0.15rem;
     color: #0f172a;
-    font-weight: 500;
-    font-size: 1.08rem;
+    font-weight: 700;
+    font-size: 0.98rem;
   }
 
   .queue-meta {
     color: #334155;
-    font-weight: 500;
-    line-height: 1.5;
+    font-weight: 600;
+    font-size: 0.86rem;
+    line-height: 1.35;
   }
 
   .queue-meta span {
     color: #0d6efd;
-    font-weight: 500;
+    font-weight: 700;
   }
 
   .queue-time {
     color: #64748b;
-    font-size: 0.92rem;
+    font-size: 0.78rem;
     font-weight: 500;
   }
 
   .queue-btn {
-    border-radius: 14px;
-    padding: 0.6rem 1rem;
-    font-weight: 500;
+    border-radius: 12px;
+    padding: 0.48rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 600;
     white-space: nowrap;
   }
 
   .upcoming-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: 0.8rem;
+    margin-bottom: 1.15rem;
   }
 
   .appointment-card {
     position: relative;
-    padding: 1.25rem;
-    border-radius: 24px;
+    padding: 0.95rem;
+    border-radius: 18px;
     border: 1px solid rgba(226, 232, 240, 0.95);
     background: #ffffff;
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.07);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
     overflow: hidden;
     transition: 0.22s ease;
   }
 
   .appointment-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 52px rgba(15, 23, 42, 0.11);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.09);
   }
 
   .appointment-card::before {
     content: "";
     position: absolute;
     inset: 0 auto 0 0;
-    width: 7px;
+    width: 5px;
     background: linear-gradient(180deg, #0d6efd, #49a4ff);
   }
 
@@ -241,27 +246,27 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.15rem;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
   }
 
   .appointment-main {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     min-width: 0;
   }
 
   .clinic-icon {
-    width: 62px;
-    height: 62px;
-    flex: 0 0 62px;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
     display: grid;
     place-items: center;
     border-radius: 999px;
     background: #e8f2ff;
     color: #0d6efd;
-    font-size: 1.9rem;
+    font-size: 1.45rem;
   }
 
   .appointment-card.pending .clinic-icon {
@@ -270,33 +275,33 @@
   }
 
   .clinic-name {
-    margin: 0 0 0.2rem;
+    margin: 0 0 0.15rem;
     color: #0f172a;
-    font-size: 1.2rem;
-    font-weight: 950;
-    letter-spacing: -0.035em;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
   }
 
   .service-name {
     color: #64748b;
-    font-size: 0.96rem;
+    font-size: 0.83rem;
     font-weight: 600;
   }
 
   .status-badge-soft {
     border-radius: 999px;
-    padding: 0.45rem 0.78rem;
-    font-size: 0.8rem;
-    font-weight: 500;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
     white-space: nowrap;
   }
 
   .appointment-info-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.75rem;
-    padding: 1rem 0;
-    margin-bottom: 1rem;
+    gap: 0.6rem;
+    padding: 0.75rem 0;
+    margin-bottom: 0.75rem;
     border-top: 1px solid #edf2f7;
     border-bottom: 1px solid #edf2f7;
   }
@@ -304,34 +309,34 @@
   .info-item {
     display: flex;
     align-items: flex-start;
-    gap: 0.55rem;
+    gap: 0.45rem;
     color: #334155;
   }
 
   .info-item i {
     color: #0d6efd;
-    font-size: 1rem;
-    margin-top: 0.12rem;
+    font-size: 0.9rem;
+    margin-top: 0.08rem;
   }
 
   .info-label {
-    font-size: 0.78rem;
+    font-size: 0.68rem;
     color: #64748b;
-    font-weight: 500;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin-bottom: 0.1rem;
+    margin-bottom: 0.08rem;
   }
 
   .info-value {
-    font-size: 0.92rem;
-    font-weight: 500;
+    font-size: 0.82rem;
+    font-weight: 700;
     color: #0f172a;
-    line-height: 1.35;
+    line-height: 1.25;
   }
 
   .info-subvalue {
-    font-size: 0.82rem;
+    font-size: 0.74rem;
     color: #64748b;
     font-weight: 500;
   }
@@ -340,15 +345,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
   }
 
   .queue-state {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    font-weight: 500;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 700;
     color: #0f9f6e;
   }
 
@@ -358,56 +364,61 @@
 
   .action-buttons {
     display: flex;
-    gap: 0.65rem;
+    gap: 0.45rem;
     flex-wrap: wrap;
   }
 
   .action-buttons .btn {
-    border-radius: 14px;
-    font-weight: 500;
+    border-radius: 11px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
   }
 
   .empty-state {
-    padding: 2.4rem 1rem;
+    padding: 1.6rem 1rem;
     text-align: center;
     border: 1px dashed rgba(13, 110, 253, 0.34);
-    border-radius: 24px;
+    border-radius: 18px;
     background:
-      linear-gradient(135deg, rgba(13, 110, 253, 0.07), rgba(255, 255, 255, 0.94));
-    margin-bottom: 1.5rem;
+      linear-gradient(135deg, rgba(13, 110, 253, 0.06), rgba(255, 255, 255, 0.94));
+    margin-bottom: 1.15rem;
   }
 
   .empty-icon {
-    width: 78px;
-    height: 78px;
-    margin: 0 auto 1rem;
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 0.75rem;
     display: grid;
     place-items: center;
-    border-radius: 26px;
+    border-radius: 18px;
     background: #ffffff;
     color: #0d6efd;
-    font-size: 2rem;
-    box-shadow: 0 16px 38px rgba(13, 110, 253, 0.13);
+    font-size: 1.55rem;
+    box-shadow: 0 10px 28px rgba(13, 110, 253, 0.11);
   }
 
   .empty-title {
-    margin: 0 0 0.35rem;
+    margin: 0 0 0.25rem;
     color: #0f172a;
-    font-weight: 500;
+    font-size: 1rem;
+    font-weight: 700;
   }
 
   .empty-text {
     color: #64748b;
-    margin-bottom: 1.1rem;
+    margin-bottom: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 500;
   }
 
   .past-accordion {
-    border-radius: 24px;
+    border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(226, 232, 240, 0.95);
     background: #ffffff;
-    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
   }
 
   .past-accordion .accordion-item {
@@ -415,13 +426,13 @@
   }
 
   .past-accordion .accordion-button {
-    padding: 1.15rem 1.35rem;
+    padding: 0.9rem 1rem;
     background: #ffffff;
     box-shadow: none;
     color: #0f172a;
-    font-weight: 500;
-    font-size: 1.08rem;
-    letter-spacing: -0.025em;
+    font-weight: 700;
+    font-size: 0.98rem;
+    letter-spacing: -0.015em;
   }
 
   .past-accordion .accordion-button:not(.collapsed) {
@@ -436,21 +447,21 @@
   }
 
   .past-accordion .accordion-body {
-    padding: 0 1.35rem 1.35rem;
+    padding: 0 1rem 1rem;
   }
 
   .past-list {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.55rem;
   }
 
   .past-item {
     display: grid;
     grid-template-columns: 1.35fr 1.25fr 1.25fr 1fr 0.9fr auto;
-    gap: 0.75rem;
+    gap: 0.6rem;
     align-items: center;
-    padding: 0.95rem 1rem;
-    border-radius: 18px;
+    padding: 0.75rem 0.85rem;
+    border-radius: 14px;
     border: 1px solid #edf2f7;
     background: #f8fafc;
   }
@@ -458,39 +469,45 @@
   .past-label {
     display: none;
     color: #64748b;
-    font-size: 0.74rem;
-    font-weight: 500;
+    font-size: 0.66rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
   .past-value {
     color: #0f172a;
-    font-weight: 500;
-    line-height: 1.35;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .past-item .badge {
+    font-size: 0.72rem;
   }
 
   .reminder-box {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    margin-top: 1rem;
-    padding: 1rem 1.15rem;
-    border-radius: 20px;
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 15px;
     border: 1px solid rgba(191, 219, 254, 0.9);
     background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.9));
     color: #334155;
+    font-size: 0.86rem;
     font-weight: 500;
   }
 
   .reminder-box i {
     color: #0d6efd;
-    font-size: 1.2rem;
+    font-size: 1rem;
   }
 
   .reminder-box strong {
     color: #0f172a;
-    margin-right: 0.25rem;
+    margin-right: 0.2rem;
   }
 
   @media (max-width: 1200px) {
@@ -516,13 +533,14 @@
 
   @media (max-width: 768px) {
     .appointments-page {
-      padding-top: 1rem;
+      width: 100%;
+      padding-top: 0.75rem;
     }
 
     .appointments-hero,
     .appointments-body {
-      padding-left: 1rem;
-      padding-right: 1rem;
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
     }
 
     .appointments-hero-row,
@@ -536,6 +554,14 @@
     .appointment-main,
     .queue-left {
       align-items: flex-start;
+    }
+
+    .appointments-title {
+      font-size: 1.35rem;
+    }
+
+    .appointments-subtitle {
+      font-size: 0.82rem;
     }
 
     .book-main-btn,
@@ -567,6 +593,7 @@
     }
   }
 </style>
+
 @endpush
 
 @section('content')
