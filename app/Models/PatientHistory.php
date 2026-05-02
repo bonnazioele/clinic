@@ -14,7 +14,7 @@ class PatientHistory extends Model
         'clinic_name',
         'diagnosis',
         'treatment',
-        'doctor',
+        'doctor_name',
         'document_path',
         'date_of_visit',
     ];

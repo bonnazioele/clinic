@@ -30,13 +30,13 @@
           </div>
           <div class="col-md-3">
             <div class="p-4 rounded text-white" style="background:#1f7f56;">
-              <div class="fs-3 fw-bold">{{ $clinics->count() }}</div>
-              <div class="mt-1">Your Clinics</div>
+              <div class="fs-5 fw-bold text-truncate">{{ $activeClinic->name ?? 'Clinic' }}</div>
+              <div class="mt-1">Active Clinic</div>
             </div>
           </div>
           <div class="col-md-3">
             <div class="p-4 rounded text-white" style="background:#10c9f4;">
-              <div class="fs-3 fw-bold">{{ auth()->user()->services()->count() }}</div>
+              <div class="fs-3 fw-bold">{{ $servicesOfferedCount }}</div>
               <div class="mt-1">Services Offered</div>
             </div>
           </div>
@@ -90,7 +90,7 @@
     </div>
     <div class="col-lg-4">
       <div class="dashboard-card h-100">
-        <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-building medical-icon me-2"></i>Your Clinics</h5>
+        <h5 class="fw-semibold mb-3 d-flex align-items-center"><i class="bi bi-building medical-icon me-2"></i>Active Clinic</h5>
         @forelse($clinics as $c)
           <div class="mb-2 small p-2 rounded bg-light"><i class="bi bi-hospital me-2"></i>{{ $c->name }}</div>
         @empty

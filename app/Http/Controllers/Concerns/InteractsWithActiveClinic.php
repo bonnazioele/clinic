@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\Clinic;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 trait InteractsWithActiveClinic
@@ -14,6 +13,15 @@ trait InteractsWithActiveClinic
 
         abort_if($id <= 0, 403, 'Active clinic context is required.');
         return $id;
+    }
+
+    protected function activeClinic(Request $request): Clinic
+    {
+        $activeClinic = $request->attributes->get('active_clinic');
+
+        abort_if(! $activeClinic instanceof Clinic, 403, 'Active clinic context is required.');
+
+        return $activeClinic;
     }
 
     protected function withActiveClinic(Request $request, array $data): array

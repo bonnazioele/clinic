@@ -1,11 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Patient;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\Clinic;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Notifications\PatientAppointmentBooked;
 use App\Notifications\SecretaryAppointmentBooked;
@@ -47,6 +50,9 @@ class AppointmentController extends Controller
         $clinics = Clinic::with(['services','doctors.services'])
             ->where('status', 'active')
             ->get();
+
+        $this->applyClinicScopedDoctorServices($clinics);
+
         return view('appointments.create', compact('clinics'));
     }
 
@@ -60,12 +66,35 @@ class AppointmentController extends Controller
         ]);
 
         $date      = \Carbon\Carbon::parse($data['date']);
+        $dateString = $date->toDateString();
         $dayOfWeek = $date->dayOfWeek;
+
+        if (! empty($data['service_id']) && ! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $data['clinic_id'],
+            (int) $data['service_id']
+        )) {
+            return response()->json([
+                'date' => $date->toDateString(),
+                'weekday' => $date->format('l'),
+                'slots' => [],
+                'schedule' => [],
+                'message' => 'Selected doctor does not offer this service at this clinic.'
+            ]);
+        }
 
         $schedules = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
+            ->where(function ($q) use ($dateString) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $dateString);
+            })
+            ->where(function ($q) use ($dateString) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $dateString);
+            })
             ->orderBy('start_time')
             ->get(['id','start_time','end_time']);
 
@@ -114,7 +143,7 @@ class AppointmentController extends Controller
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
-            while ($cursor < $end) { 
+            while ($cursor < $end) {
                 $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
                 if ($slotEnd > $end) {
                     break;
@@ -155,12 +184,31 @@ class AppointmentController extends Controller
         ]);
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+        $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
+
+        if (! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $data['clinic_id'],
+            (int) $data['service_id']
+        )) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+            ]);
+        }
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $data['clinic_id'])
             ->where('day_of_week', $day)
             ->where('is_active', true)
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $appointmentDate);
+            })
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $appointmentDate);
+            })
             ->where('start_time', '<=', $time)
             ->where('end_time', '>', $time)
             ->exists();
@@ -192,7 +240,7 @@ class AppointmentController extends Controller
             ]);
         }
 
-        
+
         $sameClinicConflict = Appointment::where('user_id', Auth::id())
             ->where('clinic_id', $data['clinic_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
@@ -267,11 +315,12 @@ class AppointmentController extends Controller
         if ($appointment->user_id !== Auth::id()) {
             abort(403,'Forbidden');
         }
-        
+
         $appointment->load(['clinic.services','doctor','service']);
-        
+
         $clinic = $appointment->clinic;
         $clinic->load(['services','doctors']);
+        $this->applyClinicScopedDoctorServices(collect([$clinic]));
         return view('appointments.edit', [
             'appointment' => $appointment,
             'clinic' => $clinic,
@@ -295,13 +344,32 @@ class AppointmentController extends Controller
         ]);
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+        $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = $data['appointment_time'];
-        $clinicId = $appointment->clinic_id; 
+        $clinicId = $appointment->clinic_id;
+
+        if (! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $clinicId,
+            (int) $data['service_id']
+        )) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+            ]);
+        }
 
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)
             ->where('day_of_week', $day)
             ->where('is_active', true)
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $appointmentDate);
+            })
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $appointmentDate);
+            })
             ->where('start_time','<=',$time)
             ->where('end_time','>',$time)
             ->exists();
@@ -349,5 +417,40 @@ class AppointmentController extends Controller
         $appointment->delete();
 
         return back()->with('status', 'Appointment cancelled and slot freed.');
+    }
+
+    private function doctorOffersServiceForClinic(int $doctorId, int $clinicId, int $serviceId): bool
+    {
+        return DB::table('doctor_service as ds')
+            ->join('clinic_doctor as cd', function ($join) {
+                $join->on('cd.doctor_id', '=', 'ds.doctor_id')
+                    ->on('cd.clinic_id', '=', 'ds.clinic_id');
+            })
+            ->join('clinic_service as cs', function ($join) {
+                $join->on('cs.clinic_id', '=', 'ds.clinic_id')
+                    ->on('cs.service_id', '=', 'ds.service_id');
+            })
+            ->where('ds.doctor_id', $doctorId)
+            ->where('ds.clinic_id', $clinicId)
+            ->where('ds.service_id', $serviceId)
+            ->exists();
+    }
+
+    private function applyClinicScopedDoctorServices($clinics): void
+    {
+        foreach ($clinics as $clinic) {
+            if (! $clinic->relationLoaded('doctors')) {
+                continue;
+            }
+
+            foreach ($clinic->doctors as $doctor) {
+                $doctor->setRelation(
+                    'services',
+                    $doctor->servicesForClinic((int) $clinic->id)
+                        ->orderBy('services.name')
+                        ->get(['services.id', 'services.name'])
+                );
+            }
+        }
     }
 }

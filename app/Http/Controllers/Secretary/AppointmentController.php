@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSelectedClinic;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\PatientAppointmentBooked;
@@ -16,9 +19,11 @@ use App\Notifications\DoctorAppointmentBooked;
 
 class AppointmentController extends Controller
 {
+    use InteractsWithClinic;
+
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware(['auth', EnsureSelectedClinic::class]);
 
         $this->middleware(function($req, $next) {
             if (! Auth::user()?->is_secretary) {
@@ -31,38 +36,22 @@ class AppointmentController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
-        $clinics = $user->secretaryClinics()
-            ->whereIn('status', ['active','approved'])
-            ->with(['services','doctors.services'])
-            ->get();
+        $activeClinic = $this->activeClinic($request);
+        $activeClinicId = $activeClinic->id;
 
+        $activeClinic->loadMissing(['services', 'doctors.services']);
+        $this->applyClinicScopedDoctorServices(collect([$activeClinic]));
+        $clinics = collect([$activeClinic]);
         $clinicPatients = $this->buildClinicPatientMap($clinics);
-        $activeClinicId = (int) $request->session()->get('active_clinic_id');
-
-        if (! $activeClinicId && $clinics->isNotEmpty()) {
-            $activeClinicId = (int) $clinics->first()->id;
-            $request->session()->put('active_clinic_id', $activeClinicId);
-        }
-
-        if ($activeClinicId && ! $clinics->contains('id', $activeClinicId)) {
-            $activeClinicId = (int) ($clinics->first()->id ?? 0);
-            if ($activeClinicId) {
-                $request->session()->put('active_clinic_id', $activeClinicId);
-            } else {
-                $request->session()->forget('active_clinic_id');
-            }
-        }
-
-        $activeClinic = $clinics->firstWhere('id', $activeClinicId) ?? null;
 
         return view('secretary.appointments.create', compact('clinics', 'clinicPatients', 'activeClinicId', 'activeClinic'));
     }
 
     public function index(Request $request)
     {
-        $secretaryClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
+        $activeClinicId = $this->activeClinicId($request);
         $query = Appointment::with('user','clinic','service','doctor')
-            ->whereIn('clinic_id', $secretaryClinicIds);
+            ->where('clinic_id', $activeClinicId);
 
         if ($request->filled('patient')) {
             $term = trim((string) $request->input('patient'));
@@ -87,27 +76,30 @@ class AppointmentController extends Controller
             ->withQueryString();
 
         $doctors = User::where('is_doctor', true)
-            ->whereHas('clinics', function($q) use ($secretaryClinicIds){
-                $q->whereIn('clinics.id', $secretaryClinicIds);
+            ->whereHas('clinics', function($q) use ($activeClinicId){
+                $q->where('clinics.id', $activeClinicId);
             })->get();
 
         return view('secretary.appointments.index', compact('appointments','doctors'));
     }
 
-    public function edit(Appointment $appointment)
+    public function edit(Request $request, Appointment $appointment)
     {
-        $clinics = Auth::user()->secretaryClinics()->get();
-        $clinicIds = $clinics->pluck('id');
+        $activeClinic = $this->activeClinic($request);
+        $activeClinicId = $activeClinic->id;
+        $clinics = collect([$activeClinic]);
+        $clinicIds = collect([$activeClinicId]);
         $doctors = User::where('is_doctor', true)
             ->whereHas('clinics', function($q) use ($clinicIds){
                 $q->whereIn('clinics.id', $clinicIds);
             })->get();
+        $services = $activeClinic->services()->orderBy('name')->get();
 
         if (! $clinicIds->contains($appointment->clinic_id)) {
             abort(403,'You are not assigned to this clinic.');
         }
 
-        return view('secretary.appointments.edit', compact('appointment','clinics','doctors'));
+        return view('secretary.appointments.edit', compact('appointment','clinics','doctors','services'));
     }
 
     public function update(Request $req, Appointment $appointment)
@@ -121,18 +113,37 @@ class AppointmentController extends Controller
             'status'           => 'required|in:scheduled,completed,cancelled,no_show',
         ]);
 
-        $allowedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
-        if (! $allowedClinicIds->contains($data['clinic_id'])) {
+        $activeClinicId = $this->activeClinicId($req);
+        if ((int) $data['clinic_id'] !== $activeClinicId) {
             return back()->withInput()->withErrors(['clinic_id' => 'You cannot manage appointments for this clinic.']);
         }
 
         if ($data['status'] === 'scheduled' && $data['doctor_id']) {
+            if (! $this->doctorOffersServiceForClinic(
+                (int) $data['doctor_id'],
+                (int) $data['clinic_id'],
+                (int) $data['service_id']
+            )) {
+                return back()->withInput()->withErrors([
+                    'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+                ]);
+            }
+
             $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+            $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
             $time = $data['appointment_time'];
             $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
                 ->where('clinic_id', $data['clinic_id'])
                 ->where('day_of_week', $day)
                 ->where('is_active', true)
+                ->where(function ($q) use ($appointmentDate) {
+                    $q->whereNull('start_date')
+                        ->orWhereDate('start_date', '<=', $appointmentDate);
+                })
+                ->where(function ($q) use ($appointmentDate) {
+                    $q->whereNull('end_date')
+                        ->orWhereDate('end_date', '>=', $appointmentDate);
+                })
                 ->where('start_time', '<=', $time)
                 ->where('end_time', '>', $time)
                 ->exists();
@@ -181,14 +192,7 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
-        $allowedClinicIds = Auth::user()->secretaryClinics()->pluck('clinics.id');
-        $clinicId = (int) $request->session()->get('active_clinic_id');
-
-        if (! $clinicId || ! $allowedClinicIds->contains($clinicId)) {
-            return back()
-                ->withInput()
-                ->withErrors(['active_clinic' => 'Please select one of your clinics before creating appointments.']);
-        }
+        $clinicId = $this->activeClinicId($request);
 
         $data = $request->validate([
             'patient_id'      => 'required|exists:users,id',
@@ -213,6 +217,16 @@ class AppointmentController extends Controller
             ->first();
         if (! $doctor) {
             return back()->withInput()->withErrors(['doctor_id' => 'Doctor not assigned to this clinic.']);
+        }
+
+        if (! $this->doctorOffersServiceForClinic(
+            (int) $data['doctor_id'],
+            (int) $clinicId,
+            (int) $data['service_id']
+        )) {
+            return back()->withInput()->withErrors([
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+            ]);
         }
 
         $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
@@ -241,10 +255,20 @@ class AppointmentController extends Controller
         }
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
+        $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
+
         $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
             ->where('clinic_id', $clinicId)
             ->where('day_of_week', $day)
             ->where('is_active', true)
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $appointmentDate);
+            })
+            ->where(function ($q) use ($appointmentDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $appointmentDate);
+            })
             ->where('start_time', '<=', $time)
             ->where('end_time', '>', $time)
             ->exists();
@@ -350,6 +374,46 @@ class AppointmentController extends Controller
         return $map;
     }
 
+    protected function patientBelongsToClinic(int $userId, int $clinicId): bool
+    {
+        return (bool) \App\Models\Patient::where('user_id', $userId)
+            ->where('clinic_id', $clinicId)
+            ->exists();
+    }
+
+    protected function doctorOffersServiceForClinic($doctorId, $clinicId, $serviceId): bool
+    {
+        return (bool) \App\Models\DoctorSchedule::query()
+            ->where('doctor_id', $doctorId)
+            ->where('clinic_id', $clinicId)
+            ->exists()
+            && (bool) \App\Models\Service::whereHas('doctors', function ($q) use ($doctorId) {
+                $q->where('users.id', $doctorId);
+            })->where('id', $serviceId)->exists();
+    }
+
+    protected function applyClinicScopedDoctorServices($clinics): void
+    {
+        foreach ($clinics as $clinic) {
+            $clinic->setRelation(
+                'doctors',
+                $clinic->doctors->map(function ($doctor) use ($clinic) {
+                    $doctor->setRelation(
+                        'services',
+                        $doctor->services()->where('clinic_id', $clinic->id)->get()
+                    );
+                    return $doctor;
+                })
+            );
+        }
+    }
+}
+            ]);
+        }
+
+        return $map;
+    }
+
     protected function patientBelongsToClinic(int $patientId, int $clinicId): bool
     {
         return User::where('id', $patientId)
@@ -363,5 +427,40 @@ class AppointmentController extends Controller
                 });
             })
             ->exists();
+    }
+
+    private function doctorOffersServiceForClinic(int $doctorId, int $clinicId, int $serviceId): bool
+    {
+        return DB::table('doctor_service as ds')
+            ->join('clinic_doctor as cd', function ($join) {
+                $join->on('cd.doctor_id', '=', 'ds.doctor_id')
+                    ->on('cd.clinic_id', '=', 'ds.clinic_id');
+            })
+            ->join('clinic_service as cs', function ($join) {
+                $join->on('cs.clinic_id', '=', 'ds.clinic_id')
+                    ->on('cs.service_id', '=', 'ds.service_id');
+            })
+            ->where('ds.doctor_id', $doctorId)
+            ->where('ds.clinic_id', $clinicId)
+            ->where('ds.service_id', $serviceId)
+            ->exists();
+    }
+
+    private function applyClinicScopedDoctorServices($clinics): void
+    {
+        foreach ($clinics as $clinic) {
+            if (! $clinic->relationLoaded('doctors')) {
+                continue;
+            }
+
+            foreach ($clinic->doctors as $doctor) {
+                $doctor->setRelation(
+                    'services',
+                    $doctor->servicesForClinic((int) $clinic->id)
+                        ->orderBy('services.name')
+                        ->get(['services.id', 'services.name'])
+                );
+            }
+        }
     }
 }

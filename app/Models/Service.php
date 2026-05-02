@@ -24,7 +24,8 @@ class Service extends Model
             'doctor_service',
             'service_id',
             'doctor_id'
-        )->where('is_doctor',true);
+        )->where('is_doctor',true)
+            ->withPivot('clinic_id');
     }
 
     public function scopeForClinics($query, $clinicIds)
@@ -34,4 +35,3 @@ class Service extends Model
         });
     }
 }
-

@@ -3,11 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ClinicController;
-use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\QueueController;
+use App\Http\Controllers\Frontend\DashboardController;
+use App\Http\Controllers\Frontend\ClinicController;
+use App\Http\Controllers\Patient\AppointmentController;
+use App\Http\Controllers\Patient\ProfileController;
+use App\Http\Controllers\Patient\QueueController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\Admin\ClinicController as AdminClinicController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -22,11 +22,12 @@ use App\Http\Controllers\Secretary\PatientController as SecPatient;
 use App\Http\Controllers\Secretary\ClinicSelectionController;
 use App\Http\Controllers\Secretary\QueueController as SecretaryQueueController;
 use App\Http\Controllers\Secretary\WalkInPatientDirectoryController;
-use App\Http\Controllers\NotificationsController;
+use App\Http\Controllers\Patient\NotificationsController;
 use App\Http\Controllers\Admin\SecretaryController as AdminSecretaryController;
 use App\Http\Controllers\Auth\SecretaryRegisterController;
 use App\Http\Controllers\Owner\ApplicationController as OwnerApplicationController;
-use App\Http\Controllers\WalkInRegistrationController;
+use App\Http\Controllers\Secretary\WalkInRegistrationController;
+use App\Http\Controllers\Frontend\PublicServiceController;
 use App\Http\Middleware\SecretaryMiddleware;
 use App\Http\Middleware\EnsureSelectedClinic;
 
@@ -37,9 +38,8 @@ Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
 Route::get('/welcome', [DashboardController::class, 'welcome']);
 
 Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
-Route::post('/clinics', [ClinicController::class, 'store'])->name('clinics.store');
 Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
-Route::get('/services/search', [\App\Http\Controllers\PublicServiceController::class, 'search'])->name('services.search');
+Route::get('/services/search', [PublicServiceController::class, 'search'])->name('services.search');
 
 Route::middleware('guest')->group(function(){
      Route::get('/apply/clinic', [OwnerApplicationController::class, 'create'])->name('owner.apply');
@@ -89,7 +89,8 @@ Route::middleware(['auth'])
     Route::get('/queue/status/{entry}', [QueueController::class, 'status'])->name('queue.status.entry');
     Route::post('/queue/join/{clinic}', [QueueController::class, 'join'])->name('queue.join');
      Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])->name('queue.leave');
-     
+
+     Route::post('/profile/history', [ProfileController::class, 'storeHistory'])->name('profile.history.store');
 
 });
 

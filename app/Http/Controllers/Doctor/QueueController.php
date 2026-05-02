@@ -2,32 +2,36 @@
 
 namespace App\Http\Controllers\Doctor;
 
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
 use App\Events\QueueUpdated;
-use App\Models\Appointment;
+use App\Http\Middleware\EnsureSelectedClinic;
 use App\Models\QueueEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class QueueController extends Controller
 {
+    use InteractsWithClinic;
+
     public function __construct()
     {
-        $this->middleware(['auth', \App\Http\Middleware\DoctorMiddleware::class]);
+        $this->middleware(['auth', \App\Http\Middleware\DoctorMiddleware::class, EnsureSelectedClinic::class]);
     }
 
     public function index(Request $request)
     {
         $doctor = Auth::user();
-        $clinics = $doctor->clinics()->pluck('clinics.id');
+        $activeClinic = $this->activeClinic($request);
 
         $waitingQuery = QueueEntry::with('appointment.user','clinic')
-            ->whereIn('clinic_id', $clinics)
+            ->where('clinic_id', $activeClinic->id)
+            ->whereHas('appointment', function ($q) use ($doctor) {
+                $q->where('doctor_id', $doctor->id);
+            })
             ->whereIn('status', ['waiting','now_serving']);
 
-        $clinicModes = \App\Models\Clinic::whereIn('id', $clinics)->pluck('queue_mode')->unique();
-        if ($clinicModes->count() === 1 && $clinicModes->first() === 'priority') {
+        if ($activeClinic->queue_mode === 'priority') {
             $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
                 ->select('queue_entries.*')
                 ->orderByRaw("CASE WHEN queue_entries.status = 'now_serving' THEN 0 ELSE 1 END")
@@ -45,12 +49,18 @@ class QueueController extends Controller
         return view('doctor.queue.index', compact('waiting'));
     }
 
-    public function serve(Request $request, QueueEntry $entry)
+
+public function serve(Request $request, QueueEntry $entry)
 {
     $doctor = Auth::user();
+    $activeClinic = $this->activeClinic($request);
 
-    if (! $doctor->clinics()->where('clinics.id', $entry->clinic_id)->exists()) {
+    if ((int) $entry->clinic_id !== (int) $activeClinic->id) {
         abort(403);
+    }
+
+    if (! $entry->appointment || (int) $entry->appointment->doctor_id !== (int) $doctor->id) {
+        abort(403, 'You can only process queue entries assigned to you.');
     }
 
     $data = $request->validate([
@@ -70,9 +80,6 @@ class QueueController extends Controller
             'status' => 'served',
             'served_at' => now(),
             'patient_disposition' => 'completed',
-            'doctor_notes' => $data['doctor_notes'] ?? null,
-            'prescription' => $data['prescription'] ?? null,
-            'follow_up_at' => $data['follow_up_at'] ?? null,
         ]);
 
         if ($fresh->appointment && $fresh->appointment->status !== 'completed') {

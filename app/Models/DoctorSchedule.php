@@ -11,8 +11,12 @@ class DoctorSchedule extends Model
 
     protected $fillable = [
         'doctor_id',
+        'service_id',
         'clinic_id',
-        'day_of_week', 
+        'schedule_type',
+        'day_of_week',
+        'start_date',
+        'end_date',
         'start_time',
         'end_time',
         'is_active'
@@ -20,6 +24,9 @@ class DoctorSchedule extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'schedule_type' => 'string',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function doctor()
@@ -30,5 +37,10 @@ class DoctorSchedule extends Model
     public function clinic()
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
     }
 }

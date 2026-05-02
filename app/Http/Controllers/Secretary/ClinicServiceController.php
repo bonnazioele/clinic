@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSelectedClinic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,14 +18,18 @@ use App\Notifications\ServiceDetachedAppointmentCancelled;
 
 class ClinicServiceController extends Controller
 {
+    use InteractsWithClinic;
+
     public function __construct()
     {
-        $this->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class]);
+        $this->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class, EnsureSelectedClinic::class]);
     }
 
     public function index(Request $request)
     {
-        $clinic = $this->activeClinic($request);
+        $clinic = $request->attributes->get('active_clinic');
+
+        abort_if(! $clinic instanceof Clinic, 403, 'Active clinic context is required.');
 
         $clinic->load('services');
         $attachedIds = $clinic->services->pluck('id');
@@ -45,7 +51,10 @@ class ClinicServiceController extends Controller
                 ->pluck('total', 'service_id');
 
             $activeDoctorCounts = DB::table('clinic_doctor as cd')
-                ->join('doctor_service as ds', 'ds.doctor_id', '=', 'cd.doctor_id')
+                ->join('doctor_service as ds', function ($join) {
+                    $join->on('ds.doctor_id', '=', 'cd.doctor_id')
+                        ->on('ds.clinic_id', '=', 'cd.clinic_id');
+                })
                 ->join('users as u', 'u.id', '=', 'cd.doctor_id')
                 ->where('cd.clinic_id', $clinic->id)
                 ->whereIn('ds.service_id', $serviceIds)
@@ -193,6 +202,7 @@ class ClinicServiceController extends Controller
         return DB::table('clinic_doctor as cd')
             ->join('doctor_service as ds', function ($join) use ($service) {
                 $join->on('ds.doctor_id', '=', 'cd.doctor_id')
+                    ->on('ds.clinic_id', '=', 'cd.clinic_id')
                     ->where('ds.service_id', '=', $service->id);
             })
             ->join('users as u', 'u.id', '=', 'cd.doctor_id')
@@ -220,12 +230,12 @@ class ClinicServiceController extends Controller
 
             $clinic->services()->detach($service->id);
 
-            if ($linkedDoctorIds->isNotEmpty()) {
-                DB::table('doctor_service')
-                    ->where('service_id', $service->id)
-                    ->whereIn('doctor_id', $linkedDoctorIds)
-                    ->delete();
+            DB::table('doctor_service')
+                ->where('clinic_id', $clinic->id)
+                ->where('service_id', $service->id)
+                ->delete();
 
+            if ($linkedDoctorIds->isNotEmpty()) {
                 if (Schema::hasTable('doctor_service_schedule')) {
                     $scheduleQuery = DB::table('doctor_service_schedule')
                         ->where('service_id', $service->id);
@@ -259,14 +269,5 @@ class ClinicServiceController extends Controller
                 $appointment->doctor->notify($notification);
             }
         }
-    }
-
-    private function activeClinic(Request $request): Clinic
-    {
-        $activeClinic = $request->attributes->get('active_clinic');
-
-        abort_if(! $activeClinic instanceof Clinic, 403, 'Active clinic context is required.');
-
-        return $activeClinic;
     }
 }

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Secretary;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Concerns\InteractsWithActiveClinic;
+use App\Http\Controllers\Concerns\InteractsWithClinic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ClinicSelectionController extends Controller
 {
-    use InteractsWithActiveClinic;
+    use InteractsWithClinic;
     public function index(Request $request)
     {
         $user = Auth::user();

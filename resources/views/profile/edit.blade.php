@@ -1,6 +1,7 @@
-@extends('layouts.app')
+@extends('layouts.patient-dashboard')
 
 @section('title','Edit Profile')
+@section('page-title','Edit Profile')
 
 @section('content')
 <div class="container py-4">
@@ -48,51 +49,6 @@
     </div>
   </div>
 
-  <!-- ADD MEDICAL HISTORY -->
-  <div class="card shadow-sm">
-    <div class="card-header bg-white">
-      <h4 class="mb-0">Add Medical History</h4>
-    </div>
 
-    <div class="card-body">
-      <form method="POST" action="{{ route('profile.history.store') }}" enctype="multipart/form-data">
-        @csrf
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Clinic Name</label>
-            <input type="text" name="clinic_name" class="form-control" required>
-          </div>
-
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Date of Visit</label>
-            <input type="date" name="date_of_visit" class="form-control" required>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Doctor Name</label>
-          <input type="text" name="doctor_name" class="form-control">
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Diagnosis</label>
-          <textarea name="diagnosis" class="form-control" rows="2" required></textarea>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Treatment</label>
-          <textarea name="treatment" class="form-control" rows="2"></textarea>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Attach Document (optional)</label>
-          <input type="file" name="document_path" class="form-control">
-        </div>
-
-        <button class="btn btn-success">Add History Record</button>
-      </form>
-    </div>
-  </div>
 </div>
 @endsection

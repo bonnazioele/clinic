@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Patient;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\Clinic;
 use App\Models\QueueEntry;

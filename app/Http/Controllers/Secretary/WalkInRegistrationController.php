@@ -1,8 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Secretary;
+
+use App\Http\Controllers\Controller;
 
 use App\Events\QueueUpdated;
+use App\Http\Controllers\Concerns\InteractsWithClinic;
+use App\Http\Middleware\EnsureSelectedClinic;
 use App\Http\Requests\StoreWalkInRegistrationRequest;
 use App\Models\Patient;
 use App\Models\PatientVisit;
@@ -13,13 +17,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 
 class WalkInRegistrationController extends Controller
 {
+    use InteractsWithClinic;
+
     public function __construct(protected QueueService $queueService)
     {
+        $this->middleware(['auth', \App\Http\Middleware\SecretaryMiddleware::class, EnsureSelectedClinic::class]);
     }
 
     protected function syncPatientToUser(Patient $patient, array $data, int $clinicId): ?User
@@ -68,7 +74,7 @@ class WalkInRegistrationController extends Controller
      */
     public function index(Request $request)
     {
-        $activeClinic = $this->resolveActiveClinic($request);
+        $activeClinic = $this->activeClinic($request);
         $clinicServices = $activeClinic
             ? $activeClinic->services()->orderBy('name')->get()
             : collect();
@@ -81,45 +87,8 @@ class WalkInRegistrationController extends Controller
 
     protected function resolveActiveClinicId(Request $request): ?int
     {
-        $clinic = $this->resolveActiveClinic($request);
+        $clinic = $this->activeClinic($request);
         return $clinic?->id;
-    }
-
-    protected function resolveActiveClinic(Request $request)
-    {
-        $user = $request->user();
-        if (! $user || ! $user->is_secretary) {
-            return null;
-        }
-
-        $sharedClinic = View::shared('activeClinic');
-        if ($sharedClinic) {
-            $sharedClinic->loadMissing(['services' => fn ($query) => $query->orderBy('name')]);
-            return $sharedClinic;
-        }
-
-        $activeClinicId = (int) $request->session()->get('active_clinic_id');
-        if ($activeClinicId) {
-            $clinic = $user->secretaryClinics()
-                ->with(['services' => fn ($query) => $query->orderBy('name')])
-                ->where('clinics.id', $activeClinicId)
-                ->first();
-
-            if ($clinic) {
-                return $clinic;
-            }
-        }
-
-        $fallbackClinic = $user->secretaryClinics()
-            ->with(['services' => fn ($query) => $query->orderBy('name')])
-            ->orderBy('name')
-            ->first();
-
-        if ($fallbackClinic) {
-            $request->session()->put('active_clinic_id', $fallbackClinic->id);
-        }
-
-        return $fallbackClinic;
     }
 
     /**
