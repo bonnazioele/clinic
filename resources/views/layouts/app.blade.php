@@ -4,55 +4,72 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-     @auth
-    <meta name="user-id" content="{{ auth()->id() }}">
+
+    @auth
+        <meta name="user-id" content="{{ auth()->id() }}">
     @endauth
 
     <title>@yield('title', config('app.name', 'CliniQ'))</title>
 
-
+    {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-
+    {{-- Bootstrap --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-
+    {{-- Bootstrap Icons --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
-
+    {{-- Leaflet --}}
     <link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
 
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-
+    {{-- Choices.js --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
 
     <style>
         :root {
             --primary-color: #0d6efd;
             --primary-dark: #0a58ca;
             --primary-light: #e7f1ff;
+
             --secondary-color: #6c757d;
             --success-color: #198754;
             --warning-color: #ffc107;
             --danger-color: #dc3545;
             --info-color: #0dcaf0;
+
             --light-color: #f8f9fa;
             --dark-color: #212529;
+
             --medical-blue: #1e88e5;
             --medical-green: #43a047;
             --medical-red: #e53935;
             --medical-orange: #ff9800;
+
             --border-radius: 0.75rem;
             --border-radius-sm: 0.5rem;
+
             --transition: all 0.3s ease;
-            --shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
-            --shadow-lg: 0 20px 40px rgba(0,0,0,.1);
-            --shadow-hover: 0 0.5rem 1rem rgba(0,0,0,.15);
+
+            --shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
         }
 
         body {
@@ -60,7 +77,69 @@
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             line-height: 1.6;
             color: var(--dark-color);
+        }
+
+        #app {
             min-height: 100vh;
+        }
+
+        main {
+            width: 100%;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | GLOBAL PATIENT CONTENT WIDTH
+        |--------------------------------------------------------------------------
+        | This makes all yielded patient pages occupy 90% of the screen width.
+        | Example: appointments, queue, clinics, profile, dashboard.
+        */
+        .floating-wrapper {
+            width: 90%;
+            max-width: 1700px;
+            margin: 0 auto;
+        }
+
+        .patient-main,
+        .patient-tab-content,
+        .dashboard-container,
+        .patient-content-container,
+        .appointments-container,
+        .queue-container,
+        .clinics-container,
+        .profile-container {
+            width: 100%;
+            max-width: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .patient-main .container,
+        .patient-main .container-sm,
+        .patient-main .container-md,
+        .patient-main .container-lg,
+        .patient-main .container-xl,
+        .patient-main .container-xxl,
+        .patient-tab-content .container,
+        .patient-tab-content .container-sm,
+        .patient-tab-content .container-md,
+        .patient-tab-content .container-lg,
+        .patient-tab-content .container-xl,
+        .patient-tab-content .container-xxl,
+        .floating-wrapper > .container,
+        .floating-wrapper > .container-sm,
+        .floating-wrapper > .container-md,
+        .floating-wrapper > .container-lg,
+        .floating-wrapper > .container-xl,
+        .floating-wrapper > .container-xxl {
+            width: 100%;
+            max-width: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .floating-wrapper {
+                width: 94%;
+            }
         }
 
         .medical-gradient {
@@ -81,34 +160,6 @@
             border-color: rgba(30, 136, 229, 0.3);
         }
 
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.5rem;
-            transition: var(--transition);
-        }
-        .navbar-brand:hover {
-            transform: scale(1.05);
-            color: #fff !important;
-        }
-        .nav-link {
-            position: relative;
-            transition: var(--transition);
-            border-radius: var(--border-radius-sm);
-            padding: 0.5rem 1rem !important;
-            margin: 0 0.25rem;
-        }
-        .nav-link:hover {
-            background-color: rgba(255,255,255,.1);
-            transform: translateY(-1px);
-            color: #fff !important;
-        }
-        .nav-link.active {
-            background: linear-gradient(135deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,.1) 100%);
-            color: #fff !important;
-            font-weight: 600;
-            border: 1px solid rgba(255,255,255,.3);
-        }
-
         .avatar-circle {
             width: 32px;
             height: 32px;
@@ -117,19 +168,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: #ffffff;
             font-size: 0.9rem;
         }
 
         .clinic-card {
             transition: var(--transition);
             border-radius: var(--border-radius);
-            border: none;
+            border: 1px solid rgba(30, 136, 229, 0.1);
             box-shadow: var(--shadow);
             cursor: pointer;
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid rgba(30, 136, 229, 0.1);
         }
+
         .clinic-card:hover {
             transform: translateY(-8px) scale(1.02);
             box-shadow: var(--shadow-lg);
@@ -140,49 +191,61 @@
             border-radius: var(--border-radius-sm);
             font-weight: 500;
             transition: var(--transition);
-            padding: .5rem 1.5rem;
+            padding: 0.5rem 1.5rem;
             border: none;
             position: relative;
             overflow: hidden;
         }
+
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-hover);
         }
+
         .btn-primary {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--medical-blue) 100%);
             border: none;
         }
+
         .btn-success {
             background: linear-gradient(135deg, var(--success-color) 0%, var(--medical-green) 100%);
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, var(--danger-color) 0%, var(--medical-red) 100%);
-        }
-        .btn-warning {
-            background: linear-gradient(135deg, var(--warning-color) 0%, var(--medical-orange) 100%);
+            border: none;
         }
 
-        .form-control, .form-select {
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-color) 0%, var(--medical-red) 100%);
+            border: none;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning-color) 0%, var(--medical-orange) 100%);
+            border: none;
+        }
+
+        .form-control,
+        .form-select {
             border-radius: var(--border-radius-sm);
             border: 2px solid #e9ecef;
             transition: var(--transition);
-            padding: .75rem 1rem;
-            background: #fff;
+            padding: 0.75rem 1rem;
+            background: #ffffff;
         }
-        .form-control:focus, .form-select:focus {
+
+        .form-control:focus,
+        .form-select:focus {
             border-color: var(--medical-blue);
-            box-shadow: 0 0 0 .2rem rgba(30, 136, 229, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25);
             transform: translateY(-1px);
-            background: #fff;
+            background: #ffffff;
         }
 
         .table {
             border-radius: var(--border-radius);
             overflow: hidden;
             box-shadow: var(--shadow);
-            background: #fff;
+            background: #ffffff;
         }
+
         .table thead th {
             background: linear-gradient(135deg, var(--light-color) 0%, #e9ecef 100%);
             border-bottom: 2px solid var(--medical-blue);
@@ -190,19 +253,19 @@
             color: var(--dark-color);
             padding: 1rem;
         }
+
         .table tbody tr {
             transition: var(--transition);
-            cursor: pointer;
         }
+
         .table tbody tr:hover {
             background: linear-gradient(135deg, rgba(30, 136, 229, 0.05) 0%, rgba(30, 136, 229, 0.1) 100%);
-            transform: scale(1.01);
         }
 
         .badge {
             border-radius: 1rem;
             font-weight: 500;
-            padding: .5rem 1rem;
+            padding: 0.5rem 1rem;
         }
 
         .alert {
@@ -211,18 +274,22 @@
             box-shadow: var(--shadow);
             border-left: 4px solid;
         }
+
         .alert-primary {
             border-left-color: var(--primary-color);
             background: linear-gradient(135deg, var(--primary-light) 0%, #e7f1ff 100%);
         }
+
         .alert-success {
             border-left-color: var(--success-color);
             background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
         }
+
         .alert-warning {
             border-left-color: var(--warning-color);
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
         }
+
         .alert-danger {
             border-left-color: var(--danger-color);
             background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
@@ -245,87 +312,6 @@
             color: var(--medical-red);
         }
 
-        .animate-pulse {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .sr-only {
-            position: absolute;
-            width:1px;
-            height:1px;
-            padding:0;
-            margin:-1px;
-            overflow:hidden;
-            clip:rect(0,0,0,0);
-            white-space:nowrap;
-            border:0;
-        }
-
-        html { scroll-behavior: smooth; }
-
-        .btn:focus, .form-control:focus, .nav-link:focus {
-            outline: 2px solid var(--medical-blue);
-            outline-offset: 2px;
-        }
-
-        .btn.loading {
-            pointer-events: none;
-            opacity: 0.8;
-        }
-
-        @media (max-width: 768px) {
-            .container { padding-left: 1rem; padding-right: 1rem; }
-            .btn { width: 100%; margin-bottom: .5rem; }
-            .clinic-card:hover, .table tbody tr:hover, .btn:hover { transform: none; }
-            .navbar-nav .nav-link { text-align: center; margin: 0.25rem 0; }
-        }
-
-        footer {
-            margin-top: auto;
-        }
-
-        footer a:hover {
-            color: var(--primary-color) !important;
-            transform: translateX(3px);
-            transition: var(--transition);
-        }
-
-        .dashboard-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid rgba(30, 136, 229, 0.1);
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: var(--transition);
-            box-shadow: var(--shadow);
-        }
-
-        .dashboard-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-hover);
-            border-color: rgba(30, 136, 229, 0.3);
-        }
-
-        .dashboard-stat {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--medical-blue);
-        }
-
         .queue-status {
             background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
             border: 1px solid var(--medical-blue);
@@ -341,26 +327,69 @@
             text-align: center;
         }
 
-        @media (min-width: 768px) {
-            .position-fixed[style*="top:"] {
-                top: 5rem !important;
-                right: 2rem !important;
-                left: auto !important;
-                width: 400px !important;
-                max-width: 400px !important;
-                z-index: 9999 !important;
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
             }
         }
 
-        @media (max-width: 767px) {
-            /* Mobile: center with proper margins */
-            .position-fixed[style*="top:"] {
-                top: 5rem !important;
-                right: 1rem !important;
-                left: 1rem !important;
-                width: auto !important;
-                max-width: none !important;
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
             }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .btn:focus,
+        .form-control:focus,
+        .form-select:focus {
+            outline: 2px solid var(--medical-blue);
+            outline-offset: 2px;
+        }
+
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        footer {
+            margin-top: auto;
+        }
+
+        footer a:hover {
+            color: var(--primary-color) !important;
+            transform: translateX(3px);
+            transition: var(--transition);
         }
 
         .toast-container {
@@ -385,154 +414,68 @@
         .toast .btn-close {
             margin: 0.5rem !important;
         }
-        @keyframes float-sm {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
-        }
-        @keyframes float-md {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-        .float-sm { animation: float-sm 6s ease-in-out infinite; }
-        .float-md { animation: float-md 8s ease-in-out infinite; }
-        .float-delay-1 { animation-delay: 1s; }
-        .float-delay-2 { animation-delay: 2s; }
-        .float-hover-pause:hover { animation-play-state: paused; }
 
-        .dashboard-card.float-enabled,
-        .medical-card.float-enabled {
-            animation: float-sm 7s ease-in-out infinite;
+        @media (min-width: 768px) {
+            .position-fixed[style*="top:"] {
+                top: 5rem !important;
+                right: 2rem !important;
+                left: auto !important;
+                width: 400px !important;
+                max-width: 400px !important;
+                z-index: 9999 !important;
+            }
         }
 
-        @keyframes float-rise-once {
-            0% { opacity:0; transform: translateY(24px); }
-            60% { opacity:1; transform: translateY(-6px); }
-            100% { opacity:1; transform: translateY(0); }
+        @media (max-width: 767px) {
+            .position-fixed[style*="top:"] {
+                top: 5rem !important;
+                right: 1rem !important;
+                left: 1rem !important;
+                width: auto !important;
+                max-width: none !important;
+            }
         }
-        .float-once {
-            animation: float-rise-once .9s ease-out 1;
+
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+
+            .clinic-card:hover,
+            .medical-card:hover,
+            .btn:hover {
+                transform: none;
+            }
         }
+
         @media (prefers-reduced-motion: reduce) {
-            .float-sm, .float-md, .dashboard-card.float-enabled, .medical-card.float-enabled { animation: none !important; }
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
         }
-
-        .patient-tab-shell {
-  display: flex;
-  width: 100%;
-  min-height: calc(100vh - 140px);
-}
-
-.patient-sidebar {
-  width: 82px;
-  min-width: 82px;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  background: linear-gradient(180deg, #061727 0%, #0b2035 100%);
-  padding: 18px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  z-index: 20;
-  box-shadow: 8px 0 28px rgba(2, 8, 23, .16);
-}
-
-.sidebar-brand,
-.sidebar-link {
-  width: 52px;
-  height: 52px;
-  border-radius: 15px;
-  display: grid;
-  place-items: center;
-  color: #d8e6f4;
-  text-decoration: none;
-  font-size: 22px;
-  transition: .2s ease;
-  border: 0;
-}
-
-.sidebar-brand {
-  color: #4aa3ff;
-  font-size: 30px;
-  margin-bottom: 24px;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-}
-
-.sidebar-link:hover,
-.sidebar-link.active,
-.sidebar-brand.active {
-  background: linear-gradient(135deg, #0d6efd, #178bff);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(13, 110, 253, .35);
-}
-
-.sidebar-bottom {
-  margin-top: auto;
-}
-
-.sidebar-logout {
-  background: transparent;
-}
-
-.patient-tab-content {
-  flex: 1;
-  min-width: 0;
-  padding: 0 24px;
-}
-
-@media (max-width: 768px) {
-  .patient-tab-shell {
-    display: block;
-  }
-
-  .patient-sidebar {
-    width: 100%;
-    min-width: 100%;
-    height: auto;
-    position: static;
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 10px;
-  }
-
-  .sidebar-brand {
-    margin-bottom: 0;
-  }
-
-  .sidebar-nav {
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .sidebar-brand,
-  .sidebar-link {
-    width: 44px;
-    height: 44px;
-    font-size: 19px;
-  }
-
-  .patient-tab-content {
-    padding: 0;
-  }
-}
     </style>
 
     @stack('styles')
 </head>
+
 <body>
 <div id="app" class="d-flex flex-column min-vh-100">
     @include('partials.navbar')
 
-
     @include('partials.alerts', ['toastOffsetTop' => '4.5rem'])
 
-    <main class="py-4 flex-grow-1">
+    <main class="flex-grow-1">
         <div class="floating-wrapper">
             @yield('content')
         </div>
@@ -541,7 +484,6 @@
     @include('partials.footer')
 </div>
 
-
 <div class="modal fade" id="queueCallModal" tabindex="-1" aria-labelledby="queueCallModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -549,9 +491,11 @@
                 <h5 class="modal-title" id="queueCallModalLabel">You're Being Called!</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+
             <div class="modal-body text-center">
                 <h4 id="queueCallMessage" class="fw-bold text-dark"></h4>
             </div>
+
             <div class="modal-footer">
                 <button class="btn btn-success" data-bs-dismiss="modal">Okay</button>
             </div>
@@ -561,7 +505,6 @@
 
 @include('partials.confirm-modal')
 
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 @vite(['resources/js/app.js'])
@@ -570,159 +513,111 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
 
-
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log("CliniQ layout ready");
-    });
-</script>
-
-
 
 <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.0/dist/echo.iife.js"></script>
 
 <script>
-    window.Echo = new Echo({
-        broadcaster: 'pusher',
-        key: '{{ env('VITE_PUSHER_APP_KEY') }}',
-        cluster: '{{ env('VITE_PUSHER_APP_CLUSTER', 'mt1') }}',
-        forceTLS: true
-    });
-
-    @auth
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof Echo !== 'undefined') {
-            const userId = {{ auth()->id() }};
-
-            Echo.private('user.notifications.' + userId)
-                .listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (e) => {
-                    console.log('Notification received:', e);
-
-                    if (e.notification && e.notification.type === 'queue_next_up') {
-                        const messageElement = document.getElementById('queueCallMessage');
-                        if (messageElement) {
-                            messageElement.innerText = e.notification.message || 'You are being called!';
-                        }
-
-                        const sound = document.getElementById('queueCallSound');
-                        if (sound) {
-                            sound.play().catch(() => {
-                                console.log('Audio play failed or was interrupted');
-                            });
-                        }
-
-                        const modalElement = document.getElementById('queueCallModal');
-                        if (modalElement && typeof bootstrap !== 'undefined') {
-                            const modal = new bootstrap.Modal(modalElement);
-                            modal.show();
-                        }
-                    }
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('select.enhanced-multiselect[multiple]').forEach((el) => {
+            try {
+                new Choices(el, {
+                    removeItemButton: true,
+                    shouldSort: false,
+                    searchPlaceholderValue: 'Type to search…'
                 });
-        } else {
-            console.error('Echo is not available');
-        }
-    });
-    @endauth
-</script>
+            } catch (e) {
+                console.warn('Choices.js failed to initialize:', e);
+            }
+        });
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('select.enhanced-multiselect[multiple]')?.forEach((el) => {
-        try {
-            new Choices(el, {
-                removeItemButton: true,
-                shouldSort: false,
-                searchPlaceholderValue: 'Type to search…'
-            });
-        } catch (e) { }
-        }
-    )});
-</script>
+        document.querySelectorAll('form').forEach((form) => {
+            form.addEventListener('submit', function () {
+                const btn = form.querySelector('button[type="submit"]');
 
+                if (!btn) return;
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Form loading state
-    document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function() {
-            const btn = form.querySelector('button[type="submit"]');
-            if (btn) {
                 btn.classList.add('loading');
                 btn.disabled = true;
+
                 const loadingText = btn.getAttribute('data-loading-text') || 'Processing...';
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + loadingText;
-            }
+            });
+        });
+
+        document.querySelectorAll('.password-toggle').forEach((btn) => {
+            btn.addEventListener('click', function () {
+                const targetSelector = btn.getAttribute('data-target');
+                const input = targetSelector ? document.querySelector(targetSelector) : btn.previousElementSibling;
+
+                if (!input) return;
+
+                const isText = input.getAttribute('type') === 'text';
+                input.setAttribute('type', isText ? 'password' : 'text');
+
+                const icon = btn.querySelector('i');
+
+                if (icon) {
+                    icon.classList.toggle('bi-eye');
+                    icon.classList.toggle('bi-eye-slash');
+                }
+
+                btn.setAttribute('aria-label', isText ? 'Show password' : 'Hide password');
+            });
         });
     });
-
-    document.querySelectorAll('tbody tr').forEach(row => {
-        row.addEventListener('click', function() {
-            const link = this.querySelector('a[href]');
-            if (link && !this.querySelector('button, input, select')) {
-                window.location.href = link.href;
-            }
-        });
-    });
-
-    const scrollToTopBtn = document.createElement('button');
-    scrollToTopBtn.innerHTML = '<i class="bi bi-arrow-up"></i>';
-    scrollToTopBtn.className = 'btn btn-primary rounded-circle position-fixed shadow';
-    scrollToTopBtn.style.cssText = 'bottom:20px;right:20px;z-index:1000;width:50px;height:50px;display:none;';
-    scrollToTopBtn.title = 'Scroll to top';
-    document.body.appendChild(scrollToTopBtn);
-
-    window.addEventListener('scroll', () => {
-        scrollToTopBtn.style.display = window.pageYOffset > 300 ? 'block' : 'none';
-    });
-
-    scrollToTopBtn.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    // Keyboard focus style
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Tab') document.body.classList.add('keyboard-navigation');
-    });
-    document.addEventListener('mousedown', () => document.body.classList.remove('keyboard-navigation'));
-
-    const notificationBadges = document.querySelectorAll('.badge.animate-pulse');
-    notificationBadges.forEach(badge => {
-        badge.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    });
-
-    const cards = document.querySelectorAll('.clinic-card, .dashboard-card, .medical-card');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('fade-in');
-            }
-        });
-    });
-
-    cards.forEach(card => observer.observe(card));
-
-    document.querySelectorAll('.password-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetSelector = btn.getAttribute('data-target');
-            const input = targetSelector ? document.querySelector(targetSelector) : btn.previousElementSibling;
-            if (!input) return;
-            const isText = input.getAttribute('type') === 'text';
-            input.setAttribute('type', isText ? 'password' : 'text');
-            const icon = btn.querySelector('i');
-            if (icon) {
-                icon.classList.toggle('bi-eye');
-                icon.classList.toggle('bi-eye-slash');
-            }
-            btn.setAttribute('aria-label', isText ? 'Show password' : 'Hide password');
-        });
-    });
-});
 </script>
+
+@auth
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Echo === 'undefined') {
+            console.error('Echo is not available');
+            return;
+        }
+
+        window.Echo = new Echo({
+            broadcaster: 'pusher',
+            key: '{{ env('VITE_PUSHER_APP_KEY') }}',
+            cluster: '{{ env('VITE_PUSHER_APP_CLUSTER', 'mt1') }}',
+            forceTLS: true
+        });
+
+        const userId = {{ auth()->id() }};
+
+        Echo.private('user.notifications.' + userId)
+            .listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', function (e) {
+                console.log('Notification received:', e);
+
+                if (!e.notification || e.notification.type !== 'queue_next_up') {
+                    return;
+                }
+
+                const messageElement = document.getElementById('queueCallMessage');
+
+                if (messageElement) {
+                    messageElement.innerText = e.notification.message || 'You are being called!';
+                }
+
+                const sound = document.getElementById('queueCallSound');
+
+                if (sound) {
+                    sound.play().catch(function () {
+                        console.log('Audio play failed or was interrupted');
+                    });
+                }
+
+                const modalElement = document.getElementById('queueCallModal');
+
+                if (modalElement && typeof bootstrap !== 'undefined') {
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
+            });
+    });
+</script>
+@endauth
 
 @stack('scripts')
 @stack('modals')

@@ -4,23 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>@yield('title', 'Dashboard') | CliniQ</title>
+  <title>@yield('title', 'CliniQ')</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
   <style>
     :root {
-      --sidebar: #071827;
-      --blue: #0d6efd;
-      --bg: #f6faff;
-      --text: #172033;
-      --muted: #697386;
-      --card: #ffffff;
-      --border: #e7edf5;
-      --shadow: 0 14px 35px rgba(15, 23, 42, .08);
-      --radius: 18px;
+      --cliniq-blue: #0d6efd;
+      --cliniq-blue-2: #178bff;
+      --cliniq-bg: #f6faff;
+      --cliniq-text: #0f172a;
+      --cliniq-muted: #64748b;
+      --cliniq-card: #ffffff;
+      --cliniq-border: #e2e8f0;
+      --cliniq-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+      --cliniq-radius: 24px;
     }
 
     * {
@@ -33,306 +36,90 @@
 
     body {
       margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      overflow-x: hidden;
-    }
-
-    .patient-shell {
       min-height: 100vh;
+      font-family: 'Inter', sans-serif;
       background:
-        radial-gradient(circle at top right, rgba(13,110,253,.08), transparent 35%),
-        linear-gradient(180deg, #f9fcff 0%, #f1f7ff 100%);
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.13), transparent 25%),
+        radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), transparent 22%),
+        linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+      color: var(--cliniq-text);
     }
 
-    .patient-navbar {
-      height: 78px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 0 24px;
-      margin: 0px 0px 22px 0px;
-      /* position: sticky; */
-      top: 18px;
-      z-index: 200;
-    }
-
-    .patient-layout {
-      display: flex;
-      align-items: flex-start;
-      min-height: calc(100vh - 124px);
-    }
-
-    .patient-sidebar {
-      width: 86px;
-      background: linear-gradient(180deg, #061727 0%, #0b2035 100%);
-      color: white;
-      padding: 22px 14px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: sticky;
-      top: 122px;
-      height: calc(100vh - 122px);
-      z-index: 80;
-      box-shadow: 8px 0 28px rgba(2, 8, 23, .18);
-    }
-
-    .sidebar-logo {
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
-      display: grid;
-      place-items: center;
-      color: #4aa3ff;
-      font-size: 32px;
-      margin-bottom: 28px;
+    a {
       text-decoration: none;
-      transition: .2s ease;
     }
 
-    .sidebar-nav {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      width: 100%;
-      align-items: center;
-    }
-
-    .sidebar-link {
-      width: 54px;
-      height: 54px;
-      border-radius: 15px;
-      display: grid;
-      place-items: center;
-      color: #64748b;
-      text-decoration: none;
-      font-size: 23px;
-      transition: .2s ease;
-      cursor: pointer;
-    }
-
-    .sidebar-link.active,
-    .sidebar-logo.active {
-      background: #0d6efd;
-      color: #fff;
-    }
-
-    .sidebar-link:hover,
-    .sidebar-logo:hover {
-      background: rgba(13, 110, 253, 0.15);
-      color: #0d6efd;
-    }
-
-    .sidebar-link.active:hover,
-    .sidebar-logo.active:hover {
-      background: #0d6efd;
-      color: #fff;
-    }
-
-    .sidebar-link:not(.active),
-    .sidebar-logo:not(.active) {
-      background: transparent;
-      color: #64748b;
-    }
-
-    .sidebar-bottom {
-      margin-top: auto;
+    .patient-page {
+      min-height: 100vh;
     }
 
     .patient-main {
-      flex: 1;
-      min-width: 0;
-      padding: 0 36px 40px;
-      zoom: 0.8;
-    }
-
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      text-decoration: none;
-      color: var(--text);
-    }
-
-    .nav-brand-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 16px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #0d6efd, #178bff);
-      color: #fff;
-      font-size: 28px;
-      box-shadow: 0 12px 24px rgba(13, 110, 253, .28);
-    }
-
-    .nav-brand-text {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      color: #0f172a;
-    }
-
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .notification-btn {
-      width: 46px;
-      height: 46px;
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      background: #fff;
-      font-size: 21px;
-      color: #1f2937;
-      display: grid;
-      place-items: center;
-      position: relative;
-      text-decoration: none;
-      transition: .2s ease;
-    }
-
-    .notification-btn:hover {
-      color: var(--blue);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, .10);
-    }
-
-    .avatar-pill {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border: 1px solid var(--border);
-      background: #fff;
-      color: #475569;
-      border-radius: 999px;
-      padding: 7px 12px 7px 7px;
-      transition: .2s ease;
-    }
-
-    .avatar-pill:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, .10);
-    }
-
-    .avatar-circle {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #a7c0ff, #dbe7ff);
-      color: white;
-      font-weight: 800;
-    }
-
-    .welcome-card {
       width: 100%;
-      min-height: 128px;
-      margin-bottom: 28px;
-      padding: 24px 28px;
-      border-radius: 22px;
-      background: linear-gradient(120deg, #3b82f6 0%, #2563eb 60%, #1d4ed8 100%);
-      color: #fff;
-      box-shadow: 0 18px 35px rgba(37, 99, 235, .22);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 22px;
+      padding: 22px 22px 36px;
     }
 
-    .welcome-card::before {
-      content: "";
-      position: absolute;
-      right: -70px;
-      top: -80px;
-      width: 230px;
-      height: 230px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .10);
-      pointer-events: none;
-    }
-
-    .welcome-card::after {
-      content: "";
-      position: absolute;
-      right: 105px;
-      bottom: -85px;
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .06);
-      pointer-events: none;
-    }
-
-    .welcome-content {
-      position: relative;
-      z-index: 2;
-    }
-
-    .welcome-content h1 {
-      font-size: clamp(24px, 3vw, 34px);
-      font-weight: 800;
-      margin: 0 0 8px;
-      color: #fff;
-    }
-
-    .welcome-content p {
-      margin: 0;
-      color: rgba(255,255,255,.9);
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    .book-appointment-btn {
-      position: relative;
-      z-index: 2;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: #fff;
-      color: #2563eb;
-      padding: 13px 20px;
-      border-radius: 15px;
-      text-decoration: none;
-      font-size: 15px;
-      font-weight: 800;
-      white-space: nowrap;
-      box-shadow: 0 12px 24px rgba(15, 23, 42, .16);
-      transition: .2s ease;
-    }
-
-    .book-appointment-btn:hover {
-      color: #1d4ed8;
-      transform: translateY(-2px);
-      box-shadow: 0 16px 30px rgba(15, 23, 42, .22);
-    }
-
-    .dashboard-container {
-      max-width: 100%;
+    .dashboard-container,
+    .patient-content-container {
+      width: 100%;
+      max-width: 1540px;
       margin: 0 auto;
+    }
+
+    .page-card,
+    .dash-card {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(226, 232, 240, 0.96);
+      border-radius: var(--cliniq-radius);
+      box-shadow: var(--cliniq-shadow);
+      padding: 24px;
+    }
+
+    .page-card {
+      margin-top: 16px;
+    }
+
+    .welcome-card,
+    .welcome-panel,
+    .welcome-banner {
+      border-radius: 24px;
+      padding: 30px 34px;
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 90% 30%, rgba(255, 255, 255, 0.15), transparent 18%),
+        linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      box-shadow: 0 18px 45px rgba(37, 99, 235, 0.22);
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .welcome-card h1,
+    .welcome-panel h1,
+    .welcome-banner h1 {
+      font-size: clamp(26px, 3vw, 36px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      margin: 0 0 8px;
+    }
+
+    .welcome-card p,
+    .welcome-panel p,
+    .welcome-banner p {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      opacity: 0.95;
     }
 
     .stat-card {
       min-height: 170px;
-      border-radius: 18px;
+      border-radius: 20px;
       padding: 24px;
-      color: white;
+      color: #ffffff;
       position: relative;
       overflow: hidden;
-      box-shadow: var(--shadow);
+      box-shadow: var(--cliniq-shadow);
+      border: 0;
     }
 
     .stat-card::after {
@@ -343,7 +130,8 @@
       width: 130px;
       height: 130px;
       border-radius: 40px;
-      background: rgba(255,255,255,.12);
+      background: rgba(255, 255, 255, 0.13);
+      transform: rotate(3deg);
     }
 
     .stat-blue {
@@ -378,52 +166,52 @@
       border-radius: 16px;
       display: grid;
       place-items: center;
-      background: rgba(255,255,255,.18);
+      background: rgba(255, 255, 255, 0.18);
       font-size: 30px;
+      flex: 0 0 auto;
     }
 
     .stat-value {
       font-size: 38px;
-      font-weight: 800;
+      font-weight: 900;
       line-height: 1;
       margin-bottom: 8px;
+      letter-spacing: -0.04em;
     }
 
     .stat-title {
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 800;
       margin-bottom: 8px;
     }
 
     .stat-sub {
-      opacity: .9;
+      opacity: 0.92;
       margin: 0;
-    }
-
-    .dash-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 28px;
+      font-weight: 500;
     }
 
     .dash-card-title {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 14px;
       margin-bottom: 20px;
     }
 
-    .dash-card-title h2 {
-      font-size: 22px;
-      font-weight: 800;
+    .dash-card-title h2,
+    .dash-card-title h3 {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
       margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .title-icon {
-      color: var(--blue);
-      margin-right: 10px;
+      color: var(--cliniq-blue);
     }
 
     .appointment-row {
@@ -432,7 +220,7 @@
       gap: 22px;
       align-items: center;
       padding: 20px 8px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--cliniq-border);
     }
 
     .appointment-row:first-child {
@@ -442,22 +230,22 @@
     .date-box {
       width: 78px;
       height: 92px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, #0d6efd, #238dff);
-      color: white;
+      border-radius: 16px;
+      background: linear-gradient(180deg, var(--cliniq-blue), #238dff);
+      color: #ffffff;
       display: grid;
       place-items: center;
       text-align: center;
-      box-shadow: 0 12px 24px rgba(13, 110, 253, .25);
+      box-shadow: 0 12px 24px rgba(13, 110, 253, 0.25);
     }
 
     .date-box .month {
-      font-weight: 800;
+      font-weight: 900;
       font-size: 15px;
     }
 
     .date-box .day {
-      font-weight: 800;
+      font-weight: 900;
       font-size: 28px;
       line-height: 1;
     }
@@ -468,7 +256,7 @@
 
     .appointment-name {
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 900;
       margin-bottom: 8px;
     }
 
@@ -478,27 +266,33 @@
       flex-wrap: wrap;
       gap: 14px;
       margin-bottom: 6px;
+      font-weight: 500;
     }
 
     .status-pill {
       border-radius: 999px;
       padding: 8px 14px;
       background: #eef5ff;
-      color: #0d6efd;
-      font-weight: 600;
+      color: var(--cliniq-blue);
+      font-weight: 700;
       font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
     }
 
     .empty-box {
       text-align: center;
       padding: 50px 20px;
-      color: var(--muted);
+      color: var(--cliniq-muted);
     }
 
     .empty-box i {
       font-size: 58px;
       display: block;
       margin-bottom: 14px;
+      color: #64748b;
     }
 
     .info-card {
@@ -512,11 +306,16 @@
       margin: 18px 0 24px;
     }
 
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+
     .activity-item {
       display: flex;
       gap: 14px;
-      padding: 13px 0;
-      border-bottom: 1px solid var(--border);
+      padding: 15px 0;
+      border-bottom: 1px solid var(--cliniq-border);
     }
 
     .activity-item:last-child {
@@ -524,23 +323,10 @@
     }
 
     .activity-icon {
-      color: var(--blue);
+      color: var(--cliniq-blue);
       font-size: 20px;
       margin-top: 2px;
-    }
-
-    .back-top {
-      position: fixed;
-      right: 34px;
-      bottom: 30px;
-      width: 58px;
-      height: 58px;
-      border-radius: 50%;
-      border: 0;
-      background: linear-gradient(135deg, #0d6efd, #178bff);
-      color: white;
-      box-shadow: 0 14px 28px rgba(13, 110, 253, .35);
-      z-index: 100;
+      flex: 0 0 auto;
     }
 
     .dashboard-pair-card {
@@ -553,7 +339,7 @@
     .dashboard-pair-card .dash-card-title {
       margin-bottom: 0;
       padding-bottom: 18px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--cliniq-border);
     }
 
     .recent-activity-card .activity-list,
@@ -564,11 +350,6 @@
     .recent-activity-card .activity-item {
       padding: 18px 0;
       min-height: 78px;
-    }
-
-    .recent-activity-card .activity-item:first-child,
-    .past-appointments-card .appointment-row:first-child {
-      border-top: 0;
     }
 
     .past-appointments-card .appointment-row {
@@ -586,76 +367,61 @@
       padding: 8px 14px;
     }
 
-    .past-appointments-card .status-pill .badge {
-      font-size: 11px;
-      padding: 6px 10px;
-      border-radius: 999px;
-    }
-
     .past-appointments-card .history-link-wrap {
       margin-top: auto;
       padding-top: 14px;
       text-align: center;
     }
 
-    .compact .stat-card.mini {
-      padding: 14px;
-      min-height: 90px;
+    .compact .stat-card.mini,
+    .stat-card.mini {
+      padding: 16px;
+      min-height: 110px;
     }
 
-    .compact .stat-value {
-      font-size: 22px;
-      margin-bottom: 2px;
-    }
-
-    .compact small {
-      font-size: 12px;
+    .compact .stat-value,
+    .stat-card.mini .stat-value {
+      font-size: 24px;
+      margin-bottom: 3px;
     }
 
     .dash-card.compact {
-      padding: 16px;
+      padding: 18px;
     }
 
     .appointment-row.compact {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 0;
-      border-top: 1px solid #eee;
+      padding: 12px 0;
+      border-top: 1px solid var(--cliniq-border);
     }
 
     .date-mini {
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       min-width: 55px;
     }
 
-    .patient-page-shell {
-      display: flex;
-      min-height: calc(100vh - 0px);
-      background: #f6faff;
-    }
-
-    .patient-page-content {
-      flex: 1;
-      min-width: 0;
-      padding: 24px;
+    .back-top {
+      position: fixed;
+      right: 28px;
+      bottom: 26px;
+      width: 54px;
+      height: 54px;
+      border-radius: 999px;
+      border: 0;
+      background: linear-gradient(135deg, var(--cliniq-blue), var(--cliniq-blue-2));
+      color: #ffffff;
+      box-shadow: 0 14px 28px rgba(13, 110, 253, 0.35);
+      z-index: 100;
+      display: grid;
+      place-items: center;
     }
 
     @media (max-width: 992px) {
-      .patient-navbar {
-        margin: 18px 18px 18px 18px;
-        top: 12px;
-      }
-
-      .patient-sidebar {
-        width: 74px;
-        top: 112px;
-        height: calc(100vh - 112px);
-      }
-
       .patient-main {
-        padding: 0 18px 32px;
+        padding: 18px 14px 28px;
       }
 
       .appointment-row {
@@ -683,229 +449,68 @@
     }
 
     @media (max-width: 768px) {
-      .patient-shell {
-        display: block;
-      }
-
-      .patient-navbar {
-        position: static;
-        height: auto;
-        flex-direction: column;
-        align-items: stretch;
-        padding: 16px;
-        margin: 12px;
-        border-radius: 18px;
-      }
-
-      .patient-layout {
-        display: block;
-        min-height: auto;
-      }
-
-      .patient-sidebar {
-        width: calc(100% - 24px);
-        height: auto;
-        position: static;
-        flex-direction: row;
-        justify-content: space-between;
-        padding: 12px;
-        margin: 0 12px 16px;
-        border-radius: 18px;
-      }
-
-      .sidebar-logo {
-        margin-bottom: 0;
-      }
-
-      .sidebar-nav {
-        flex-direction: row;
-        justify-content: center;
-        gap: 8px;
-      }
-
-      .sidebar-link {
-        width: 44px;
-        height: 44px;
-        font-size: 19px;
-      }
-
-      .sidebar-bottom {
-        margin-top: 0;
-      }
-
       .patient-main {
-        padding: 0 12px 26px;
-        zoom: 1;
+        padding: 14px 10px 24px;
       }
 
-      .topbar-actions {
-        justify-content: flex-end;
+      .page-card,
+      .dash-card {
+        border-radius: 22px;
+        padding: 18px;
       }
 
-      .welcome-card {
-        flex-direction: column;
-        align-items: flex-start;
+      .welcome-card,
+      .welcome-panel,
+      .welcome-banner {
+        padding: 24px 20px;
+        border-radius: 22px;
       }
 
-      .book-appointment-btn {
-        width: 100%;
+      .stat-card {
+        min-height: 140px;
+        padding: 20px;
+      }
+
+      .stat-icon {
+        width: 54px;
+        height: 54px;
+        font-size: 25px;
+      }
+
+      .stat-value {
+        font-size: 30px;
       }
 
       .info-grid {
         grid-template-columns: 1fr;
+      }
+
+      .back-top {
+        right: 16px;
+        bottom: 18px;
+        width: 48px;
+        height: 48px;
       }
     }
   </style>
 
   @stack('styles')
 </head>
-
 <body>
-  <div class="patient-shell">
+  <div class="patient-page">
+    @include('partials.patient-navbar')
+    @include('partials.patient-sidebar')
 
-    <nav class="patient-navbar">
-      <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}" class="nav-brand">
-        <span class="nav-brand-icon">
-          <i class="bi bi-heart-pulse"></i>
-        </span>
-        <span class="nav-brand-text">CliniQ</span>
-      </a>
-
-      <div class="topbar-actions">
-        <a href="{{ Route::has('notifications.index') ? route('notifications.index') : '#' }}" class="notification-btn" title="Notifications">
-          <i class="bi bi-bell"></i>
-        </a>
-
-        <button class="avatar-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <span class="avatar-circle">
-            {{ strtoupper(substr(Auth::user()->name ?? 'P', 0, 1)) }}
-          </span>
-          <span class="d-none d-md-inline fw-semibold">
-            {{ Auth::user()->name ?? 'Patient' }}
-          </span>
-          <i class="bi bi-chevron-down"></i>
-        </button>
-
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li>
-            <a class="dropdown-item" href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}">
-              <i class="bi bi-person me-2"></i>Profile
-            </a>
-          </li>
-
-          <li><hr class="dropdown-divider"></li>
-
-          <li>
-            <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}" class="d-inline w-100">
-              @csrf
-              <button type="submit" class="dropdown-item text-danger">
-                <i class="bi bi-box-arrow-right me-2"></i>Logout
-              </button>
-            </form>
-          </li>
-        </ul>
-      </div>
-    </nav>
-
-    <div class="patient-layout">
-      <aside class="patient-sidebar">
-        <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
-           class="sidebar-logo {{ request()->routeIs('dashboard') ? 'active' : '' }}"
-           title="Dashboard">
-          <i class="bi bi-heart-pulse"></i>
-        </a>
-
-        <nav class="sidebar-nav">
-          <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/dashboard') }}"
-             class="sidebar-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
-             title="Dashboard">
-            <i class="bi bi-house-heart"></i>
-          </a>
-
-          <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}"
-             class="sidebar-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}"
-             title="Appointments">
-            <i class="bi bi-calendar-check"></i>
-          </a>
-
-          <a href="{{ Route::has('queue.status') ? route('queue.status') : url('/queue/status') }}"
-             class="sidebar-link {{ request()->routeIs('queue.*') ? 'active' : '' }}"
-             title="Queue">
-            <i class="bi bi-people"></i>
-          </a>
-
-          <a href="{{ Route::has('clinics.index') ? route('clinics.index') : url('/clinics') }}"
-             class="sidebar-link {{ request()->routeIs('clinics.*') ? 'active' : '' }}"
-             title="Clinics">
-            <i class="bi bi-hospital"></i>
-          </a>
-
-          <a href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}"
-             class="sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}"
-             title="Profile">
-            <i class="bi bi-person"></i>
-          </a>
-        </nav>
-
-        <div class="sidebar-bottom">
-          <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}">
-            @csrf
-            <button type="submit" class="sidebar-link border-0 bg-transparent" title="Logout">
-              <i class="bi bi-box-arrow-right"></i>
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <main class="patient-main">
-        <div class="welcome-card">
-          <div class="welcome-content">
-            @php
-              $title = 'Patient Dashboard';
-              $subtitle = "Here's what's happening with your health journey.";
-
-              if (request()->routeIs('appointments.*')) {
-                  $title = 'My Appointments';
-                  $subtitle = 'View and manage your appointments';
-              } elseif (request()->routeIs('queue.*')) {
-                  $title = 'Queue';
-                  $subtitle = 'Track your queue status';
-              } elseif (request()->routeIs('clinics.*')) {
-                  $title = 'Clinics';
-                  $subtitle = 'Browse clinics and services';
-              } elseif (request()->routeIs('profile.*')) {
-                  $title = 'My Profile';
-                  $subtitle = 'Manage your account';
-              }
-            @endphp
-
-            @if(request()->routeIs('dashboard'))
-              <h1>Welcome back, {{ Auth::user()->name ?? 'Patient' }}! 👋</h1>
-              <p><i class="bi bi-heart-pulse me-2"></i>{{ $subtitle }}</p>
-            @else
-              <h1>{{ $title }}</h1>
-              <p><i class="bi bi-info-circle me-2"></i>{{ $subtitle }}</p>
-            @endif
-          </div>
-
-          @if(!request()->routeIs('appointments.create') && Route::has('appointments.create'))
-            <a href="{{ route('appointments.create') }}" class="book-appointment-btn">
-              <i class="bi bi-calendar-plus"></i>
-              <span>Book Appointment</span>
-            </a>
-          @endif
-        </div>
-
-        @yield('content')
-      </main>
-    </div>
+    <main class="patient-main">
+      @yield('content')
+    </main>
   </div>
 
-  <button class="back-top" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+  <button type="button" class="back-top" onclick="window.scrollTo({top:0, behavior:'smooth'})" aria-label="Back to top">
     <i class="bi bi-arrow-up"></i>
   </button>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   @stack('scripts')
 </body>
 </html>
