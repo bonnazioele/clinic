@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Service')
+@section('title', 'Create Service')
 
 @section('content')
 @php
@@ -15,6 +15,10 @@
 
   if (!$secretaryClinicId && is_numeric($secretaryClinicRouteValue)) {
       $secretaryClinicId = $secretaryClinicRouteValue;
+  }
+
+  if (!$secretaryClinicId && isset($clinic) && isset($clinic->id)) {
+      $secretaryClinicId = $clinic->id;
   }
 
   if (!$secretaryClinicId && session('active_clinic_id')) {
@@ -34,45 +38,60 @@
           return url($fallback);
       }
 
+      $params = (array) $params;
+
+      if ($secretaryClinicId && !array_key_exists('clinic', $params)) {
+          $params = array_merge(['clinic' => $secretaryClinicId], $params);
+      }
+
       try {
           return route($routeName, $params);
-      } catch (\Throwable $firstError) {
-          if ($secretaryClinicId) {
-              try {
-                  return route($routeName, array_merge(['clinic' => $secretaryClinicId], (array) $params));
-              } catch (\Throwable $secondError) {
-                  return url($fallback);
-              }
-          }
-
+      } catch (\Throwable $error) {
           return url($fallback);
       }
   };
 
-  $backUrl = $secUrl('secretary.services.index', [], '/secretary/dashboard');
-  $updateUrl = $secUrl('secretary.services.update', ['service' => $service->id], '/secretary/dashboard');
+  $storeUrl = $secUrl('secretary.services.store');
+  $backUrl = $secUrl('secretary.services.index');
 @endphp
 
 <style>
-  .service-edit-page {
+  .service-create-page {
     width: 96%;
     max-width: none;
     margin: 0 auto;
-    padding: .5rem 0 1.5rem;
+    padding: 0.5rem 0 1.5rem;
   }
 
-  .service-edit-hero {
-    border-radius: 24px;
+  .service-create-hero {
+    border-radius: 26px;
     padding: 1.45rem;
-    color: #fff;
+    color: #ffffff;
     background:
-      radial-gradient(circle at 90% 25%, rgba(255,255,255,.16), transparent 18%),
+      radial-gradient(circle at 88% 18%, rgba(255,255,255,.2), transparent 18%),
+      radial-gradient(circle at 18% 92%, rgba(125,211,252,.22), transparent 24%),
       linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%);
-    box-shadow: 0 18px 45px rgba(37,99,235,.22);
+    box-shadow: 0 18px 45px rgba(37, 99, 235, 0.22);
     margin-bottom: 1rem;
+    overflow: hidden;
+    position: relative;
   }
 
-  .service-edit-hero-row {
+  .service-create-hero::after {
+    content: "";
+    position: absolute;
+    right: -55px;
+    bottom: -65px;
+    width: 180px;
+    height: 180px;
+    border-radius: 55px;
+    background: rgba(255,255,255,0.12);
+    transform: rotate(12deg);
+  }
+
+  .service-create-hero-row {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -80,52 +99,56 @@
     flex-wrap: wrap;
   }
 
-  .service-title-wrap {
+  .service-create-title-wrap {
     display: flex;
-    gap: .85rem;
     align-items: flex-start;
+    gap: 0.9rem;
   }
 
-  .service-title-icon {
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
+  .service-create-icon {
+    width: 62px;
+    height: 62px;
+    border-radius: 20px;
     display: grid;
     place-items: center;
     background: rgba(255,255,255,.18);
-    font-size: 1.55rem;
-    flex: 0 0 58px;
+    border: 1px solid rgba(255,255,255,.2);
+    font-size: 1.7rem;
+    flex: 0 0 62px;
   }
 
-  .service-title {
+  .service-create-title {
     margin: 0;
-    font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+    font-size: clamp(1.55rem, 2.6vw, 2.25rem);
     font-weight: 900;
-    letter-spacing: -.045em;
+    letter-spacing: -0.05em;
+    line-height: 1.05;
   }
 
-  .service-subtitle {
-    margin: .3rem 0 0;
-    font-size: .95rem;
+  .service-create-subtitle {
+    margin: 0.35rem 0 0;
+    font-size: 0.97rem;
     font-weight: 650;
-    opacity: .94;
+    opacity: 0.94;
+    max-width: 720px;
   }
 
-  .service-edit-hero .btn {
-    border-radius: 14px;
+  .service-create-hero .btn {
+    border-radius: 15px;
     font-weight: 900;
+    min-height: 44px;
   }
 
-  .service-edit-grid {
+  .service-create-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(290px, .75fr);
+    grid-template-columns: minmax(0, 1.45fr) minmax(290px, 0.75fr);
     gap: 1rem;
     align-items: start;
   }
 
   .service-form-card,
   .service-side-card {
-    border-radius: 24px;
+    border-radius: 26px;
     border: 1px solid rgba(226,232,240,.96);
     background: rgba(255,255,255,.94);
     box-shadow: 0 18px 45px rgba(15,23,42,.08);
@@ -135,6 +158,7 @@
   .service-card-head {
     padding: 1rem 1.2rem;
     border-bottom: 1px solid #edf2f7;
+    background: rgba(248,250,252,.85);
   }
 
   .service-card-title {
@@ -144,7 +168,7 @@
     color: #0f172a;
     display: flex;
     align-items: center;
-    gap: .5rem;
+    gap: 0.5rem;
   }
 
   .service-card-title i {
@@ -166,7 +190,7 @@
   }
 
   .form-label {
-    font-size: .82rem;
+    font-size: 0.82rem;
     font-weight: 850;
     color: #334155;
   }
@@ -182,13 +206,13 @@
   .form-control:focus,
   .form-select:focus {
     border-color: rgba(13,110,253,.55) !important;
-    box-shadow: 0 0 0 .2rem rgba(13,110,253,.1) !important;
+    box-shadow: 0 0 0 0.2rem rgba(13,110,253,.1) !important;
   }
 
   .field-help {
-    margin-top: .4rem;
+    margin-top: 0.4rem;
     color: #64748b;
-    font-size: .76rem;
+    font-size: 0.76rem;
     font-weight: 650;
     line-height: 1.4;
   }
@@ -198,7 +222,7 @@
     border-top: 1px solid #edf2f7;
     display: flex;
     justify-content: flex-end;
-    gap: .65rem;
+    gap: 0.65rem;
     flex-wrap: wrap;
     background: #f8fafc;
   }
@@ -219,7 +243,7 @@
     display: grid;
     place-items: center;
     background: linear-gradient(135deg, #0d6efd, #178bff);
-    color: #fff;
+    color: #ffffff;
     font-size: 2rem;
     margin-bottom: 1rem;
   }
@@ -228,12 +252,12 @@
     color: #0f172a;
     font-size: 1rem;
     font-weight: 900;
-    margin-bottom: .35rem;
+    margin-bottom: 0.35rem;
   }
 
   .side-text {
     color: #64748b;
-    font-size: .84rem;
+    font-size: 0.84rem;
     font-weight: 650;
     line-height: 1.5;
   }
@@ -241,84 +265,41 @@
   .side-list {
     margin-top: 1rem;
     display: grid;
-    gap: .65rem;
+    gap: 0.65rem;
   }
 
   .side-item {
     border-radius: 16px;
     border: 1px solid #edf2f7;
     background: #f8fafc;
-    padding: .75rem;
-  }
-
-  .side-label {
-    font-size: .68rem;
-    font-weight: 900;
-    color: #64748b;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    margin-bottom: .2rem;
-  }
-
-  .side-value {
-    color: #0f172a;
-    font-size: .86rem;
-    font-weight: 850;
-    word-break: break-word;
-  }
-
-  .clinic-option-list {
-    border-radius: 18px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    padding: .75rem;
-    max-height: 260px;
-    overflow-y: auto;
-  }
-
-  .clinic-option {
+    padding: 0.75rem;
     display: flex;
-    align-items: center;
-    gap: .65rem;
-    padding: .65rem;
-    border-radius: 14px;
-    background: #fff;
-    border: 1px solid #edf2f7;
-    margin-bottom: .5rem;
-  }
-
-  .clinic-option:last-child {
-    margin-bottom: 0;
-  }
-
-  .clinic-option input {
-    width: 18px;
-    height: 18px;
-  }
-
-  .clinic-option strong {
-    color: #0f172a;
-    font-size: .86rem;
-  }
-
-  .clinic-option small {
-    color: #64748b;
+    gap: 0.65rem;
+    align-items: flex-start;
+    color: #475569;
     font-weight: 650;
+    font-size: 0.82rem;
+  }
+
+  .side-item i {
+    color: #0d6efd;
+    font-size: 1rem;
   }
 
   @media (max-width: 1100px) {
-    .service-edit-grid {
+    .service-create-grid {
       grid-template-columns: 1fr;
     }
   }
 
   @media (max-width: 768px) {
-    .service-edit-page {
+    .service-create-page {
       width: 100%;
     }
 
-    .service-edit-hero {
-      padding: 1rem;
+    .service-create-hero,
+    .service-form-card,
+    .service-side-card {
       border-radius: 22px;
     }
 
@@ -332,20 +313,20 @@
   }
 </style>
 
-<div class="service-edit-page">
+<div class="service-create-page">
   @include('partials.alerts')
 
-  <section class="service-edit-hero">
-    <div class="service-edit-hero-row">
-      <div class="service-title-wrap">
-        <div class="service-title-icon">
-          <i class="bi bi-pencil-square"></i>
+  <section class="service-create-hero">
+    <div class="service-create-hero-row">
+      <div class="service-create-title-wrap">
+        <div class="service-create-icon">
+          <i class="bi bi-plus-circle"></i>
         </div>
 
         <div>
-          <h1 class="service-title">Edit Service</h1>
-          <p class="service-subtitle">
-            Update service details and choose which clinics can offer this service.
+          <h1 class="service-create-title">Create New Service</h1>
+          <p class="service-create-subtitle">
+            Add a service that belongs only to {{ $clinic->name ?? 'your clinic' }}.
           </p>
         </div>
       </div>
@@ -357,7 +338,7 @@
     </div>
   </section>
 
-  <div class="service-edit-grid">
+  <div class="service-create-grid">
     <main class="service-form-card">
       <div class="service-card-head">
         <h2 class="service-card-title">
@@ -366,9 +347,8 @@
         </h2>
       </div>
 
-      <form method="POST" action="{{ $updateUrl }}">
+      <form method="POST" action="{{ $storeUrl }}">
         @csrf
-        @method('PUT')
 
         <div class="service-form-body">
           <div class="field-grid">
@@ -376,10 +356,11 @@
               <label class="form-label">Service Name</label>
               <input type="text"
                      name="name"
-                     value="{{ old('name', $service->name) }}"
+                     value="{{ old('name') }}"
                      class="form-control @error('name') is-invalid @enderror"
-                     placeholder="e.g. Dental Checkup"
+                     placeholder="e.g. Dental Checkup, Consultation, X-Ray"
                      required>
+
               @error('name')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
@@ -390,45 +371,46 @@
               <textarea name="description"
                         class="form-control @error('description') is-invalid @enderror"
                         rows="4"
-                        placeholder="Briefly describe what this service includes...">{{ old('description', $service->description) }}</textarea>
-              <div class="field-help">This helps patients understand what the service is for.</div>
+                        placeholder="Briefly describe what this service includes...">{{ old('description') }}</textarea>
+
+              <div class="field-help">
+                This helps patients understand what the service is for.
+              </div>
+
               @error('description')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>
 
-            <div class="field-full">
-              <label class="form-label">Clinics</label>
+            <div>
+              <label class="form-label">Duration Minutes</label>
+              <input type="number"
+                     name="duration_minutes"
+                     value="{{ old('duration_minutes', 30) }}"
+                     class="form-control @error('duration_minutes') is-invalid @enderror"
+                     min="5"
+                     max="480"
+                     required>
 
-              <div class="clinic-option-list @error('clinic_ids') border-danger @enderror">
-                @foreach($clinics as $c)
-                  @php
-                    $oldClinicIds = old('clinic_ids');
-
-                    $isSelected = $oldClinicIds
-                      ? collect($oldClinicIds)->contains($c->id)
-                      : $service->clinics->contains($c->id);
-                  @endphp
-
-                  <label class="clinic-option">
-                    <input type="checkbox"
-                           name="clinic_ids[]"
-                           value="{{ $c->id }}"
-                           @checked($isSelected)>
-
-                    <span>
-                      <strong>{{ $c->name }}</strong>
-                      <small class="d-block">{{ $c->address ?? 'No address listed' }}</small>
-                    </span>
-                  </label>
-                @endforeach
+              <div class="field-help">
+                Default duration is 30 minutes.
               </div>
 
-              <div class="field-help">Select all clinics where this service is available.</div>
-
-              @error('clinic_ids')
-                <div class="text-danger small mt-2">{{ $message }}</div>
+              @error('duration_minutes')
+                <div class="invalid-feedback">{{ $message }}</div>
               @enderror
+            </div>
+
+            <div>
+              <label class="form-label">Clinic</label>
+              <input type="text"
+                     class="form-control"
+                     value="{{ $clinic->name ?? 'Current Clinic' }}"
+                     disabled>
+
+              <div class="field-help">
+                This service will only be attached to this clinic.
+              </div>
             </div>
           </div>
         </div>
@@ -438,9 +420,9 @@
             Cancel
           </a>
 
-          <button class="btn btn-primary">
+          <button type="submit" class="btn btn-primary">
             <i class="bi bi-check-circle me-1"></i>
-            Save Changes
+            Create Service
           </button>
         </div>
       </form>
@@ -451,31 +433,25 @@
         <i class="bi bi-clipboard2-pulse"></i>
       </div>
 
-      <div class="side-title">{{ $service->name }}</div>
+      <div class="side-title">Service Setup Guide</div>
       <div class="side-text">
-        Review the current service details before saving your changes.
+        The new service will be created and automatically attached to the active clinic only.
       </div>
 
       <div class="side-list">
         <div class="side-item">
-          <div class="side-label">Current Description</div>
-          <div class="side-value">
-            {{ $service->description ?: 'No description provided.' }}
-          </div>
+          <i class="bi bi-hospital"></i>
+          <span>This service will belong to {{ $clinic->name ?? 'your selected clinic' }}.</span>
         </div>
 
         <div class="side-item">
-          <div class="side-label">Attached Clinics</div>
-          <div class="side-value">
-            {{ $service->clinics && $service->clinics->count() ? $service->clinics->pluck('name')->join(', ') : 'No clinics attached.' }}
-          </div>
+          <i class="bi bi-clock"></i>
+          <span>Duration controls how appointment slots are estimated.</span>
         </div>
 
         <div class="side-item">
-          <div class="side-label">Reminder</div>
-          <div class="side-value">
-            If a clinic is unchecked, patients may no longer see this service under that clinic.
-          </div>
+          <i class="bi bi-person-badge"></i>
+          <span>Assign doctors to this service after creating it if needed.</span>
         </div>
       </div>
     </aside>

@@ -170,14 +170,14 @@ class ScheduleController extends Controller
                 foreach ($serviceClinics as $clinicId) {
                     foreach ($selectedDays as $day) {
                         foreach ($timeBlocks as $block) {
-                            $overlap = $this->overlappingScheduleQuery(
+                            $overlap = $this->hasOverlappingSchedule(
                                 doctorId: (int) $doctor->id,
                                 day: (int) $day,
                                 startTime: $block['start_time'],
                                 endTime: $block['end_time'],
                                 startDate: $startDate,
                                 endDate: $endDate
-                            )->exists();
+                            );
 
                             if ($overlap) {
                                 $overlapDays[] = (string) ($clinicId ? ($clinicNames[$clinicId] ?? 'Clinic') : 'Clinic').': '.(self::DAY_LABELS[$day] ?? ('Day '.$day));
@@ -294,7 +294,7 @@ class ScheduleController extends Controller
         $timeBlocks = $this->validatedTimeBlocks($data, false);
         $block = $timeBlocks[0];
 
-        $overlap = $isActive && $this->overlappingScheduleQuery(
+        $overlap = $isActive && $this->hasOverlappingSchedule(
             doctorId: (int) $doctor->id,
             day: (int) $data['day_of_week'],
             startTime: $block['start_time'],
@@ -302,7 +302,7 @@ class ScheduleController extends Controller
             startDate: $startDate,
             endDate: $endDate,
             exceptId: (int) $schedule->id
-        )->exists();
+        );
 
         if ($overlap) {
             return back()->withErrors(['start_time' => 'Overlapping schedule entry across your clinics.'])->withInput();
@@ -378,8 +378,8 @@ class ScheduleController extends Controller
                     $events[] = [
                         'id' => 'schedule-'.$schedule->id.'-'.$eventDate->format('Ymd'),
                         'title' => $schedule->service?->name ?? '—',
-                        'start' => $eventDate->copy()->setTimeFromTimeString($schedule->start_time)->toIso8601String(),
-                        'end' => $eventDate->copy()->setTimeFromTimeString($schedule->end_time)->toIso8601String(),
+                        'start' => $this->eventStart($eventDate, $schedule->start_time)->toIso8601String(),
+                        'end' => $this->eventEnd($eventDate, $schedule->start_time, $schedule->end_time)->toIso8601String(),
                         'display' => 'block',
                         'extendedProps' => [
                             'clinic' => $schedule->clinic?->name ?? 'Clinic',
@@ -402,8 +402,8 @@ class ScheduleController extends Controller
                 $events[] = [
                     'id' => 'schedule-'.$schedule->id.'-'.$cursor->format('Ymd'),
                     'title' => $schedule->service?->name ?? '—',
-                    'start' => $cursor->copy()->setTimeFromTimeString($schedule->start_time)->toIso8601String(),
-                    'end' => $cursor->copy()->setTimeFromTimeString($schedule->end_time)->toIso8601String(),
+                    'start' => $this->eventStart($cursor, $schedule->start_time)->toIso8601String(),
+                    'end' => $this->eventEnd($cursor, $schedule->start_time, $schedule->end_time)->toIso8601String(),
                     'display' => 'block',
                     'extendedProps' => [
                         'clinic' => $schedule->clinic?->name ?? 'Clinic',
@@ -438,6 +438,7 @@ class ScheduleController extends Controller
         }
 
         $blocks = [];
+
         foreach ($rawBlocks as $index => $block) {
             $start = $block['start_time'] ?? null;
             $end = $block['end_time'] ?? null;
@@ -452,14 +453,23 @@ class ScheduleController extends Controller
                 ]);
             }
 
-            if (Carbon::createFromFormat('H:i', $end)->lessThanOrEqualTo(Carbon::createFromFormat('H:i', $start))) {
+            /*
+             * Overnight schedules are allowed.
+             * Example: 20:00 to 01:00 means the schedule continues into the next day.
+             * Only reject exactly equal times because that would create a zero-length block.
+             */
+            if ($start === $end) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'time_blocks' => 'Each time block end must be after its start time.',
+                    'time_blocks' => 'Start time and end time cannot be exactly the same.',
                 ]);
             }
 
+            $newInterval = $this->normalizedInterval(0, $start, $end);
+
             foreach ($blocks as $existing) {
-                if ($start < $existing['end_time'] && $end > $existing['start_time']) {
+                $existingInterval = $this->normalizedInterval(0, $existing['start_time'], $existing['end_time']);
+
+                if ($this->intervalsOverlap($newInterval, $existingInterval)) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'time_blocks' => 'Time blocks cannot overlap each other.',
                     ]);
@@ -485,7 +495,7 @@ class ScheduleController extends Controller
 
 
 
-    private function overlappingScheduleQuery(
+    private function hasOverlappingSchedule(
         int $doctorId,
         int $day,
         string $startTime,
@@ -493,14 +503,26 @@ class ScheduleController extends Controller
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $exceptId = null
-    ) {
-        return DoctorSchedule::query()
+    ): bool {
+        $day = (int) $day;
+
+        /*
+         * For overnight support, a schedule can overlap:
+         * - schedules on the same day,
+         * - overnight schedules from the previous day,
+         * - schedules on the next day when the new schedule crosses midnight.
+         */
+        $relatedDays = array_values(array_unique([
+            $day,
+            ($day + 6) % 7,
+            ($day + 1) % 7,
+        ]));
+
+        $existingSchedules = DoctorSchedule::query()
             ->where('doctor_id', $doctorId)
-            ->where('day_of_week', $day)
+            ->whereIn('day_of_week', $relatedDays)
             ->where('is_active', true)
             ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))
-            ->where('start_time', '<', $endTime)
-            ->where('end_time', '>', $startTime)
             ->where(function ($query) use ($startDate, $endDate) {
                 if ($endDate !== null) {
                     $query->where(function ($dateQuery) use ($endDate) {
@@ -515,6 +537,85 @@ class ScheduleController extends Controller
                             ->orWhereDate('end_date', '>=', $startDate);
                     });
                 }
-            });
+            })
+            ->get(['id', 'day_of_week', 'start_time', 'end_time']);
+
+        $newIntervals = $this->weeklyIntervals($day, $startTime, $endTime);
+
+        foreach ($existingSchedules as $existing) {
+            $existingIntervals = $this->weeklyIntervals(
+                (int) $existing->day_of_week,
+                substr((string) $existing->start_time, 0, 5),
+                substr((string) $existing->end_time, 0, 5)
+            );
+
+            foreach ($newIntervals as $newInterval) {
+                foreach ($existingIntervals as $existingInterval) {
+                    if ($this->intervalsOverlap($newInterval, $existingInterval)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
+
+    private function weeklyIntervals(int $day, string $startTime, string $endTime): array
+    {
+        $base = $this->normalizedInterval($day, $startTime, $endTime);
+        $weekMinutes = 7 * 24 * 60;
+
+        /*
+         * Duplicates shifted by one week let Sunday-to-Monday and Saturday-to-Sunday
+         * overnight schedules overlap correctly around the week boundary.
+         */
+        return [
+            $base,
+            [$base[0] - $weekMinutes, $base[1] - $weekMinutes],
+            [$base[0] + $weekMinutes, $base[1] + $weekMinutes],
+        ];
+    }
+
+    private function normalizedInterval(int $day, string $startTime, string $endTime): array
+    {
+        $start = ($day * 24 * 60) + $this->timeToMinutes($startTime);
+        $end = ($day * 24 * 60) + $this->timeToMinutes($endTime);
+
+        if ($end <= $start) {
+            $end += 24 * 60;
+        }
+
+        return [$start, $end];
+    }
+
+    private function intervalsOverlap(array $first, array $second): bool
+    {
+        return $first[0] < $second[1] && $first[1] > $second[0];
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        [$hour, $minute] = array_map('intval', explode(':', substr($time, 0, 5)));
+
+        return ($hour * 60) + $minute;
+    }
+
+    private function eventStart(Carbon $date, string $startTime): Carbon
+    {
+        return $date->copy()->setTimeFromTimeString($startTime);
+    }
+
+    private function eventEnd(Carbon $date, string $startTime, string $endTime): Carbon
+    {
+        $start = $date->copy()->setTimeFromTimeString($startTime);
+        $end = $date->copy()->setTimeFromTimeString($endTime);
+
+        if ($end->lessThanOrEqualTo($start)) {
+            $end->addDay();
+        }
+
+        return $end;
+    }
+
 }

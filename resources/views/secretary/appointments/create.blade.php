@@ -2,143 +2,120 @@
 
 @section('title', 'Create Appointment')
 
+@push('styles')
+<style>
+  .sec-form-page { width: 96%; max-width: none; margin: 0 auto; }
+  .sec-form-shell { border-radius:24px; border:1px solid rgba(226,232,240,.96); background:rgba(255,255,255,.94); box-shadow:0 18px 45px rgba(15,23,42,.08); overflow:hidden; }
+  .sec-form-hero { padding:1.35rem 1.45rem; background:radial-gradient(circle at top left, rgba(13,110,253,.14), transparent 34%), linear-gradient(135deg,#fff,#f8fbff); border-bottom:1px solid #edf2f7; }
+  .sec-form-hero-row { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; }
+  .sec-form-title-wrap { display:flex; align-items:flex-start; gap:.85rem; }
+  .sec-form-icon { width:54px; height:54px; border-radius:18px; display:grid; place-items:center; background:linear-gradient(135deg,#0d6efd,#178bff); color:#fff; font-size:1.45rem; box-shadow:0 14px 28px rgba(13,110,253,.25); }
+  .sec-form-title { margin:0; font-size:1.55rem; font-weight:900; letter-spacing:-.045em; color:#0f172a; }
+  .sec-form-subtitle { margin:.25rem 0 0; color:#64748b; font-weight:650; }
+  .sec-form-body { padding:1.35rem; }
+  .sec-form-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,.75fr); gap:1rem; align-items:start; }
+  .sec-card { border-radius:22px; border:1px solid #e2e8f0; background:#fff; box-shadow:0 12px 30px rgba(15,23,42,.05); overflow:hidden; }
+  .sec-card-head { padding:1rem 1.15rem; border-bottom:1px solid #edf2f7; display:flex; justify-content:space-between; align-items:center; gap:.75rem; }
+  .sec-card-title { margin:0; font-size:1.02rem; font-weight:900; color:#0f172a; display:flex; gap:.5rem; align-items:center; }
+  .sec-card-title i { color:#0d6efd; }
+  .sec-card-body { padding:1.15rem; }
+  .form-section { margin-bottom:1.05rem; }
+  .form-section:last-child { margin-bottom:0; }
+  .section-label { display:flex; align-items:center; gap:.45rem; margin-bottom:.75rem; color:#0f172a; font-size:.9rem; font-weight:900; }
+  .section-label i { color:#0d6efd; }
+  .form-label { color:#334155; font-size:.82rem; font-weight:850; margin-bottom:.4rem; }
+  .form-control,.form-select { border-radius:14px!important; border-color:#dbe3ef!important; padding:.68rem .8rem!important; color:#0f172a; font-size:.9rem; font-weight:650; box-shadow:none!important; }
+  .form-control:focus,.form-select:focus { border-color:rgba(13,110,253,.55)!important; box-shadow:0 0 0 .2rem rgba(13,110,253,.1)!important; }
+  .field-help,.form-text { margin-top:.38rem; color:#64748b; font-size:.76rem; font-weight:650; }
+  .field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem; }
+  .schedule-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.85rem; }
+  .soft-box { padding:.9rem; border-radius:17px; border:1px dashed rgba(13,110,253,.32); background:linear-gradient(135deg,rgba(13,110,253,.055),rgba(255,255,255,.94)); }
+  .side-stack { display:grid; gap:1rem; }
+  .summary-card { padding:1rem; border-radius:22px; border:1px solid #e2e8f0; background:#fff; box-shadow:0 12px 30px rgba(15,23,42,.05); }
+  .summary-icon { width:58px; height:58px; border-radius:18px; display:grid; place-items:center; background:#eff6ff; color:#0d6efd; font-size:1.55rem; margin-bottom:.75rem; }
+  .summary-title { margin:0; color:#0f172a; font-weight:900; letter-spacing:-.025em; }
+  .summary-text { color:#64748b; font-size:.84rem; font-weight:650; margin:.35rem 0 0; }
+  .summary-list { margin:1rem 0 0; padding:0; list-style:none; display:grid; gap:.55rem; }
+  .summary-list li { display:flex; gap:.5rem; color:#475569; font-weight:650; font-size:.84rem; }
+  .summary-list i { color:#0d6efd; }
+  .sec-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+  .sec-actions .btn { border-radius:12px; font-weight:900; }
+  @media(max-width:1100px){.sec-form-grid{grid-template-columns:1fr}.schedule-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:768px){.sec-form-page{width:100%}.sec-form-body,.sec-form-hero{padding:.9rem}.field-grid,.schedule-grid{grid-template-columns:1fr}.sec-actions,.sec-actions .btn{width:100%}}
+  #timeSlot option[disabled] { text-decoration: line-through; color:#6c757d; font-style: italic; }
+</style>
+@endpush
+
 @section('content')
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card medical-card">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="h4 mb-0">
-                        <i class="bi bi-calendar-plus me-2"></i>Create Appointment for Patient
-                    </h2>
-                </div>
-
-                <div class="card-body">
-                    @include('partials.alerts')
-
-                      <form method="POST"
-                          action="{{ route('secretary.appointments.store') }}"
-                          id="appointmentForm"
-                          data-active-clinic="{{ $activeClinicId ?? 0 }}"
-                          enctype="multipart/form-data">
-                        @csrf
-
-
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <label for="patient_id" class="form-label fw-semibold mb-0">
-                                    <i class="bi bi-person-vcard me-1"></i>Patient
-                                </label>
-                                <a href="{{ route('secretary.patients.create') }}" class="btn btn-link btn-sm text-decoration-none">
-                                    <i class="bi bi-person-plus me-1"></i>Register Patient
-                                </a>
-                            </div>
-                            <select name="patient_id"
-                                    id="patient_id"
-                                    class="form-select @error('patient_id') is-invalid @enderror"
-                                    data-old-value="{{ old('patient_id') }}"
-                                    required>
-                                <option value="" disabled selected hidden>Patient name and email</option>
-                            </select>
-                            @error('patient_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div id="activeClinicSummary" data-active-clinic="{{ $activeClinicId ?? 0 }}" hidden></div>
-
-
-                        <div class="mb-3">
-                            <label for="service_id" class="form-label fw-semibold">
-                                <i class="bi bi-tools me-1"></i>Service
-                            </label>
-                            <select name="service_id" id="service_id" class="form-select @error('service_id') is-invalid @enderror" required>
-                                <option value="">Select Service</option>
-                            </select>
-                            @error('service_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-
-                        <div class="mb-3">
-                            <label for="doctor_id" class="form-label fw-semibold">
-                                <i class="bi bi-person-badge me-1"></i>Doctor
-                            </label>
-                            <select name="doctor_id" id="doctor_id" class="form-select @error('doctor_id') is-invalid @enderror" required>
-                                <option value="">Select Doctor</option>
-                            </select>
-                            @error('doctor_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-
-                                                <div class="row g-3 mb-2">
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold"><i class="bi bi-calendar me-1"></i>Date <span class="text-danger">*</span></label>
-                                                        <input type="date" id="appointment_date" name="appointment_date" class="form-control @error('appointment_date') is-invalid @enderror" value="{{ old('appointment_date') }}" min="{{ date('Y-m-d') }}" required>
-                                                        @error('appointment_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold"><i class="bi bi-calendar-week me-1"></i>Day</label>
-                                                        <input type="text" id="dayDisplay" class="form-control" placeholder="—" readonly>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold mb-0"><i class="bi bi-clock-history me-1"></i>Available Time Slot <span class="text-danger">*</span></label>
-                                                        <select id="timeSlot" name="appointment_time" class="form-select @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required>
-                                                            <option value="">Select doctor & date first</option>
-                                                        </select>
-                                                        @error('appointment_time') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3" id="doctorScheduleWrap" style="display:none;">
-                                                    <label class="form-label fw-semibold"><i class="bi bi-list-check me-1"></i>Doctor Availability</label>
-                                                    <div class="border rounded p-2 small" id="doctorScheduleInfo"></div>
-                                                </div>
-
-
-                        <div class="mb-3">
-                            <label for="notes" class="form-label fw-semibold">
-                                <i class="bi bi-sticky me-1"></i>Notes (Optional)
-                            </label>
-                            <textarea name="notes"
-                                      id="notes"
-                                      class="form-control @error('notes') is-invalid @enderror"
-                                      rows="3"
-                                      placeholder="Any additional notes about the appointment...">{{ old('notes') }}</textarea>
-                            @error('notes')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-
-                        <div class="mb-3">
-                            <label for="medical_document" class="form-label fw-semibold">
-                                <i class="bi bi-file-earmark-medical me-1"></i>Medical Document (Optional)
-                            </label>
-                            <input type="file" name="medical_document" id="medical_document" class="form-control @error('medical_document') is-invalid @enderror" accept=".pdf,image/*">
-                            @error('medical_document')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">Attach a past prescription, lab result, or relevant file (PDF or image, max 5MB).</div>
-                        </div>
-
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary px-4">
-                                <i class="bi bi-check-circle me-2"></i>Create Appointment
-                            </button>
-                            <a href="{{ route('secretary.appointments.index') }}" class="btn btn-outline-secondary px-4">
-                                <i class="bi bi-arrow-left me-2"></i>Cancel
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
+@php
+  $secIndexUrl = Route::has('secretary.appointments.index') ? route('secretary.appointments.index') : url('/secretary/dashboard');
+  $registerPatientUrl = Route::has('secretary.patients.create') ? route('secretary.patients.create') : url('/secretary/dashboard');
+@endphp
+<div class="sec-form-page">
+  <div class="sec-form-shell">
+    <div class="sec-form-hero">
+      <div class="sec-form-hero-row">
+        <div class="sec-form-title-wrap">
+          <div class="sec-form-icon"><i class="bi bi-calendar-plus"></i></div>
+          <div><h1 class="sec-form-title">Create Appointment</h1><p class="sec-form-subtitle">Select the patient, service, doctor, and available time slot.</p></div>
         </div>
+        <a href="{{ $secIndexUrl }}" class="btn btn-outline-secondary rounded-4 fw-bold"><i class="bi bi-arrow-left me-2"></i>Back</a>
+      </div>
     </div>
+
+    <div class="sec-form-body">
+      @include('partials.alerts')
+      <div class="sec-form-grid">
+        <main class="sec-card">
+          <div class="sec-card-head"><h2 class="sec-card-title"><i class="bi bi-clipboard2-pulse"></i>Appointment Details</h2></div>
+          <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm" data-active-clinic="{{ $activeClinicId ?? 0 }}" enctype="multipart/form-data">
+            @csrf
+            <div class="sec-card-body">
+              <div class="form-section">
+                <div class="section-label"><i class="bi bi-person-vcard"></i>Patient</div>
+                <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+                  <label for="patient_id" class="form-label mb-0">Patient name and email</label>
+                  <a href="{{ $registerPatientUrl }}" class="btn btn-sm btn-outline-primary rounded-4 fw-bold"><i class="bi bi-person-plus me-1"></i>Register Patient</a>
+                </div>
+                <select name="patient_id" id="patient_id" class="form-select @error('patient_id') is-invalid @enderror" data-old-value="{{ old('patient_id') }}" required><option value="" disabled selected hidden>Patient name and email</option></select>
+                @error('patient_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+
+              <div id="activeClinicSummary" data-active-clinic="{{ $activeClinicId ?? 0 }}" hidden></div>
+
+              <div class="form-section">
+                <div class="section-label"><i class="bi bi-hospital"></i>Service and Doctor</div>
+                <div class="field-grid">
+                  <div><label for="service_id" class="form-label">Service</label><select name="service_id" id="service_id" class="form-select @error('service_id') is-invalid @enderror" required><option value="">Select Service</option></select>@error('service_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                  <div><label for="doctor_id" class="form-label">Doctor</label><select name="doctor_id" id="doctor_id" class="form-select @error('doctor_id') is-invalid @enderror" required><option value="">Select Doctor</option></select>@error('doctor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-label"><i class="bi bi-clock-history"></i>Schedule</div>
+                <div class="schedule-grid">
+                  <div><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" id="appointment_date" name="appointment_date" class="form-control @error('appointment_date') is-invalid @enderror" value="{{ old('appointment_date') }}" min="{{ date('Y-m-d') }}" required>@error('appointment_date')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                  <div><label class="form-label">Day</label><input type="text" id="dayDisplay" class="form-control" placeholder="—" readonly></div>
+                  <div><label class="form-label">Available Time Slot <span class="text-danger">*</span></label><select id="timeSlot" name="appointment_time" class="form-select @error('appointment_time') is-invalid @enderror" @error('appointment_time') data-slot-error="1" @enderror required><option value="">Select doctor & date first</option></select>@error('appointment_time')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+                </div>
+                <div class="soft-box mt-3" id="doctorScheduleWrap" style="display:none;"><label class="form-label"><i class="bi bi-list-check me-1"></i>Doctor Availability</label><div class="small" id="doctorScheduleInfo"></div></div>
+              </div>
+
+              <div class="form-section"><div class="section-label"><i class="bi bi-sticky"></i>Notes</div><textarea name="notes" id="notes" class="form-control @error('notes') is-invalid @enderror" rows="3" placeholder="Any additional notes about the appointment...">{{ old('notes') }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+              <div class="form-section"><div class="section-label"><i class="bi bi-file-earmark-medical"></i>Medical Document</div><input type="file" name="medical_document" id="medical_document" class="form-control @error('medical_document') is-invalid @enderror" accept=".pdf,image/*">@error('medical_document')<div class="invalid-feedback">{{ $message }}</div>@enderror<div class="form-text">Optional. Attach a PDF or image file up to your backend limit.</div></div>
+              <div class="sec-actions"><button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-2"></i>Create Appointment</button><a href="{{ $secIndexUrl }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-2"></i>Cancel</a></div>
+            </div>
+          </form>
+        </main>
+
+        <aside class="side-stack">
+          <section class="summary-card"><div class="summary-icon"><i class="bi bi-lightbulb"></i></div><h3 class="summary-title">Before creating</h3><p class="summary-text">Make sure the selected doctor is available for the chosen date and time.</p><ul class="summary-list"><li><i class="bi bi-check-circle"></i>Pick a patient registered under the active clinic.</li><li><i class="bi bi-check-circle"></i>Select service first to filter doctors.</li><li><i class="bi bi-check-circle"></i>Only available slots can be submitted.</li></ul></section>
+        </aside>
+      </div>
+    </div>
+  </div>
 </div>
+
 
 @push('scripts')
 <script>
