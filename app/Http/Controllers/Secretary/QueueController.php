@@ -46,43 +46,44 @@ class QueueController extends Controller
         return view('secretary.queue.overview', compact('clinics', 'totalWaiting', 'totalServedToday'));
     }
 
-    public function queue(Request $request, Clinic $clinic)
-    {
-        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+public function queue(Request $request, Clinic $clinic)
+{
+    $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
 
-        $waitingQuery = QueueEntry::with(['user', 'patient', 'appointment.service'])
-            ->where('clinic_id', $activeClinicId)
-            ->where('status', 'waiting');
+    $waitingQuery = QueueEntry::with(['user', 'patient', 'appointment.service'])
+        ->where('clinic_id', $activeClinicId)
+        ->whereIn('status', ['now_serving', 'called', 'waiting']);
 
-        if ($clinic->queueModeIs('priority')) {
-    $waitingQuery->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
-        ->select('queue_entries.*')
-        ->orderByRaw("
+    if ($clinic->queueModeIs('priority')) {
+        $waitingQuery->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
+            ->select('queue_entries.*')
+            ->orderByRaw("
+                CASE
+                    WHEN queue_entries.status = 'now_serving' THEN 0
+                    WHEN queue_entries.status = 'called' THEN 1
+                    WHEN queue_entries.status = 'waiting' THEN 2
+                    ELSE 3
+                END
+            ")
+            ->orderByRaw('appointments.appointment_date IS NULL')
+            ->orderBy('appointments.appointment_date')
+            ->orderBy('appointments.appointment_time')
+            ->orderBy('queue_number');
+    } else {
+        $waitingQuery->orderByRaw("
             CASE
-                WHEN queue_entries.status = 'now_serving' THEN 0
-                WHEN queue_entries.status = 'called' THEN 1
-                WHEN queue_entries.status = 'waiting' THEN 2
+                WHEN status = 'now_serving' THEN 0
+                WHEN status = 'called' THEN 1
+                WHEN status = 'waiting' THEN 2
                 ELSE 3
             END
-        ")
-        ->orderByRaw('appointments.appointment_date IS NULL')
-        ->orderBy('appointments.appointment_date')
-        ->orderBy('appointments.appointment_time')
-        ->orderBy('queue_number');
-} else {
-    $waitingQuery->orderByRaw("
-        CASE
-            WHEN status = 'now_serving' THEN 0
-            WHEN status = 'called' THEN 1
-            WHEN status = 'waiting' THEN 2
-            ELSE 3
-        END
-    ")->orderBy('queue_number');
-}
-        $waiting = $waitingQuery->get();
-
-        return view('secretary.queue.index', compact('clinic', 'waiting'));
+        ")->orderBy('queue_number');
     }
+
+    $waiting = $waitingQuery->get();
+
+    return view('secretary.queue.index', compact('clinic', 'waiting'));
+}
 
     public function call(Request $request, Clinic $clinic, QueueEntry $entry)
     {
