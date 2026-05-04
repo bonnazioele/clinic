@@ -34,6 +34,7 @@ class QueueEntry extends Model
         'clinic_id',
         'user_id',
         'patient_id',
+        'doctor_id',
         'appointment_id',
         'queue_number',
         'status',
@@ -66,6 +67,11 @@ class QueueEntry extends Model
         return $this->belongsTo(Patient::class);
     }
 
+    public function doctor()
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
+    }
+
     public function appointment()
     {
         return $this->belongsTo(Appointment::class);
@@ -73,26 +79,29 @@ class QueueEntry extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        return $this->user?->name
+        return $this->appointment?->user?->name
+            ?? $this->user?->name
             ?? $this->patient?->full_name
             ?? 'Walk-In Patient';
     }
 
     public function getDisplayEmailAttribute(): ?string
     {
-        return $this->user?->email
+        return $this->appointment?->user?->email
+            ?? $this->user?->email
             ?? $this->patient?->email_address;
     }
 
     public function getDisplayPhoneAttribute(): ?string
     {
-        return $this->user?->phone
+        return $this->appointment?->user?->phone
+            ?? $this->user?->phone
             ?? $this->patient?->mobile_number;
     }
 
     public function getIsWalkInAttribute(): bool
     {
-        return $this->patient_id !== null && $this->user_id === null;
+        return $this->patient_id !== null && $this->appointment_id === null;
     }
 
     public function scopeWaiting($query)
@@ -127,13 +136,21 @@ class QueueEntry extends Model
             ->forDashboardDay($date);
     }
 
+    public function scopeForDoctor($query, int $doctorId)
+    {
+        return $query->where(function ($doctorQuery) use ($doctorId) {
+            $doctorQuery->where('doctor_id', $doctorId)
+                ->orWhereHas('appointment', function ($appointmentQuery) use ($doctorId) {
+                    $appointmentQuery->where('doctor_id', $doctorId);
+                });
+        });
+    }
+
     public function scopeForLaneCandidates($query, int $clinicId, int $doctorId, $date)
     {
         return $query->forDashboardPanel([$clinicId], $date)
             ->where('clinic_id', $clinicId)
-            ->whereHas('appointment', function ($appointmentQuery) use ($doctorId) {
-                $appointmentQuery->where('doctor_id', $doctorId);
-            });
+            ->forDoctor($doctorId);
     }
 
     public function scopeWithStatus($query, string $status)
@@ -148,9 +165,8 @@ class QueueEntry extends Model
 
     public function scopeWalkIn($query)
     {
-        return $query->whereNull('user_id')
-            ->whereNotNull('patient_id')
-            ->whereNull('appointment_id');
+        return $query->whereNull('appointment_id')
+            ->whereNotNull('patient_id');
     }
 
     public function scopeWithAppointment($query)
@@ -161,18 +177,21 @@ class QueueEntry extends Model
     public function scopeWithDashboardRelations($query)
     {
         return $query->with([
-            'user:id,name',
-            'patient:id,full_name,first_name,last_name',
-            'appointment:id,doctor_id,service_id',
+            'user:id,name,email,phone',
+            'patient:id,patient_number,status,first_name,last_name,middle_name,email_address,mobile_number',
+            'doctor:id,name,first_name,last_name,email',
+            'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,medical_document',
+            'appointment.user:id,name,email,phone',
             'appointment.service:id,name',
+            'clinic:id,name',
         ]);
     }
 
     public function laneKey(): ?string
     {
-        $doctorId = $this->appointment?->doctor_id;
+        $doctorId = $this->doctor_id ?: $this->appointment?->doctor_id;
 
-        if (!$doctorId) {
+        if (! $doctorId) {
             return null;
         }
 
@@ -193,9 +212,12 @@ class QueueEntry extends Model
     public static function completeNowServingAndPromoteNext(int $clinicId, int $entryId, $date): array
     {
         return DB::transaction(function () use ($clinicId, $entryId, $date) {
-            $currentEntry = self::query()->lockForUpdate()->find($entryId);
+            $currentEntry = self::query()
+                ->with(['appointment.user', 'patient', 'clinic'])
+                ->lockForUpdate()
+                ->find($entryId);
 
-            if (!$currentEntry || (int) $currentEntry->clinic_id !== $clinicId) {
+            if (! $currentEntry || (int) $currentEntry->clinic_id !== $clinicId) {
                 return ['result' => 'invalid'];
             }
 
@@ -207,14 +229,14 @@ class QueueEntry extends Model
                 ];
             }
 
-            $doctorId = (int) ($currentEntry->appointment?->doctor_id ?? 0);
+            $doctorId = (int) ($currentEntry->doctor_id ?: $currentEntry->appointment?->doctor_id ?: 0);
 
             $currentEntry->update([
                 'status' => 'served',
                 'served_at' => now(),
             ]);
 
-            if ($currentEntry->appointment && !in_array($currentEntry->appointment->status, ['completed', 'cancelled'], true)) {
+            if ($currentEntry->appointment && ! in_array($currentEntry->appointment->status, ['completed', 'cancelled'], true)) {
                 $appointment = $currentEntry->appointment;
                 $appointment->update(['status' => 'completed']);
 
@@ -223,7 +245,7 @@ class QueueEntry extends Model
                 }
             }
 
-            $currentEntry = $currentEntry->fresh();
+            $currentEntry = $currentEntry->fresh(['appointment.user', 'patient', 'clinic']);
             event(new QueueUpdated($currentEntry, 'served'));
 
             if ($doctorId <= 0) {
@@ -242,7 +264,7 @@ class QueueEntry extends Model
                 ->lockForUpdate()
                 ->first();
 
-            if (!$nextEntry) {
+            if (! $nextEntry) {
                 return [
                     'result' => 'served_only',
                     'current' => $currentEntry,
@@ -256,7 +278,7 @@ class QueueEntry extends Model
                 $nextEntry->user->notify(new QueueNotification($nextEntry));
             }
 
-            $nextEntry = $nextEntry->fresh();
+            $nextEntry = $nextEntry->fresh(['appointment.user', 'patient', 'clinic']);
             event(new QueueUpdated($nextEntry, 'now_serving'));
 
             return [
@@ -270,9 +292,9 @@ class QueueEntry extends Model
     public function isNextInLine()
     {
         return $this->status === 'waiting' &&
-               $this->queue_number === $this->clinic->queueEntries()
-                   ->waiting()
-                   ->min('queue_number');
+            $this->queue_number === $this->clinic->queueEntries()
+                ->waiting()
+                ->min('queue_number');
     }
 
     public function getEstimatedWaitTime()
@@ -296,12 +318,12 @@ class QueueEntry extends Model
 
     public function getFormattedServedTimeAttribute()
     {
-        if (!$this->served_at) {
+        if (! $this->served_at) {
             return null;
         }
+
         return \Carbon\Carbon::parse($this->served_at)->format('g:i A');
     }
-
 
     public function getStatusLabelAttribute(): string
     {
@@ -313,7 +335,7 @@ class QueueEntry extends Model
             'no_show' => 'No Show',
             'cancelled' => 'Cancelled',
             'served' => 'Served',
-            default => ucfirst(str_replace('_',' ', $this->status ?? 'Unknown')),
+            default => ucfirst(str_replace('_', ' ', $this->status ?? 'Unknown')),
         };
     }
 

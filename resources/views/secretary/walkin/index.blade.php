@@ -1,12 +1,14 @@
 @extends('layouts.app')
 
-@section('title','Walk-In Registration')
+@section('title', 'Guest Walk-In Queue')
 
 @section('content')
-<div class="container py-4">
+<div class="walkin-page-shell py-4">
   @include('partials.alerts')
+
   @include('secretary.walkin._form', [
     'clinicServices' => $clinicServices ?? collect(),
+    'clinicDoctors' => $clinicDoctors ?? collect(),
     'activeClinic' => $activeClinic ?? null,
   ])
 </div>

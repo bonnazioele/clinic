@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Doctor;
 
+use App\Events\QueueUpdated;
 use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
-use App\Events\QueueUpdated;
 use App\Http\Middleware\EnsureSelectedClinic;
 use App\Models\QueueEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class QueueController extends Controller
 {
@@ -16,87 +17,129 @@ class QueueController extends Controller
 
     public function __construct()
     {
-        $this->middleware(['auth', \App\Http\Middleware\DoctorMiddleware::class, EnsureSelectedClinic::class]);
+        $this->middleware([
+            'auth',
+            \App\Http\Middleware\DoctorMiddleware::class,
+            EnsureSelectedClinic::class,
+        ]);
     }
 
     public function index(Request $request)
     {
         $doctor = Auth::user();
         $activeClinic = $this->activeClinic($request);
+        $today = now()->toDateString();
 
-        $waitingQuery = QueueEntry::with('appointment.user','clinic')
+        $waitingQuery = QueueEntry::query()
+            ->withDashboardRelations()
             ->where('clinic_id', $activeClinic->id)
-            ->whereHas('appointment', function ($q) use ($doctor) {
-                $q->where('doctor_id', $doctor->id);
-            })
-            ->whereIn('status', ['waiting','now_serving']);
+            ->forDoctor($doctor->id)
+            ->whereIn('status', ['waiting', 'called', 'now_serving', 'rescheduled'])
+            ->where(function ($query) use ($today) {
+                $query->where(function ($appointmentQueue) use ($today) {
+                    $appointmentQueue->whereNotNull('appointment_id')
+                        ->whereHas('appointment', function ($appointmentQuery) use ($today) {
+                            $appointmentQuery->whereDate('appointment_date', $today);
+                        });
+                })->orWhere(function ($walkInQueue) use ($today) {
+                    $walkInQueue->whereNull('appointment_id')
+                        ->whereNotNull('patient_id')
+                        ->whereDate('created_at', $today);
+                });
+            });
 
         if ($activeClinic->queue_mode === 'priority') {
-            $waitingQuery->leftJoin('appointments','queue_entries.appointment_id','=','appointments.id')
+            $waitingQuery
+                ->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
                 ->select('queue_entries.*')
-                ->orderByRaw("CASE WHEN queue_entries.status = 'now_serving' THEN 0 ELSE 1 END")
+                ->orderByRaw("
+                    CASE
+                        WHEN queue_entries.status = 'now_serving' THEN 0
+                        WHEN queue_entries.status = 'called' THEN 1
+                        WHEN queue_entries.status = 'waiting' THEN 2
+                        WHEN queue_entries.status = 'rescheduled' THEN 3
+                        ELSE 4
+                    END
+                ")
                 ->orderByRaw('appointments.appointment_date IS NULL')
                 ->orderBy('appointments.appointment_date')
                 ->orderBy('appointments.appointment_time')
-                ->orderBy('queue_number');
+                ->orderBy('queue_entries.queue_number');
         } else {
             $waitingQuery
-                ->orderByRaw("CASE WHEN status = 'now_serving' THEN 0 ELSE 1 END")
+                ->orderByRaw("
+                    CASE
+                        WHEN status = 'now_serving' THEN 0
+                        WHEN status = 'called' THEN 1
+                        WHEN status = 'waiting' THEN 2
+                        WHEN status = 'rescheduled' THEN 3
+                        ELSE 4
+                    END
+                ")
                 ->orderBy('queue_number');
         }
+
         $waiting = $waitingQuery->get();
 
         return view('doctor.queue.index', compact('waiting'));
     }
 
+    public function serve(Request $request, QueueEntry $entry)
+    {
+        $doctor = Auth::user();
+        $activeClinic = $this->activeClinic($request);
 
-public function serve(Request $request, QueueEntry $entry)
-{
-    $doctor = Auth::user();
-    $activeClinic = $this->activeClinic($request);
-
-    if ((int) $entry->clinic_id !== (int) $activeClinic->id) {
-        abort(403);
-    }
-
-    if (! $entry->appointment || (int) $entry->appointment->doctor_id !== (int) $doctor->id) {
-        abort(403, 'You can only process queue entries assigned to you.');
-    }
-
-    $data = $request->validate([
-        'doctor_notes' => ['nullable','string','max:2000'],
-        'prescription' => ['nullable','string','max:2000'],
-        'follow_up_at' => ['nullable','date'],
-    ]);
-
-    \DB::transaction(function() use ($entry, $data) {
-        $fresh = QueueEntry::lockForUpdate()->find($entry->id);
-
-        if (! in_array($fresh->status, ['waiting','now_serving'])) {
-            return;
+        if ((int) $entry->clinic_id !== (int) $activeClinic->id) {
+            abort(403);
         }
 
-        $fresh->update([
-            'status' => 'served',
-            'served_at' => now(),
-            'patient_disposition' => 'completed',
+        $assignedDoctorId = (int) ($entry->doctor_id ?: $entry->appointment?->doctor_id ?: 0);
+
+        if ($assignedDoctorId !== (int) $doctor->id) {
+            abort(403, 'You can only process queue entries assigned to you.');
+        }
+
+        $data = $request->validate([
+            'doctor_notes' => ['nullable', 'string', 'max:2000'],
+            'prescription' => ['nullable', 'string', 'max:2000'],
+            'follow_up_at' => ['nullable', 'date'],
         ]);
 
-        if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-            $fresh->appointment->update(['status' => 'completed']);
-        }
+        DB::transaction(function () use ($entry, $data) {
+            $fresh = QueueEntry::with(['appointment.user', 'patient', 'clinic'])
+                ->lockForUpdate()
+                ->find($entry->id);
 
-        $clinic = $fresh->clinic;
-        if ($clinic && $fresh->appointment) {
-            $secretaries = $clinic->secretaries()->get();
-            foreach ($secretaries as $sec) {
-                $sec->notify(new \App\Notifications\DoctorServedQueue($fresh->appointment));
+            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'now_serving', 'rescheduled'], true)) {
+                return;
             }
-        }
 
-        event(new QueueUpdated($fresh->fresh(), 'served'));
-    });
+            $fresh->update([
+                'status' => 'served',
+                'served_at' => now(),
+                'patient_disposition' => 'completed',
+                'doctor_notes' => $data['doctor_notes'] ?? $fresh->doctor_notes,
+                'prescription' => $data['prescription'] ?? $fresh->prescription,
+                'follow_up_at' => $data['follow_up_at'] ?? $fresh->follow_up_at,
+            ]);
 
-    return back()->with('status', 'Processed queue entry #'.$entry->queue_number.'.');
-}
+            if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
+                $fresh->appointment->update(['status' => 'completed']);
+            }
+
+            $clinic = $fresh->clinic;
+
+            if ($clinic && $fresh->appointment) {
+                $secretaries = $clinic->secretaries()->get();
+
+                foreach ($secretaries as $secretary) {
+                    $secretary->notify(new \App\Notifications\DoctorServedQueue($fresh->appointment));
+                }
+            }
+
+            event(new QueueUpdated($fresh->fresh(['appointment.user', 'patient', 'clinic']), 'served'));
+        });
+
+        return back()->with('status', 'Processed queue entry #' . $entry->queue_number . '.');
+    }
 }

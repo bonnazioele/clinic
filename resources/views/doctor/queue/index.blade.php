@@ -383,7 +383,7 @@
             <div>
               <h1 class="queue-hero-title">Today’s Queue</h1>
               <p class="queue-hero-text">
-                View patients currently waiting or being served. Click <strong>Complete</strong> only after the consultation is finished.
+                View appointment patients and guest walk-ins assigned to you. Click <strong>Complete</strong> only after the consultation is finished.
               </p>
             </div>
           </div>
@@ -426,6 +426,15 @@
       </div>
 
       @forelse($waiting as $entry)
+        @php
+          $patientName = $entry->display_name;
+          $patientEmail = $entry->display_email;
+          $patientPhone = $entry->display_phone;
+          $isWalkIn = $entry->is_walk_in;
+          $serviceName = $entry->appointment?->service?->name ?? 'Walk-in service';
+          $appointmentTime = $entry->appointment?->appointment_time;
+        @endphp
+
         <div class="queue-row {{ $entry->status === 'now_serving' ? 'now-serving' : '' }}">
           <div class="row align-items-center g-3">
 
@@ -438,31 +447,42 @@
             <div class="col-12 col-lg-4">
               <div class="d-flex align-items-center gap-3">
                 <span class="patient-avatar">
-                  <i class="bi bi-person"></i>
+                  <i class="bi {{ $isWalkIn ? 'bi-person-plus' : 'bi-person' }}"></i>
                 </span>
 
                 <div class="min-w-0">
                   <h6 class="patient-name text-truncate">
-                    {{ $entry->appointment?->user?->name ?? 'Patient' }}
+                    {{ $patientName }}
                   </h6>
 
                   <p class="queue-meta">
-                    <i class="bi bi-clock-history me-1"></i>
-                    {{ $entry->created_at ? $entry->created_at->diffForHumans() : 'Queue entry' }}
+                    @if($isWalkIn)
+                      <span class="badge bg-info text-dark rounded-pill me-1">Guest Walk-In</span>
+                    @else
+                      <span class="badge bg-primary rounded-pill me-1">Appointment</span>
+                    @endif
+
+                    @if($patientEmail)
+                      {{ $patientEmail }}
+                    @elseif($patientPhone)
+                      {{ $patientPhone }}
+                    @else
+                      {{ $entry->created_at ? $entry->created_at->diffForHumans() : 'Queue entry' }}
+                    @endif
                   </p>
                 </div>
               </div>
             </div>
 
             <div class="col-6 col-lg-2">
-              <div class="queue-label">Appointment</div>
+              <div class="queue-label">Schedule</div>
 
               <div class="fw-bold text-dark">
-                @if($entry->appointment?->appointment_time)
+                @if($appointmentTime)
                   <i class="bi bi-clock text-primary me-1"></i>
-                  {{ time12($entry->appointment->appointment_time) }}
+                  {{ function_exists('time12') ? time12($appointmentTime) : \Carbon\Carbon::parse($appointmentTime)->format('h:i A') }}
                 @else
-                  —
+                  Walk-in
                 @endif
               </div>
             </div>
@@ -496,7 +516,7 @@
                       data-bs-toggle="modal"
                       data-bs-target="#completeModal"
                       data-action-url="{{ route('doctor.queue.serve', $entry) }}"
-                      data-patient="{{ $entry->appointment?->user?->name ?? 'Walk-in Patient' }}"
+                      data-patient="{{ $patientName }}"
                       data-queue="#{{ $entry->queue_number }}">
                 <i class="bi bi-check2-circle me-1"></i>
                 Complete

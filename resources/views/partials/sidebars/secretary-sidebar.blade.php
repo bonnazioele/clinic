@@ -49,6 +49,7 @@
   $queueUrl = $safeSecretaryRoute('secretary.queue.index', '/secretary/dashboard');
   $doctorsUrl = $safeSecretaryRoute('secretary.doctors.index', '/secretary/dashboard');
   $servicesUrl = $safeSecretaryRoute('secretary.services.index', '/secretary/dashboard');
+  $walkinUrl = $safeSecretaryRoute('secretary.walkin.index', '/secretary/dashboard');
   $clinicSettingsUrl = $safeSecretaryRoute('secretary.clinic.edit', '/secretary/dashboard');
 @endphp
 
@@ -274,6 +275,12 @@
       <i class="bi bi-people"></i>
       <span>Queue Status</span>
     </a>
+
+    <a href="{{ $walkinUrl }}"
+        class="secretary-sidebar-link {{ request()->routeIs('secretary.walkin.*') ? 'active' : '' }}">
+        <i class="bi bi-person-plus"></i>
+        <span>Walk-in Patients</span>
+      </a>
 
     <div class="secretary-sidebar-section-label">Management</div>
 

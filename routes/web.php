@@ -424,25 +424,32 @@ Route::prefix('secretary')
             ->name('patients.destroy');
 
         Route::prefix('walkin')
-            ->name('walkin.')
-            ->group(function () {
-                Route::get('/', [WalkInRegistrationController::class, 'index'])
-                    ->name('index');
+    ->name('walkin.')
+    ->group(function () {
+        Route::get('/', [WalkInRegistrationController::class, 'index'])
+            ->name('index');
 
-                Route::get('/search', [WalkInRegistrationController::class, 'searchPatient'])
-                    ->name('search');
+        Route::get('/directory', [WalkInPatientDirectoryController::class, 'index'])
+            ->name('directory');
 
-                Route::post('/register', [WalkInRegistrationController::class, 'store'])
-                    ->name('store');
+        Route::get('/patients', [WalkInPatientDirectoryController::class, 'index'])
+            ->name('patients');
 
-                Route::get('/confirmation/{visit}', [WalkInRegistrationController::class, 'confirmation'])
-                    ->whereNumber('visit')
-                    ->name('confirmation');
+        Route::get('/search', [WalkInRegistrationController::class, 'searchPatient'])
+            ->name('search');
 
-                Route::get('/print/{visit}', [WalkInRegistrationController::class, 'printSlip'])
-                    ->whereNumber('visit')
-                    ->name('print');
-            });
+        Route::post('/register', [WalkInRegistrationController::class, 'store'])
+            ->name('store');
+
+        Route::get('/confirmation/{visit}', [WalkInRegistrationController::class, 'confirmation'])
+            ->whereNumber('visit')
+            ->name('confirmation');
+
+        Route::get('/print/{visit}', [WalkInRegistrationController::class, 'printSlip'])
+            ->whereNumber('visit')
+            ->name('print');
+    });
+        
 
         Route::get('/clinics/{clinic}/services', [ClinicServiceController::class, 'index'])
             ->whereNumber('clinic')
