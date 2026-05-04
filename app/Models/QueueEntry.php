@@ -352,4 +352,4 @@ class QueueEntry extends Model
             default => 'light',
         };
     }
-}
+}   
