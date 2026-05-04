@@ -100,7 +100,7 @@
     width: 56px;
     height: 56px;
     border-radius: 18px;
-    background: linear-gradient(135deg, #0d6efd, #178bff);
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
     color: #ffffff;
     display: inline-flex;
     align-items: center;
@@ -366,16 +366,9 @@
 
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
-            <a class="dropdown-item" href="{{ Route::has('profile.edit') ? route('profile.edit') : url('/profile') }}">
+            <a class="dropdown-item" href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}">
               <i class="bi bi-person me-2"></i>
               Profile
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}">
-              <i class="bi bi-calendar-check me-2"></i>
-              Appointments
             </a>
           </li>
 

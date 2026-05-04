@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Clinic;
 use App\Models\Service;
 use Illuminate\Http\Request;
@@ -65,9 +64,15 @@ class ClinicController extends Controller
             $query->latest('id');
         }
 
+        $mapClinics = (clone $query)
+            ->whereNotNull('gps_latitude')
+            ->whereNotNull('gps_longitude')
+            ->limit(200)
+            ->get();
+
         $clinics = $query->paginate(10)->withQueryString();
 
-        return view('clinics.index', compact('clinics', 'services'));
+        return view('clinics.index', compact('clinics', 'services', 'mapClinics'));
     }
 
     public function create()

@@ -4,22 +4,53 @@
 
 @section('doctor-content')
 @php
+    use Illuminate\Support\Collection;
+
     $doctorName = auth()->user()->name ?? 'Doctor';
+
+    /*
+    |--------------------------------------------------------------------------
+    | Safe Defaults
+    |--------------------------------------------------------------------------
+    | This prevents errors like:
+    | Undefined variable $appointments
+    | Undefined variable $queue
+    | Undefined variable $clinics
+    |--------------------------------------------------------------------------
+    */
+
+    $appointments = collect($appointments ?? []);
+    $queue = collect($queue ?? []);
+    $clinics = collect($clinics ?? []);
+    $activeClinic = $activeClinic ?? null;
+    $servicesOfferedCount = $servicesOfferedCount ?? 0;
+
+    $formatTime = function ($time) {
+        if (!$time) {
+            return '—';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($time)->format('g:i A');
+        } catch (\Throwable $e) {
+            return $time;
+        }
+    };
 
     $todayAppointmentsCount = $appointments->count();
     $activeQueueCount = $queue->count();
 
-    $nowServingCount = collect($queue)->where('status', 'now_serving')->count();
-    $waitingCount = collect($queue)->whereIn('status', ['waiting', 'called', 'pending'])->count();
+    $nowServingCount = $queue->where('status', 'now_serving')->count();
+    $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'pending'])->count();
 
     if ($waitingCount === 0 && $nowServingCount === 0 && $activeQueueCount > 0) {
         $waitingCount = $activeQueueCount;
     }
 
-    $todayAppointments = collect($appointments)->sortBy('appointment_time')->take(6);
-    $todayQueue = collect($queue)->take(6);
+    $todayAppointments = $appointments->sortBy('appointment_time')->take(6);
+    $todayQueue = $queue->take(6);
 
-    $nextAppointment = collect($appointments)->sortBy('appointment_time')->first();
+    $nextAppointment = $appointments->sortBy('appointment_time')->first();
 @endphp
 
 <style>
@@ -196,10 +227,25 @@
     flex-shrink: 0;
   }
 
-  .overview-blue .overview-icon { background: rgba(37, 99, 235, 0.12); color: #2563eb; }
-  .overview-yellow .overview-icon { background: rgba(245, 158, 11, 0.18); color: #a16207; }
-  .overview-green .overview-icon { background: rgba(16, 185, 129, 0.16); color: #047857; }
-  .overview-cyan .overview-icon { background: rgba(6, 182, 212, 0.16); color: #0891b2; }
+  .overview-blue .overview-icon {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+  }
+
+  .overview-yellow .overview-icon {
+    background: rgba(245, 158, 11, 0.18);
+    color: #a16207;
+  }
+
+  .overview-green .overview-icon {
+    background: rgba(16, 185, 129, 0.16);
+    color: #047857;
+  }
+
+  .overview-cyan .overview-icon {
+    background: rgba(6, 182, 212, 0.16);
+    color: #0891b2;
+  }
 
   .section-card {
     border-radius: 30px;
@@ -539,7 +585,7 @@
   }
 </style>
 
-<div class="doctor-dashboard-page">
+<div class="doctor-dashboard-page" id="top">
   <div class="doctor-dashboard-shell">
 
     <div class="doctor-hero glass-panel mb-4">
@@ -563,11 +609,11 @@
               </p>
 
               <div class="d-flex flex-wrap gap-2 mt-4">
-                <a href="{{ route('doctor.queue.index') }}" class="btn btn-primary doctor-quick-btn">
+                <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-primary doctor-quick-btn">
                   <i class="bi bi-list-ol me-2"></i>Open Queue
                 </a>
 
-                <a href="{{ route('doctor.schedules.index') }}" class="btn btn-outline-primary doctor-quick-btn">
+                <a href="{{ Route::has('doctor.schedules.index') ? route('doctor.schedules.index') : '#' }}" class="btn btn-outline-primary doctor-quick-btn">
                   <i class="bi bi-calendar2-week me-2"></i>Manage Schedule
                 </a>
               </div>
@@ -584,7 +630,7 @@
                 <div class="doctor-highlight-sub">
                   @if($nextAppointment)
                     Next appointment:
-                    <strong>{{ time12($nextAppointment->appointment_time) }}</strong>
+                    <strong>{{ $formatTime($nextAppointment->appointment_time ?? null) }}</strong>
                   @else
                     No more appointments scheduled today
                   @endif
@@ -695,15 +741,23 @@
                         $statusClass = 'waiting';
                         $statusLabel = $status === 'called' ? 'Called' : 'Waiting';
                     }
+
+                    $queueNumber = $q->queue_number ?? $q->number ?? '—';
+
+                    $queuePatientName =
+                        $q->appointment?->user?->name
+                        ?? $q->patient?->name
+                        ?? $q->user?->name
+                        ?? 'Patient';
                   @endphp
 
                   <div class="doctor-item">
                     <div class="doctor-item-main">
                       <div class="doctor-item-left">
-                        <span class="doctor-item-badge yellow">#{{ $q->queue_number }}</span>
+                        <span class="doctor-item-badge yellow">#{{ $queueNumber }}</span>
 
                         <div class="min-w-0">
-                          <h6 class="doctor-item-title">{{ $q->appointment?->user?->name ?? 'Patient' }}</h6>
+                          <h6 class="doctor-item-title">{{ $queuePatientName }}</h6>
                           <p class="doctor-item-meta">
                             <i class="bi bi-clock me-1"></i>
                             {{ $q->created_at ? $q->created_at->diffForHumans() : 'Queue entry' }}
@@ -722,7 +776,7 @@
 
               @if($activeQueueCount > 6)
                 <div class="text-center mt-3">
-                  <a href="{{ route('doctor.queue.index') }}" class="btn btn-outline-warning doctor-quick-btn">
+                  <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-outline-warning doctor-quick-btn">
                     View Full Queue
                   </a>
                 </div>
@@ -760,24 +814,37 @@
             @if($todayAppointments->count())
               <div class="doctor-list">
                 @foreach($todayAppointments as $appt)
+                  @php
+                    $appointmentPatientName =
+                        $appt->user?->name
+                        ?? $appt->patient?->name
+                        ?? 'Patient';
+
+                    $appointmentServiceName =
+                        $appt->service?->name
+                        ?? 'Consultation';
+
+                    $appointmentDocument = $appt->medical_document ?? null;
+                  @endphp
+
                   <div class="doctor-item">
                     <div class="doctor-item-main">
                       <div class="doctor-item-left">
                         <span class="doctor-item-badge blue">
-                          {{ time12($appt->appointment_time) }}
+                          {{ $formatTime($appt->appointment_time ?? null) }}
                         </span>
 
                         <div class="min-w-0">
-                          <h6 class="doctor-item-title">{{ $appt->user->name ?? 'Patient' }}</h6>
+                          <h6 class="doctor-item-title">{{ $appointmentPatientName }}</h6>
                           <p class="doctor-item-meta">
                             <i class="bi bi-gear me-1"></i>
-                            {{ $appt->service->name ?? 'Consultation' }}
+                            {{ $appointmentServiceName }}
                           </p>
                         </div>
                       </div>
 
-                      @if($appt->medical_document)
-                        <a href="{{ asset('storage/' . $appt->medical_document) }}"
+                      @if($appointmentDocument)
+                        <a href="{{ asset('storage/' . $appointmentDocument) }}"
                            target="_blank"
                            class="btn btn-sm btn-outline-primary doctor-quick-btn"
                            style="padding:8px 12px;">
@@ -839,7 +906,7 @@
                     </span>
 
                     <div class="min-w-0">
-                      <div class="fw-bold text-dark text-truncate">{{ $c->name }}</div>
+                      <div class="fw-bold text-dark text-truncate">{{ $c->name ?? 'Clinic' }}</div>
                       <div class="text-muted small">Assigned clinic</div>
                     </div>
                   </div>
@@ -856,11 +923,11 @@
             </div>
 
             <div class="pt-2">
-              <a href="{{ route('doctor.queue.index') }}" class="btn btn-primary w-100 doctor-quick-btn mb-2">
+              <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-primary w-100 doctor-quick-btn mb-2">
                 <i class="bi bi-list-ol me-2"></i>Go to Queue
               </a>
 
-              <a href="{{ route('doctor.schedules.index') }}" class="btn btn-outline-primary w-100 doctor-quick-btn">
+              <a href="{{ Route::has('doctor.schedules.index') ? route('doctor.schedules.index') : '#' }}" class="btn btn-outline-primary w-100 doctor-quick-btn">
                 <i class="bi bi-calendar2-week me-2"></i>Go to Schedules
               </a>
             </div>

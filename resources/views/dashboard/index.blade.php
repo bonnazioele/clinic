@@ -87,10 +87,6 @@
       <div class="empty-box">
         <i class="bi bi-calendar-x"></i>
         <p class="mb-3">No upcoming appointments scheduled.</p>
-
-        <a href="{{ Route::has('appointments.create') ? route('appointments.create') : url('/appointments/create') }}" class="btn btn-primary px-4">
-          <i class="bi bi-plus-circle me-2"></i>Book Appointment
-        </a>
       </div>
     @else
       @foreach($upcoming->take(3) as $appointment)

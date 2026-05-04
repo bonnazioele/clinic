@@ -1,4 +1,4 @@
-@extends('layouts.patient-dashboard')
+@extends(auth()->check() ? 'layouts.patient-dashboard' : 'layouts.public')
 
 @section('title', 'Find Clinics')
 
@@ -19,6 +19,11 @@
     width: 96%;
     max-width: none;
     padding: 0.9rem 0 1.4rem;
+    margin: 0 auto;
+  }
+
+  .guest-clinics-page {
+    padding-top: 1.25rem;
   }
 
   .clinics-shell {
@@ -262,6 +267,7 @@
     border: 1px solid #edf2f7;
     overflow: hidden;
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.055);
+    z-index: 1;
   }
 
   .map-note {
@@ -273,6 +279,7 @@
     color: #64748b;
     font-size: 0.78rem;
     font-weight: 600;
+    text-align: center;
   }
 
   .list-toolbar {
@@ -541,6 +548,7 @@
   }
 
   .empty-state {
+    grid-column: 1 / -1;
     padding: 2rem 1rem;
     text-align: center;
     border: 1px dashed rgba(13, 110, 253, 0.34);
@@ -703,8 +711,13 @@
 @endpush
 
 @section('content')
-<div class="patient-tab-shell">
-  <div class="patient-tab-content">
+@php
+  $isGuest = ! auth()->check();
+  $mapItems = $mapClinics ?? $clinics;
+@endphp
+
+<div class="{{ $isGuest ? 'guest-clinics-page' : 'patient-tab-shell' }}">
+  <div class="{{ $isGuest ? 'container-fluid' : 'patient-tab-content' }}">
     <div class="container-fluid clinics-page px-0">
       @include('partials.alerts', ['toastOffsetTop' => '7rem'])
 
@@ -734,6 +747,18 @@
                 <i class="bi bi-geo-alt"></i>
                 Map View
               </span>
+
+              @guest
+                <a href="{{ route('login') }}" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>
+                  Login
+                </a>
+
+                <a href="{{ route('register') }}" class="btn btn-sm btn-primary rounded-pill fw-bold px-3">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>
+                  Register
+                </a>
+              @endguest
             </div>
           </div>
         </div>
@@ -782,7 +807,7 @@
                   <select name="service_id" class="form-select">
                     <option value="">All Medical Services</option>
 
-                    @foreach(\App\Models\Service::all() as $service)
+                    @foreach($services as $service)
                       <option value="{{ $service->id }}" @selected(request('service_id') == $service->id)>
                         {{ $service->name }}
                       </option>
@@ -797,7 +822,7 @@
                       Search Clinics
                     </button>
 
-                    @if(request('name') || request('service_id'))
+                    @if(request('name') || request('service_id') || request('location'))
                       <a href="{{ route('clinics.index') }}" class="btn btn-outline-secondary clear-btn">
                         <i class="bi bi-x-circle me-2"></i>
                         Clear Filters
@@ -841,7 +866,7 @@
               <div>
                 <div class="quick-info-title">Book your visit</div>
                 <div class="quick-info-text">
-                  Pick a clinic and create an appointment from its card.
+                  Guests can view clinics. Login is required before booking.
                 </div>
               </div>
             </div>
@@ -861,12 +886,12 @@
             </div>
 
             <div class="map-body">
-             <div id="map" class="clinic-map"></div>
+              <div id="map" class="clinic-map"></div>
 
-            <div class="map-note" id="mapNote">
-              <i class="bi bi-info-circle"></i>
-              Showing clinic locations from the current filtered results.
-            </div>
+              <div class="map-note" id="mapNote">
+                <i class="bi bi-info-circle"></i>
+                Showing clinic locations with saved GPS coordinates.
+              </div>
             </div>
           </section>
 
@@ -904,11 +929,12 @@
               <div id="clinicsGrid" class="clinics-grid">
                 @forelse($clinics as $clinic)
                   @php
-                    $lat = $clinic->gps_latitude ?? $clinic->latitude;
-                    $lng = $clinic->gps_longitude ?? $clinic->longitude;
+                    $lat = $clinic->gps_latitude;
+                    $lng = $clinic->gps_longitude;
 
                     $waitingCount = \App\Models\QueueEntry::where('clinic_id', $clinic->id)
-                      ->whereIn('status', ['waiting', 'now_serving'])
+                      ->whereIn('status', ['waiting', 'called', 'now_serving'])
+                      ->whereDate('created_at', now()->toDateString())
                       ->count();
                   @endphp
 
@@ -990,23 +1016,34 @@
                         View Details
                       </button>
 
-                      @if($lat && $lng)
+                      @if(!is_null($lat) && !is_null($lng))
                         <button type="button"
                                 class="btn btn-outline-secondary"
-                                onclick="focusOnMap({{ $lat }}, {{ $lng }})">
+                                onclick="focusOnMap({{ (float) $lat }}, {{ (float) $lng }})">
                           <i class="bi bi-geo-alt me-2"></i>
                           Show on Map
                         </button>
                       @endif
 
-                      <a href="{{ route('appointments.create', ['clinic_id' => $clinic->id]) }}" class="btn btn-primary">
-                        <i class="bi bi-calendar-plus me-2"></i>
-                        Book Appointment
-                      </a>
+                      @auth
+                        <a href="{{ route('appointments.create', ['clinic_id' => $clinic->id]) }}" class="btn btn-primary">
+                          <i class="bi bi-calendar-plus me-2"></i>
+                          Book Appointment
+                        </a>
+                      @else
+                        <a href="{{ route('login') }}" class="btn btn-primary">
+                          <i class="bi bi-box-arrow-in-right me-2"></i>
+                          Login to Book
+                        </a>
+                      @endauth
 
                       <div class="auto-queue-note">
                         <i class="bi bi-info-circle me-1"></i>
-                        You may be added to the queue after booking.
+                        @auth
+                          You may be added to the queue after booking.
+                        @else
+                          You can view clinics without logging in.
+                        @endauth
                       </div>
                     </div>
                   </article>
@@ -1044,7 +1081,7 @@
   </div>
 </div>
 
-<div class="modal fade clinic-modal" id="clinicDetailsModal" tabindex="-1">
+<div class="modal fade clinic-modal" id="clinicDetailsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -1091,16 +1128,18 @@ function initializeMap() {
 
   const bounds = L.latLngBounds();
 
-  @foreach($clinics as $clinic)
+  @foreach($mapItems as $clinic)
     @php
-      $lat = $clinic->gps_latitude ?? $clinic->latitude;
-      $lng = $clinic->gps_longitude ?? $clinic->longitude;
+      $lat = $clinic->gps_latitude;
+      $lng = $clinic->gps_longitude;
     @endphp
 
-    @if($lat && $lng)
+    @if(!is_null($lat) && !is_null($lng))
       (function () {
         const lat = parseFloat('{{ $lat }}');
         const lng = parseFloat('{{ $lng }}');
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
         const marker = L.marker([lat, lng])
           .addTo(map)
@@ -1108,11 +1147,20 @@ function initializeMap() {
             <div class="text-center" style="min-width: 180px;">
               <h6 class="fw-bold text-primary mb-1">{{ addslashes($clinic->name) }}</h6>
               <p class="mb-2 small text-muted">{{ addslashes($clinic->address) }}</p>
-              <a href="{{ route('appointments.create', ['clinic_id' => $clinic->id]) }}"
-                 class="btn btn-sm btn-primary">
-                <i class="bi bi-calendar-plus me-1"></i>
-                Book Now
-              </a>
+
+              @auth
+                <a href="{{ route('appointments.create', ['clinic_id' => $clinic->id]) }}"
+                   class="btn btn-sm btn-primary">
+                  <i class="bi bi-calendar-plus me-1"></i>
+                  Book Now
+                </a>
+              @else
+                <a href="{{ route('login') }}"
+                   class="btn btn-sm btn-primary">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>
+                  Login to Book
+                </a>
+              @endauth
             </div>
           `);
 
@@ -1130,6 +1178,15 @@ function initializeMap() {
 
   if (bounds.isValid()) {
     map.fitBounds(bounds.pad(0.1));
+  }
+
+  const note = document.getElementById('mapNote');
+
+  if (note && markers.length === 0) {
+    note.innerHTML = `
+      <i class="bi bi-info-circle"></i>
+      No clinic markers yet. Add GPS latitude and longitude to your clinic records.
+    `;
   }
 
   setTimeout(() => {
@@ -1195,7 +1252,7 @@ function showClinicDetails(clinicId) {
   const modalEl = document.getElementById('clinicDetailsModal');
   const bodyEl = document.getElementById('clinicDetailsContent');
 
-  if (!modalEl || !bodyEl) return;
+  if (!modalEl || !bodyEl || typeof bootstrap === 'undefined') return;
 
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
@@ -1269,6 +1326,16 @@ function renderClinicDetails(data) {
     ? `<img src="${data.logo_url}" alt="Logo" class="modal-logo">`
     : `<div class="modal-logo">${escapeHtml((data.name || 'C').charAt(0))}</div>`;
 
+  const bookButton = @json(auth()->check())
+    ? `<a href="{{ url('/appointments/create') }}?clinic_id=${encodeURIComponent(data.id)}" class="btn btn-sm btn-primary">
+         <i class="bi bi-calendar-plus me-1"></i>
+         Book Appointment
+       </a>`
+    : `<a href="{{ route('login') }}" class="btn btn-sm btn-primary">
+         <i class="bi bi-box-arrow-in-right me-1"></i>
+         Login to Book
+       </a>`;
+
   return `
     <div class="clinic-details-content">
       ${
@@ -1300,7 +1367,10 @@ function renderClinicDetails(data) {
             ${escapeHtml(data.email || 'N/A')}
           </p>
 
-          ${editBtn}
+          <div class="d-flex flex-wrap gap-2">
+            ${bookButton}
+            ${editBtn}
+          </div>
         </div>
       </div>
 

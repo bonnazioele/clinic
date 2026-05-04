@@ -1,5 +1,4 @@
-@extends('layouts.app')
-
+@extends($profileLayout ?? 'layouts.app')
 @section('content')
   <main class="doctor-layout-content">
     @yield('doctor-content')

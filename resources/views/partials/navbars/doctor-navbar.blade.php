@@ -109,7 +109,7 @@
   width: 56px;
   height: 56px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #0d6efd, #178bff);
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
   color: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -363,35 +363,7 @@
     </button>
 
     <ul class="dropdown-menu dropdown-menu-end">
-      <li>
-        <a class="dropdown-item" href="{{ $dashboardUrl }}">
-          <i class="bi bi-speedometer2 me-2"></i>
-          Dashboard
-        </a>
-      </li>
 
-      <li>
-        <a class="dropdown-item" href="{{ $queueUrl }}">
-          <i class="bi bi-people me-2"></i>
-          Queue
-        </a>
-      </li>
-
-      <li>
-        <a class="dropdown-item" href="{{ $schedulesUrl }}">
-          <i class="bi bi-calendar2-week me-2"></i>
-          Schedules
-        </a>
-      </li>
-
-      @if(Route::has('doctor.appointments.index'))
-        <li>
-          <a class="dropdown-item" href="{{ $appointmentsUrl }}">
-            <i class="bi bi-calendar-check me-2"></i>
-            Appointments
-          </a>
-        </li>
-      @endif
 
       <li>
         <a class="dropdown-item" href="{{ $profileUrl }}">

@@ -1,9 +1,132 @@
-@extends('layouts.patient-dashboard')
+@php
+  use Illuminate\Support\Facades\View;
+  use Illuminate\Support\Facades\Storage;
+  use Illuminate\Support\Str;
+
+  $authUser = auth()->user();
+  $user = $user ?? $authUser;
+
+  $roleValue = data_get($user, 'role.name')
+      ?? data_get($user, 'role')
+      ?? data_get($user, 'user_role')
+      ?? data_get($user, 'account_type')
+      ?? data_get($authUser, 'role.name')
+      ?? data_get($authUser, 'role')
+      ?? 'patient';
+
+  if (is_object($roleValue)) {
+      $roleValue = data_get($roleValue, 'name') ?? data_get($roleValue, 'title') ?? 'patient';
+  }
+
+  $roleSlug = Str::slug(strtolower((string) $roleValue), '-');
+
+  $roleAliases = [
+      'clinic-secretary' => 'secretary',
+      'staff' => 'secretary',
+      'clinic-owner' => 'owner',
+      'super-admin' => 'admin',
+      'administrator' => 'admin',
+  ];
+
+  $roleSlug = $roleAliases[$roleSlug] ?? $roleSlug;
+
+  $roleMeta = [
+      'patient' => [
+          'label' => 'Patient Account',
+          'layout' => 'layouts.patient-dashboard',
+          'icon' => 'bi-person-heart',
+          'hero' => 'View your personal information, contact details, and uploaded medical document.',
+          'document_title' => 'Medical Document',
+          'document_empty' => 'No medical document has been uploaded yet.',
+          'reminders' => [
+              'Keep your phone number updated so clinics can contact you when needed.',
+              'Make sure your address is correct for clinic records.',
+              'Upload or update your medical document if the clinic requires it.',
+          ],
+      ],
+      'secretary' => [
+          'label' => 'Secretary Account',
+          'layout' => 'layouts.secretary-dashboard',
+          'icon' => 'bi-clipboard2-pulse',
+          'hero' => 'View your secretary profile, contact details, and clinic staff account information.',
+          'document_title' => 'Profile Document',
+          'document_empty' => 'No profile document has been uploaded yet.',
+          'reminders' => [
+              'Keep your phone number updated for clinic coordination.',
+              'Review your account details regularly.',
+              'Contact the clinic owner or admin if your assigned clinic details are incorrect.',
+          ],
+      ],
+      'doctor' => [
+          'label' => 'Doctor Account',
+          'layout' => 'layouts.doctor-dashboard',
+          'icon' => 'bi-heart-pulse',
+          'hero' => 'View your doctor profile, contact details, and professional account information.',
+          'document_title' => 'Professional Document',
+          'document_empty' => 'No professional document has been uploaded yet.',
+          'reminders' => [
+              'Keep your contact details updated for patient and clinic notifications.',
+              'Check that your clinic and service assignments are correct.',
+              'Contact the clinic owner or admin if your profile details need correction.',
+          ],
+      ],
+      'owner' => [
+          'label' => 'Owner Account',
+          'layout' => 'layouts.owner-dashboard',
+          'icon' => 'bi-building-check',
+          'hero' => 'View your clinic owner profile, contact details, and account information.',
+          'document_title' => 'Profile Document',
+          'document_empty' => 'No profile document has been uploaded yet.',
+          'reminders' => [
+              'Keep your contact information updated for clinic management notifications.',
+              'Review your owner account details regularly.',
+              'Contact the system admin if your clinic ownership details are incorrect.',
+          ],
+      ],
+      'admin' => [
+          'label' => 'Admin Account',
+          'layout' => 'layouts.admin-dashboard',
+          'icon' => 'bi-shield-lock',
+          'hero' => 'View your administrator profile, contact details, and system account information.',
+          'document_title' => 'Profile Document',
+          'document_empty' => 'No profile document has been uploaded yet.',
+          'reminders' => [
+              'Keep your admin contact information updated.',
+              'Review your account details regularly.',
+              'Use admin privileges carefully when managing users and clinics.',
+          ],
+      ],
+  ];
+
+  $meta = $roleMeta[$roleSlug] ?? [
+      'label' => Str::title(str_replace('-', ' ', $roleSlug)) . ' Account',
+      'layout' => 'layouts.app',
+      'icon' => 'bi-person-badge',
+      'hero' => 'View your profile, contact details, and account information.',
+      'document_title' => 'Profile Document',
+      'document_empty' => 'No profile document has been uploaded yet.',
+      'reminders' => [
+          'Keep your contact details updated.',
+          'Review your account information regularly.',
+          'Contact the administrator if your details are incorrect.',
+      ],
+  ];
+
+  $profileLayout = View::exists($meta['layout']) ? $meta['layout'] : 'layouts.app';
+
+  $documentPath = data_get($user, 'medical_document');
+  $address = data_get($user, 'address');
+@endphp
+
+@extends($profileLayout)
 
 @section('title', 'My Profile')
+@section('page-title', 'My Profile')
 
 @push('styles')
 <style>
+  .role-profile-tab-shell,
+  .role-profile-tab-content,
   .patient-tab-shell,
   .patient-tab-content {
     width: 100%;
@@ -299,8 +422,7 @@
     padding: 0.9rem;
     border-radius: 17px;
     border: 1px solid #edf2f7;
-    background:
-      linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.95));
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.95));
   }
 
   .document-left {
@@ -356,8 +478,7 @@
   .profile-note-card {
     margin-top: 1rem;
     padding: 1rem;
-    background:
-      linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.95));
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.95));
   }
 
   .note-title {
@@ -429,8 +550,8 @@
 @endpush
 
 @section('content')
-<div class="patient-tab-shell">
-  <div class="patient-tab-content">
+<div class="role-profile-tab-shell patient-tab-shell">
+  <div class="role-profile-tab-content patient-tab-content">
     <div class="container-fluid profile-page px-0">
       @include('partials.alerts')
 
@@ -439,18 +560,16 @@
           <div class="profile-hero-row">
             <div class="profile-title-wrap">
               <div class="profile-title-icon">
-                <i class="bi bi-person-circle"></i>
+                <i class="bi {{ $meta['icon'] }}"></i>
               </div>
 
               <div>
                 <h1 class="profile-title">My Profile</h1>
-                <p class="profile-subtitle">
-                  View your personal information, contact details, and uploaded medical document.
-                </p>
+                <p class="profile-subtitle">{{ $meta['hero'] }}</p>
               </div>
             </div>
 
-            <a href="{{ route('profile.edit') }}" class="btn btn-primary profile-edit-btn">
+            <a href="{{ route('patient.profile.edit') }}" class="btn btn-primary profile-edit-btn">
               <i class="bi bi-pencil-square me-1"></i>
               Edit Profile
             </a>
@@ -467,8 +586,8 @@
               <h2 class="profile-name">{{ $user->name }}</h2>
 
               <div class="profile-role">
-                <i class="bi bi-person-check-fill"></i>
-                Patient Account
+                <i class="bi {{ $meta['icon'] }}"></i>
+                {{ $meta['label'] }}
               </div>
 
               <div class="profile-mini-details">
@@ -535,7 +654,7 @@
                         <i class="bi bi-shield-check"></i>
                         Account Type
                       </div>
-                      <div class="info-value">Patient</div>
+                      <div class="info-value">{{ $meta['label'] }}</div>
                     </div>
 
                     <div class="info-box full">
@@ -543,7 +662,7 @@
                         <i class="bi bi-geo-alt"></i>
                         Address
                       </div>
-                      <div class="info-value">{{ $user->address ?? 'Not provided' }}</div>
+                      <div class="info-value">{{ $address ?: 'Not provided' }}</div>
                     </div>
                   </div>
                 </div>
@@ -553,12 +672,12 @@
                 <div class="profile-card-header">
                   <h5 class="profile-card-title">
                     <i class="bi bi-file-earmark-medical"></i>
-                    Medical Document
+                    {{ $meta['document_title'] }}
                   </h5>
                 </div>
 
                 <div class="document-body">
-                  @if($user->medical_document)
+                  @if($documentPath)
                     <div class="document-box">
                       <div class="document-left">
                         <div class="document-icon">
@@ -566,14 +685,14 @@
                         </div>
 
                         <div>
-                          <div class="document-title">Uploaded Medical Document</div>
+                          <div class="document-title">Uploaded Document</div>
                           <div class="document-sub">
                             You can view or download your uploaded file.
                           </div>
                         </div>
                       </div>
 
-                      <a href="{{ Storage::url($user->medical_document) }}"
+                      <a href="{{ Storage::url($documentPath) }}"
                          target="_blank"
                          class="btn btn-outline-primary document-btn">
                         <i class="bi bi-box-arrow-up-right me-1"></i>
@@ -583,7 +702,7 @@
                   @else
                     <div class="no-document">
                       <i class="bi bi-info-circle me-1"></i>
-                      No medical document has been uploaded yet.
+                      {{ $meta['document_empty'] }}
                     </div>
                   @endif
                 </div>
@@ -596,9 +715,9 @@
                 </h6>
 
                 <ul class="note-list">
-                  <li>Keep your phone number updated so clinics can contact you when needed.</li>
-                  <li>Make sure your address is correct for clinic records.</li>
-                  <li>Upload or update your medical document if the clinic requires it.</li>
+                  @foreach($meta['reminders'] as $reminder)
+                    <li>{{ $reminder }}</li>
+                  @endforeach
                 </ul>
               </section>
             </main>

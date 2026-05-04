@@ -57,13 +57,30 @@ use App\Http\Middleware\SecretaryMiddleware;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', [DashboardController::class, 'welcome'])->name('welcome');
-Route::get('/welcome', [DashboardController::class, 'welcome']);
+Route::get('/', [DashboardController::class, 'welcome'])
+    ->name('welcome');
 
-Route::get('/clinics', [ClinicController::class, 'index'])->name('clinics.index');
-Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])->name('clinics.show');
+Route::get('/welcome', [DashboardController::class, 'welcome'])
+    ->name('welcome.page');
 
-Route::get('/services/search', [PublicServiceController::class, 'search'])->name('services.search');
+/*
+|--------------------------------------------------------------------------
+| Public Clinic Browsing
+|--------------------------------------------------------------------------
+| These must stay outside auth so guests can browse clinics without
+| patient navbar/sidebar.
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/clinics', [ClinicController::class, 'index'])
+    ->name('clinics.index');
+
+Route::get('/clinics/{clinic}', [ClinicController::class, 'show'])
+    ->whereNumber('clinic')
+    ->name('clinics.show');
+
+Route::get('/services/search', [PublicServiceController::class, 'search'])
+    ->name('services.search');
 
 /*
 |--------------------------------------------------------------------------
@@ -91,14 +108,12 @@ Route::middleware('guest')->group(function () {
 
 Auth::routes(['verify' => true]);
 
-Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+Route::post('/logout', [LoginController::class, 'logout'])
+    ->name('logout');
 
 /*
 |--------------------------------------------------------------------------
 | Shared Auth Routes
-|--------------------------------------------------------------------------
-| Dropdown-only notifications.
-| No notification page is needed.
 |--------------------------------------------------------------------------
 */
 
@@ -110,6 +125,84 @@ Route::middleware(['auth'])->group(function () {
             'success' => true,
         ]);
     })->name('notifications.markRead');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generic Profile Redirect
+    |--------------------------------------------------------------------------
+    | /profile will redirect to the correct role profile:
+    | patient.profile.show
+    | secretary.profile.show
+    | doctor.profile.show
+    | admin.profile.show
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/profile', [ProfileController::class, 'redirect'])
+        ->name('profile.show');
+
+    Route::get('/profile/edit', [ProfileController::class, 'redirect'])
+        ->name('profile.edit');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Patient Profile Routes
+    |--------------------------------------------------------------------------
+    */
+
+Route::get('/patient/profile', [ProfileController::class, 'patientShow'])
+    ->name('patient.profile.show');
+
+Route::get('/patient/profile/edit', [ProfileController::class, 'patientEdit'])
+    ->name('patient.profile.edit');
+
+Route::match(['post', 'put'], '/patient/profile', [ProfileController::class, 'patientUpdate'])
+    ->name('patient.profile.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Secretary Profile Routes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/secretary/profile', [ProfileController::class, 'secretaryShow'])
+        ->name('secretary.profile.show');
+
+    Route::get('/secretary/profile/edit', [ProfileController::class, 'secretaryEdit'])
+        ->name('secretary.profile.edit');
+
+    Route::match(['post', 'put'], '/secretary/profile', [ProfileController::class, 'secretaryUpdate'])
+        ->name('secretary.profile.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Doctor Profile Routes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/doctor/profile', [ProfileController::class, 'doctorShow'])
+        ->name('doctor.profile.show');
+
+    Route::get('/doctor/profile/edit', [ProfileController::class, 'doctorEdit'])
+        ->name('doctor.profile.edit');
+
+    Route::match(['post', 'put'], '/doctor/profile', [ProfileController::class, 'doctorUpdate'])
+        ->name('doctor.profile.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Profile Routes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/admin/profile', [ProfileController::class, 'adminShow'])
+        ->name('admin.profile.show');
+
+    Route::get('/admin/profile/edit', [ProfileController::class, 'adminEdit'])
+        ->name('admin.profile.edit');
+
+    Route::match(['post', 'put'], '/admin/profile', [ProfileController::class, 'adminUpdate'])
+        ->name('admin.profile.update');
 });
 
 /*
@@ -121,30 +214,6 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Patient Profile
-    |--------------------------------------------------------------------------
-    */
-
-    Route::get('/profile', [ProfileController::class, 'show'])
-        ->name('profile.show');
-
-    Route::get('/profile/edit', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
-
-    Route::post('/profile', [ProfileController::class, 'update'])
-        ->name('profile.update');
-
-    Route::post('/profile/history', [ProfileController::class, 'storeHistory'])
-        ->name('profile.history.store');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Patient Appointments
-    |--------------------------------------------------------------------------
-    */
 
     Route::get('/appointments', [AppointmentController::class, 'index'])
         ->name('appointments.index');
@@ -159,30 +228,30 @@ Route::middleware(['auth'])->group(function () {
         ->name('appointments.store');
 
     Route::get('/appointments/{appointment}/edit', [AppointmentController::class, 'edit'])
+        ->whereNumber('appointment')
         ->name('appointments.edit');
 
     Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])
+        ->whereNumber('appointment')
         ->name('appointments.update');
 
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])
+        ->whereNumber('appointment')
         ->name('appointments.destroy');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Patient Queue
-    |--------------------------------------------------------------------------
-    */
 
     Route::get('/queue/status', [QueueController::class, 'status'])
         ->name('queue.status');
 
     Route::get('/queue/status/{entry}', [QueueController::class, 'status'])
+        ->whereNumber('entry')
         ->name('queue.status.entry');
 
     Route::post('/queue/join/{clinic}', [QueueController::class, 'join'])
+        ->whereNumber('clinic')
         ->name('queue.join');
 
     Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])
+        ->whereNumber('entry')
         ->name('queue.leave');
 });
 
@@ -199,49 +268,29 @@ Route::prefix('admin')
         Route::get('/', [AdminDashboardController::class, 'index'])
             ->name('dashboard');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Admin Clinics
-        |--------------------------------------------------------------------------
-        */
-
         Route::resource('clinics', AdminClinicController::class);
 
         Route::get('clinics/{clinic}/application', [AdminClinicController::class, 'showApplication'])
+            ->whereNumber('clinic')
             ->name('clinics.application');
 
         Route::post('clinics/{clinic}/approve', [AdminClinicController::class, 'approve'])
+            ->whereNumber('clinic')
             ->name('clinics.approve');
 
         Route::post('clinics/{clinic}/decline', [AdminClinicController::class, 'decline'])
+            ->whereNumber('clinic')
             ->name('clinics.decline');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Admin Services
-        |--------------------------------------------------------------------------
-        */
 
         Route::resource('services', AdminServiceController::class)
             ->except('show');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Admin Doctors
-        |--------------------------------------------------------------------------
-        */
 
         Route::get('doctors', [AdminDoctorController::class, 'index'])
             ->name('doctors.index');
 
         Route::get('doctors/{doctor}', [AdminDoctorController::class, 'show'])
+            ->whereNumber('doctor')
             ->name('doctors.show');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Admin Secretaries / Users / Patients / Reports
-        |--------------------------------------------------------------------------
-        */
 
         Route::get('secretaries', [AdminSecretaryController::class, 'index'])
             ->name('secretaries.index');
@@ -259,9 +308,6 @@ Route::prefix('admin')
 /*
 |--------------------------------------------------------------------------
 | Secretary Clinic Selection Routes
-|--------------------------------------------------------------------------
-| These routes are outside EnsureSelectedClinic because this is where the
-| secretary chooses the active clinic.
 |--------------------------------------------------------------------------
 */
 
@@ -289,12 +335,6 @@ Route::prefix('secretary')
         EnsureSelectedClinic::class,
     ])
     ->group(function () {
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Password / Active Clinic / Dashboard
-        |--------------------------------------------------------------------------
-        */
-
         Route::get('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'show'])
             ->name('auth.password.force.show');
 
@@ -307,12 +347,6 @@ Route::prefix('secretary')
         Route::post('/active-clinic', [\App\Http\Controllers\Secretary\ActiveClinicController::class, 'update'])
             ->name('active-clinic.update');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Appointments
-        |--------------------------------------------------------------------------
-        */
-
         Route::get('/appointments', [SecretaryAppointmentController::class, 'index'])
             ->name('appointments.index');
 
@@ -323,54 +357,50 @@ Route::prefix('secretary')
             ->name('appointments.store');
 
         Route::get('/appointments/{appointment}/edit', [SecretaryAppointmentController::class, 'edit'])
+            ->whereNumber('appointment')
             ->name('appointments.edit');
 
         Route::put('/appointments/{appointment}', [SecretaryAppointmentController::class, 'update'])
+            ->whereNumber('appointment')
             ->name('appointments.update');
 
         Route::delete('/appointments/{appointment}', [SecretaryAppointmentController::class, 'destroy'])
+            ->whereNumber('appointment')
             ->name('appointments.destroy');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Queue
-        |--------------------------------------------------------------------------
-        */
 
         Route::get('/queues', [SecretaryQueueController::class, 'overview'])
             ->name('queue.overview');
 
         Route::get('/clinics/{clinic}/queue', [SecretaryQueueController::class, 'queue'])
+            ->whereNumber('clinic')
             ->name('queue.index');
 
         Route::post('/clinics/{clinic}/queue/{entry}/call', [SecretaryQueueController::class, 'call'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
             ->name('queue.call');
 
         Route::post('/clinics/{clinic}/queue/{entry}/done-next', [SecretaryQueueController::class, 'doneNext'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
             ->name('queue.done_next');
 
         Route::post('/clinics/{clinic}/queue/{entry}/reschedule', [SecretaryQueueController::class, 'reschedule'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
             ->name('queue.reschedule');
 
         Route::post('/clinics/{clinic}/queue/{entry}/cancel', [SecretaryQueueController::class, 'cancel'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
             ->name('queue.cancel');
 
         Route::post('/clinics/{clinic}/queue/{entry}/no-show', [SecretaryQueueController::class, 'noShow'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
             ->name('queue.no_show');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Doctors
-        |--------------------------------------------------------------------------
-        */
-
         Route::resource('doctors', SecretaryDoctorController::class);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Patients
-        |--------------------------------------------------------------------------
-        */
 
         Route::get('/patients', [SecretaryPatientController::class, 'index'])
             ->name('patients.index');
@@ -382,19 +412,16 @@ Route::prefix('secretary')
             ->name('patients.store');
 
         Route::get('/patients/{patient}/edit', [SecretaryPatientController::class, 'edit'])
+            ->whereNumber('patient')
             ->name('patients.edit');
 
         Route::put('/patients/{patient}', [SecretaryPatientController::class, 'update'])
+            ->whereNumber('patient')
             ->name('patients.update');
 
         Route::delete('/patients/{patient}', [SecretaryPatientController::class, 'destroy'])
+            ->whereNumber('patient')
             ->name('patients.destroy');
-
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Walk-In
-        |--------------------------------------------------------------------------
-        */
 
         Route::prefix('walkin')
             ->name('walkin.')
@@ -409,58 +436,60 @@ Route::prefix('secretary')
                     ->name('store');
 
                 Route::get('/confirmation/{visit}', [WalkInRegistrationController::class, 'confirmation'])
+                    ->whereNumber('visit')
                     ->name('confirmation');
 
                 Route::get('/print/{visit}', [WalkInRegistrationController::class, 'printSlip'])
+                    ->whereNumber('visit')
                     ->name('print');
             });
 
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Clinic-Scoped Services
-        |--------------------------------------------------------------------------
-        | These are clinic-scoped on purpose:
-        | /secretary/clinics/{clinic}/services
-        |--------------------------------------------------------------------------
-        */
-
         Route::get('/clinics/{clinic}/services', [ClinicServiceController::class, 'index'])
+            ->whereNumber('clinic')
             ->name('services.index');
 
         Route::get('/clinics/{clinic}/services/create', [ClinicServiceController::class, 'create'])
+            ->whereNumber('clinic')
             ->name('services.create');
 
         Route::post('/clinics/{clinic}/services', [ClinicServiceController::class, 'store'])
+            ->whereNumber('clinic')
             ->name('services.store');
 
         Route::get('/clinics/{clinic}/services/search', [ClinicServiceController::class, 'search'])
+            ->whereNumber('clinic')
             ->name('services.search');
 
         Route::post('/clinics/{clinic}/services/attach', [ClinicServiceController::class, 'attach'])
+            ->whereNumber('clinic')
             ->name('services.attach');
 
         Route::get('/clinics/{clinic}/services/{service}/edit', [ClinicServiceController::class, 'edit'])
+            ->whereNumber('clinic')
+            ->whereNumber('service')
             ->name('services.edit');
 
         Route::put('/clinics/{clinic}/services/{service}', [ClinicServiceController::class, 'update'])
+            ->whereNumber('clinic')
+            ->whereNumber('service')
             ->name('services.update');
 
         Route::delete('/clinics/{clinic}/services/{service}', [ClinicServiceController::class, 'destroy'])
+            ->whereNumber('clinic')
+            ->whereNumber('service')
             ->name('services.destroy');
 
         Route::delete('/clinics/{clinic}/services/{service}/detach', [ClinicServiceController::class, 'detach'])
+            ->whereNumber('clinic')
+            ->whereNumber('service')
             ->name('services.detach');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Secretary Clinic Profile
-        |--------------------------------------------------------------------------
-        */
-
         Route::get('/clinics/{clinic}/edit', [\App\Http\Controllers\Secretary\ClinicProfileController::class, 'edit'])
+            ->whereNumber('clinic')
             ->name('clinic.edit');
 
         Route::put('/clinics/{clinic}', [\App\Http\Controllers\Secretary\ClinicProfileController::class, 'update'])
+            ->whereNumber('clinic')
             ->name('clinic.update');
     });
 
@@ -495,6 +524,7 @@ Route::prefix('doctor')
             ->name('queue.index');
 
         Route::post('/queue/{entry}/serve', [\App\Http\Controllers\Doctor\QueueController::class, 'serve'])
+            ->whereNumber('entry')
             ->name('queue.serve');
 
         Route::get('/schedules', [\App\Http\Controllers\Doctor\ScheduleController::class, 'index'])
@@ -507,9 +537,11 @@ Route::prefix('doctor')
             ->name('schedules.store');
 
         Route::put('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class, 'update'])
+            ->whereNumber('schedule')
             ->name('schedules.update');
 
         Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class, 'destroy'])
+            ->whereNumber('schedule')
             ->name('schedules.destroy');
     });
 

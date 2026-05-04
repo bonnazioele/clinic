@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="medical-gradient text-white py-5 mb-5">
-  <div class="container">
+  <div class="container" style="max-width:1200px">
     <div class="row align-items-center">
       <div class="col-lg-6">
         <h1 class="display-4 fw-bold mb-4">

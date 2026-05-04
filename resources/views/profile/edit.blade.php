@@ -1,10 +1,155 @@
-@extends('layouts.patient-dashboard')
+@php
+  use Illuminate\Support\Facades\View;
+  use Illuminate\Support\Facades\Storage;
+  use Illuminate\Support\Str;
+
+  $authUser = auth()->user();
+  $user = $user ?? $authUser;
+
+  $roleValue = data_get($user, 'role.name')
+      ?? data_get($user, 'role')
+      ?? data_get($user, 'user_role')
+      ?? data_get($user, 'account_type')
+      ?? data_get($authUser, 'role.name')
+      ?? data_get($authUser, 'role')
+      ?? 'patient';
+
+  if (is_object($roleValue)) {
+      $roleValue = data_get($roleValue, 'name') ?? data_get($roleValue, 'title') ?? 'patient';
+  }
+
+  $roleSlug = Str::slug(strtolower((string) $roleValue), '-');
+
+  $roleAliases = [
+      'clinic-secretary' => 'secretary',
+      'staff' => 'secretary',
+      'clinic-owner' => 'owner',
+      'super-admin' => 'admin',
+      'administrator' => 'admin',
+  ];
+
+  $roleSlug = $roleAliases[$roleSlug] ?? $roleSlug;
+
+  $roleMeta = [
+      'patient' => [
+          'label' => 'Patient Account',
+          'layout' => 'layouts.patient-dashboard',
+          'icon' => 'bi-person-heart',
+          'hero' => 'Update your personal information, contact details, address, and medical document.',
+          'name_help' => 'This name will appear on your patient account.',
+          'email_help' => 'Clinics may use this for account-related updates.',
+          'phone_help' => 'Keep this updated so clinics can contact you.',
+          'address_help' => 'This helps clinics keep accurate patient records.',
+          'document_title' => 'Medical Document',
+          'document_help' => 'Upload a new file only if you want to replace your current medical document.',
+          'reminders' => [
+              'Make sure your contact details are accurate before saving.',
+              'Only upload a document if you want to replace the current one.',
+              'After saving, review your profile to confirm the changes.',
+          ],
+      ],
+      'secretary' => [
+          'label' => 'Secretary Account',
+          'layout' => 'layouts.secretary-dashboard',
+          'icon' => 'bi-clipboard2-pulse',
+          'hero' => 'Update your secretary profile, contact details, and staff account information.',
+          'name_help' => 'This name will appear on your secretary account.',
+          'email_help' => 'Clinics may use this for staff-related updates.',
+          'phone_help' => 'Keep this updated for clinic coordination.',
+          'address_help' => 'This helps keep your staff profile complete.',
+          'document_title' => 'Profile Document',
+          'document_help' => 'Upload a new file only if you want to replace your current profile document.',
+          'reminders' => [
+              'Make sure your contact details are accurate before saving.',
+              'Contact the clinic owner or admin if your assigned clinic is incorrect.',
+              'After saving, review your profile to confirm the changes.',
+          ],
+      ],
+      'doctor' => [
+          'label' => 'Doctor Account',
+          'layout' => 'layouts.doctor-dashboard',
+          'icon' => 'bi-heart-pulse',
+          'hero' => 'Update your doctor profile, contact details, and professional account information.',
+          'name_help' => 'This name will appear on your doctor account.',
+          'email_help' => 'Clinics may use this for doctor-related updates.',
+          'phone_help' => 'Keep this updated for clinic and patient coordination.',
+          'address_help' => 'This helps keep your professional profile complete.',
+          'document_title' => 'Professional Document',
+          'document_help' => 'Upload a new file only if you want to replace your current professional document.',
+          'reminders' => [
+              'Make sure your contact details are accurate before saving.',
+              'Contact the clinic owner or admin if your clinic/service assignment is incorrect.',
+              'After saving, review your profile to confirm the changes.',
+          ],
+      ],
+      'owner' => [
+          'label' => 'Owner Account',
+          'layout' => 'layouts.owner-dashboard',
+          'icon' => 'bi-building-check',
+          'hero' => 'Update your clinic owner profile, contact details, and owner account information.',
+          'name_help' => 'This name will appear on your owner account.',
+          'email_help' => 'The system may use this for clinic ownership updates.',
+          'phone_help' => 'Keep this updated for clinic management communication.',
+          'address_help' => 'This helps keep your owner profile complete.',
+          'document_title' => 'Profile Document',
+          'document_help' => 'Upload a new file only if you want to replace your current profile document.',
+          'reminders' => [
+              'Make sure your contact details are accurate before saving.',
+              'Contact the system admin if your clinic ownership details are incorrect.',
+              'After saving, review your profile to confirm the changes.',
+          ],
+      ],
+      'admin' => [
+          'label' => 'Admin Account',
+          'layout' => 'layouts.admin-dashboard',
+          'icon' => 'bi-shield-lock',
+          'hero' => 'Update your administrator profile, contact details, and system account information.',
+          'name_help' => 'This name will appear on your admin account.',
+          'email_help' => 'The system may use this for admin-related updates.',
+          'phone_help' => 'Keep this updated for system communication.',
+          'address_help' => 'This helps keep your admin profile complete.',
+          'document_title' => 'Profile Document',
+          'document_help' => 'Upload a new file only if you want to replace your current profile document.',
+          'reminders' => [
+              'Make sure your contact details are accurate before saving.',
+              'Use admin account details carefully.',
+              'After saving, review your profile to confirm the changes.',
+          ],
+      ],
+  ];
+
+  $meta = $roleMeta[$roleSlug] ?? [
+      'label' => Str::title(str_replace('-', ' ', $roleSlug)) . ' Account',
+      'layout' => 'layouts.app',
+      'icon' => 'bi-person-badge',
+      'hero' => 'Update your profile, contact details, and account information.',
+      'name_help' => 'This name will appear on your account.',
+      'email_help' => 'The system may use this for account-related updates.',
+      'phone_help' => 'Keep this updated for communication.',
+      'address_help' => 'This helps keep your profile complete.',
+      'document_title' => 'Profile Document',
+      'document_help' => 'Upload a new file only if you want to replace your current profile document.',
+      'reminders' => [
+          'Make sure your contact details are accurate before saving.',
+          'Only upload a document if you want to replace the current one.',
+          'After saving, review your profile to confirm the changes.',
+      ],
+  ];
+
+  $profileLayout = View::exists($meta['layout']) ? $meta['layout'] : 'layouts.app';
+
+  $documentPath = data_get($user, 'medical_document');
+@endphp
+
+@extends($profileLayout)
 
 @section('title', 'Edit Profile')
 @section('page-title', 'Edit Profile')
 
 @push('styles')
 <style>
+  .role-profile-tab-shell,
+  .role-profile-tab-content,
   .patient-tab-shell,
   .patient-tab-content {
     width: 100%;
@@ -463,8 +608,8 @@
 @endpush
 
 @section('content')
-<div class="patient-tab-shell">
-  <div class="patient-tab-content">
+<div class="role-profile-tab-shell patient-tab-shell">
+  <div class="role-profile-tab-content patient-tab-content">
     <div class="container-fluid profile-edit-page px-0">
       @include('partials.alerts')
 
@@ -473,14 +618,12 @@
           <div class="profile-edit-hero-row">
             <div class="profile-edit-title-wrap">
               <div class="profile-edit-title-icon">
-                <i class="bi bi-pencil-square"></i>
+                <i class="bi {{ $meta['icon'] }}"></i>
               </div>
 
               <div>
                 <h1 class="profile-edit-title">Edit Profile</h1>
-                <p class="profile-edit-subtitle">
-                  Update your personal information, contact details, address, and medical document.
-                </p>
+                <p class="profile-edit-subtitle">{{ $meta['hero'] }}</p>
               </div>
             </div>
 
@@ -506,8 +649,7 @@
                 </span>
               </div>
 
-              <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
-                @csrf
+                <form method="POST" action="{{ route($role . '.profile.update') }}" enctype="multipart/form-data">                @csrf
                 @method('PUT')
 
                 <div class="profile-form-body">
@@ -527,9 +669,7 @@
                                value="{{ old('name', $user->name) }}"
                                required>
 
-                        <div class="field-help">
-                          This name will appear on your patient account.
-                        </div>
+                        <div class="field-help">{{ $meta['name_help'] }}</div>
 
                         @error('name')
                           <div class="invalid-feedback">{{ $message }}</div>
@@ -545,9 +685,7 @@
                                value="{{ old('email', $user->email) }}"
                                required>
 
-                        <div class="field-help">
-                          Clinics may use this for account-related updates.
-                        </div>
+                        <div class="field-help">{{ $meta['email_help'] }}</div>
 
                         @error('email')
                           <div class="invalid-feedback">{{ $message }}</div>
@@ -572,9 +710,7 @@
                                value="{{ old('phone', $user->phone) }}"
                                placeholder="e.g. 0917 123 4567">
 
-                        <div class="field-help">
-                          Keep this updated so clinics can contact you.
-                        </div>
+                        <div class="field-help">{{ $meta['phone_help'] }}</div>
 
                         @error('phone')
                           <div class="invalid-feedback">{{ $message }}</div>
@@ -585,7 +721,7 @@
                         <label class="form-label">Account Type</label>
                         <input type="text"
                                class="form-control"
-                               value="Patient"
+                               value="{{ $meta['label'] }}"
                                readonly>
 
                         <div class="field-help">
@@ -601,15 +737,13 @@
                       Address
                     </div>
 
-                    <label for="address" class="form-label">Home Address</label>
+                    <label for="address" class="form-label">Address</label>
                     <textarea id="address"
                               name="address"
                               class="form-control @error('address') is-invalid @enderror"
                               placeholder="Enter your complete address">{{ old('address', $user->address) }}</textarea>
 
-                    <div class="field-help">
-                      This helps clinics keep accurate patient records.
-                    </div>
+                    <div class="field-help">{{ $meta['address_help'] }}</div>
 
                     @error('address')
                       <div class="invalid-feedback">{{ $message }}</div>
@@ -619,7 +753,7 @@
                   <div class="form-section">
                     <div class="section-label">
                       <i class="bi bi-file-earmark-medical"></i>
-                      Medical Document
+                      {{ $meta['document_title'] }}
                     </div>
 
                     <div class="document-upload-box">
@@ -629,9 +763,9 @@
                         </div>
 
                         <div>
-                          <div class="document-upload-title">Upload Medical Document</div>
+                          <div class="document-upload-title">Upload Document</div>
                           <div class="document-upload-text">
-                            Upload a new file only if you want to replace your current medical document.
+                            {{ $meta['document_help'] }}
                           </div>
                         </div>
                       </div>
@@ -648,14 +782,14 @@
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                       @enderror
 
-                      @if($user->medical_document)
+                      @if($documentPath)
                         <div class="current-document">
                           <div class="current-document-text">
                             <i class="bi bi-file-earmark-text me-1 text-primary"></i>
-                            You currently have a medical document uploaded.
+                            You currently have a document uploaded.
                           </div>
 
-                          <a href="{{ Storage::url($user->medical_document) }}"
+                          <a href="{{ Storage::url($documentPath) }}"
                              target="_blank"
                              class="btn btn-outline-primary btn-sm current-document-link">
                             <i class="bi bi-box-arrow-up-right me-1"></i>
@@ -690,8 +824,8 @@
                 <h2 class="preview-name">{{ $user->name }}</h2>
 
                 <div class="preview-role">
-                  <i class="bi bi-person-check-fill"></i>
-                  Patient Account
+                  <i class="bi {{ $meta['icon'] }}"></i>
+                  {{ $meta['label'] }}
                 </div>
 
                 <div class="preview-list">
@@ -711,9 +845,9 @@
                   </div>
 
                   <div class="preview-item">
-                    <div class="preview-label">Medical Document</div>
+                    <div class="preview-label">{{ $meta['document_title'] }}</div>
                     <div class="preview-value">
-                      {{ $user->medical_document ? 'Uploaded' : 'Not uploaded' }}
+                      {{ $documentPath ? 'Uploaded' : 'Not uploaded' }}
                     </div>
                   </div>
                 </div>
@@ -726,9 +860,9 @@
                 </h6>
 
                 <ul class="help-list">
-                  <li>Make sure your contact details are accurate before saving.</li>
-                  <li>Only upload a document if you want to replace the current one.</li>
-                  <li>After saving, review your profile to confirm the changes.</li>
+                  @foreach($meta['reminders'] as $reminder)
+                    <li>{{ $reminder }}</li>
+                  @endforeach
                 </ul>
               </section>
             </aside>

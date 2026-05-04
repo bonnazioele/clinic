@@ -141,7 +141,7 @@
   width: 56px;
   height: 56px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #0d6efd, #178bff);
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
   color: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -394,47 +394,12 @@
         </button>
 
         <ul class="dropdown-menu dropdown-menu-end">
-          <li>
-            <a class="dropdown-item" href="{{ $dashboardUrl }}">
-              <i class="bi bi-speedometer2 me-2"></i>
-              Dashboard
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $appointmentsUrl }}">
-              <i class="bi bi-calendar-check me-2"></i>
-              Appointments
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $queueUrl }}">
-              <i class="bi bi-people me-2"></i>
-              Today’s Queue
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $doctorsUrl }}">
-              <i class="bi bi-person-badge me-2"></i>
-              Doctors
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $servicesUrl }}">
-              <i class="bi bi-clipboard2-pulse me-2"></i>
-              Services
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $clinicSettingsUrl }}">
-              <i class="bi bi-building-gear me-2"></i>
-              Clinic Settings
-            </a>
-          </li>
+            <li>
+                <a href="{{ route('secretary.profile.show') }}" class="dropdown-item">
+                    <i class="bi bi-person me-2"></i>
+                    Profile
+                </a>
+            </li>
 
           <li><hr class="dropdown-divider"></li>
 

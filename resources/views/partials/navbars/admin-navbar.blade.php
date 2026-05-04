@@ -112,7 +112,7 @@
   width: 56px;
   height: 56px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #0d6efd, #178bff);
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
   color: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -370,33 +370,7 @@
         </button>
 
         <ul class="dropdown-menu dropdown-menu-end">
-          <li>
-            <a class="dropdown-item" href="{{ $dashboardUrl }}">
-              <i class="bi bi-speedometer2 me-2"></i>
-              Dashboard
-            </a>
-          </li>
 
-          <li>
-            <a class="dropdown-item" href="{{ $clinicsUrl }}">
-              <i class="bi bi-building me-2"></i>
-              Clinics
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $createClinicUrl }}">
-              <i class="bi bi-building-add me-2"></i>
-              Add Clinic
-            </a>
-          </li>
-
-          <li>
-            <a class="dropdown-item" href="{{ $applicationsUrl }}">
-              <i class="bi bi-file-earmark-check me-2"></i>
-              Applications
-            </a>
-          </li>
 
           <li>
             <a class="dropdown-item" href="{{ $profileUrl }}">

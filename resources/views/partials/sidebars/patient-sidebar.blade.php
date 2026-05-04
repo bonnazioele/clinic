@@ -215,16 +215,6 @@
       <span>Clinics</span>
     </a>
 
-    <a href="{{ Route::has('profile.show') ? route('profile.show') : url('/profile') }}"
-       class="sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
-      <i class="bi bi-person"></i>
-      <span>Profile</span>
-    </a>
-
-    <a href="#" class="sidebar-link">
-      <i class="bi bi-gear"></i>
-      <span>Settings</span>
-    </a>
   </nav>
 
   <div class="sidebar-bottom">

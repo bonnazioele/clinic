@@ -65,6 +65,157 @@
       margin: 0 auto;
     }
 
+    .patient-dashboard-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 34px;
+      padding: 30px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 247, 255, 0.92));
+      box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .patient-dashboard-hero::after {
+      content: "";
+      position: absolute;
+      right: -70px;
+      bottom: -70px;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(96, 165, 250, 0.14);
+      pointer-events: none;
+    }
+
+    .patient-dashboard-hero::before {
+      content: "";
+      position: absolute;
+      right: 110px;
+      top: -70px;
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      background: rgba(14, 165, 233, 0.10);
+      pointer-events: none;
+    }
+
+    .patient-hero-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .patient-hero-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: #ffffff;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      box-shadow: 0 16px 30px rgba(37, 99, 235, 0.28);
+      flex-shrink: 0;
+    }
+
+    .patient-hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.10);
+      color: #2563eb;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .patient-hero-title {
+      font-size: clamp(2rem, 3vw, 3rem);
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin: 0;
+    }
+
+    .patient-hero-text {
+      color: #64748b;
+      font-size: 1rem;
+      margin-top: 8px;
+      margin-bottom: 0;
+      max-width: 760px;
+    }
+
+    .patient-hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .patient-hero-btn {
+      border-radius: 16px;
+      padding: 12px 18px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .patient-hero-highlight {
+      height: 100%;
+      border-radius: 24px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+      position: relative;
+      z-index: 2;
+    }
+
+    .patient-hero-highlight-label {
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .patient-hero-highlight-title {
+      color: #111827;
+      font-size: 1.1rem;
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .patient-hero-highlight-text {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-bottom: 0;
+      line-height: 1.45;
+    }
+
+    .patient-hero-highlight-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      flex-shrink: 0;
+      color: #047857;
+      background: rgba(16, 185, 129, 0.14);
+    }
+
     .page-card,
     .dash-card {
       background: rgba(255, 255, 255, 0.94);
@@ -424,6 +575,11 @@
         padding: 18px 14px 28px;
       }
 
+      .patient-dashboard-hero {
+        padding: 24px;
+        border-radius: 26px;
+      }
+
       .appointment-row {
         grid-template-columns: 70px 1fr;
       }
@@ -451,6 +607,26 @@
     @media (max-width: 768px) {
       .patient-main {
         padding: 14px 10px 24px;
+      }
+
+      .patient-dashboard-hero {
+        padding: 20px;
+        border-radius: 24px;
+      }
+
+      .patient-hero-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.7rem;
+        border-radius: 18px;
+      }
+
+      .patient-hero-title {
+        font-size: clamp(1.8rem, 9vw, 2.35rem);
+      }
+
+      .patient-hero-actions .btn {
+        width: 100%;
       }
 
       .page-card,
@@ -502,6 +678,76 @@
     @include('partials.sidebars.patient-sidebar')
 
     <main class="patient-main">
+      @if(request()->routeIs('dashboard'))
+        <div class="dashboard-container">
+          <section class="patient-dashboard-hero">
+            <div class="row g-4 align-items-center patient-hero-content">
+              <div class="col-xl-8">
+                <div class="d-flex align-items-start gap-3 gap-md-4">
+                  <div class="patient-hero-icon">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                  </div>
+
+                  <div class="flex-grow-1">
+                    <div class="patient-hero-badge mb-3">
+                      <i class="bi bi-person-heart"></i>
+                      Patient Dashboard
+                    </div>
+
+                    <h1 class="patient-hero-title">
+                      Welcome back, {{ auth()->user()->name ?? 'Patient' }}!
+                    </h1>
+
+                    <p class="patient-hero-text">
+                      Manage your appointments, queue status, and clinic updates in one place. You can quickly book a consultation without leaving your dashboard.
+                    </p>
+
+                    <div class="patient-hero-actions">
+
+                      <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}"
+                         class="btn btn-outline-primary patient-hero-btn">
+                        <i class="bi bi-calendar2-check me-2"></i>
+                        My Appointments
+                      </a>
+
+                      <a href="{{ Route::has('queue.status') ? route('queue.status') : url('/queue/status') }}"
+                         class="btn btn-outline-secondary patient-hero-btn">
+                        <i class="bi bi-list-ol me-2"></i>
+                        Queue Status
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-xl-4">
+                <div class="patient-hero-highlight">
+                  <div class="d-flex align-items-center justify-content-between gap-3">
+                    <div class="min-w-0">
+                      <div class="patient-hero-highlight-label">Quick Booking</div>
+                      <h2 class="patient-hero-highlight-title">Need a clinic visit?</h2>
+                      <p class="patient-hero-highlight-text">
+                        Choose your service, preferred clinic, and available schedule from the booking form.
+                      </p>
+                    </div>
+
+                    <span class="patient-hero-highlight-icon">
+                      <i class="bi bi-calendar2-heart"></i>
+                    </span>
+                  </div>
+
+                  <a href="{{ Route::has('appointments.create') ? route('appointments.create') : url('/appointments/create') }}"
+                     class="btn btn-primary w-100 patient-hero-btn mt-4">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Book Now
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      @endif
+
       @yield('content')
     </main>
   </div>

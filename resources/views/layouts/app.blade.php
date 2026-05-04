@@ -478,6 +478,7 @@
 
     .medical-gradient {
       background: linear-gradient(135deg, var(--medical-blue) 0%, var(--primary-color) 100%);
+      width: 100%;
     }
 
     .medical-card {
