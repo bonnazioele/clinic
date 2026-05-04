@@ -56,7 +56,7 @@
 /* Make sure the navbar can hold the pseudo-element */
 .patient-navbar {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
   .patient-navbar .navbar-left,
@@ -352,9 +352,7 @@
     </div>
 
     <div class="navbar-right">
-      <button type="button" class="navbar-icon-btn" aria-label="Notifications">
-        <i class="bi bi-bell"></i>
-      </button>
+      @include('partials.notification-bell')
 
       <div class="navbar-profile dropdown">
         <button class="profile-btn dropdown-toggle"

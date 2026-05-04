@@ -81,7 +81,7 @@
   justify-content: space-between;
   gap: 18px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .secretary-navbar::before {
@@ -381,9 +381,7 @@
     </div>
 
     <div class="navbar-right">
-      <button type="button" class="navbar-icon-btn" aria-label="Notifications">
-        <i class="bi bi-bell"></i>
-      </button>
+      @include('partials.notification-bell')
 
       <div class="navbar-profile dropdown">
         <button class="profile-btn dropdown-toggle"

@@ -20,7 +20,6 @@ use App\Http\Controllers\Frontend\PublicServiceController;
 use App\Http\Controllers\Owner\ApplicationController as OwnerApplicationController;
 
 use App\Http\Controllers\Patient\AppointmentController;
-use App\Http\Controllers\Patient\NotificationsController;
 use App\Http\Controllers\Patient\ProfileController;
 use App\Http\Controllers\Patient\QueueController;
 
@@ -96,6 +95,25 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------
+| Shared Auth Routes
+|--------------------------------------------------------------------------
+| Dropdown-only notifications.
+| No notification page is needed.
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/notifications/mark-read', function () {
+        auth()->user()->unreadNotifications->markAsRead();
+
+        return response()->json([
+            'success' => true,
+        ]);
+    })->name('notifications.markRead');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Patient Routes
 |--------------------------------------------------------------------------
 */
@@ -166,18 +184,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/queue/leave/{entry}', [QueueController::class, 'leave'])
         ->name('queue.leave');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Patient Notifications
-    |--------------------------------------------------------------------------
-    */
-
-    Route::get('/notifications', [NotificationsController::class, 'index'])
-        ->name('notifications.index');
-
-    Route::post('/notifications/mark-read', [NotificationsController::class, 'markAllRead'])
-        ->name('notifications.markRead');
 });
 
 /*
