@@ -11,17 +11,21 @@
     padding: 0.5rem 0 1.5rem;
   }
 
-  .secretary-welcome {
+  .dashboard-summary-shell {
     border-radius: 24px;
-    padding: 26px 30px;
+    border: 1px solid rgba(226, 232, 240, 0.96);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+
+  .secretary-welcome {
+    padding: 1.35rem 1.45rem;
     color: #ffffff;
     background:
       radial-gradient(circle at 90% 30%, rgba(255, 255, 255, 0.16), transparent 18%),
       linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%);
-    box-shadow: 0 18px 45px rgba(37, 99, 235, 0.22);
-    overflow: hidden;
-    position: relative;
-    margin-bottom: 1rem;
   }
 
   .secretary-welcome h1 {
@@ -40,9 +44,9 @@
 
   .secretary-stats-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
-    margin-bottom: 1.1rem;
+    padding: 1.2rem;
   }
 
   .secretary-stat-card {
@@ -136,10 +140,25 @@
 
   .queue-workspace-card {
     border-radius: 24px;
-    border: 1px solid rgba(226, 232, 240, 0.96);
+    border: 1px solid rgba(191, 219, 254, 0.95);
     background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-    padding: 1.35rem;
+    box-shadow: 0 24px 60px rgba(37, 99, 235, 0.13);
+    padding: 1.6rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .queue-workspace-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 5px;
+    background: linear-gradient(90deg, #0d6efd, #2bbf6a, #ffc107);
+  }
+
+  .queue-workspace-card > * {
+    position: relative;
+    z-index: 1;
   }
 
   .workspace-header {
@@ -149,13 +168,13 @@
     gap: 1rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid #e2e8f0;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
   }
 
   .workspace-title {
     margin: 0;
     color: #0f172a;
-    font-size: 1.35rem;
+    font-size: clamp(1.5rem, 2.2vw, 2rem);
     font-weight: 900;
     letter-spacing: -0.04em;
     display: flex;
@@ -170,7 +189,7 @@
   .workspace-subtitle {
     margin-top: 0.25rem;
     color: #64748b;
-    font-size: 0.9rem;
+    font-size: 0.98rem;
     font-weight: 600;
   }
 
@@ -192,6 +211,80 @@
     gap: 0.5rem;
     border-bottom: 0;
     margin-bottom: 1rem;
+  }
+
+  .cliniq-service-card {
+    min-height: 172px;
+    border-radius: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.96);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1.25rem 1.3rem;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .cliniq-service-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .cliniq-service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+  }
+
+  .cliniq-service-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .cliniq-service-card__title {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .cliniq-service-card__stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .cliniq-service-card__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .cliniq-service-card__stat--right {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .cliniq-service-card__stat-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #64748b;
+  }
+
+  .cliniq-service-card__stat-value {
+    font-size: 1.75rem;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .cliniq-service-card__stat-value--primary {
+    color: #0d6efd;
   }
 
   .service-tab {
@@ -584,36 +677,37 @@
 </style>
 
 <div class="secretary-dashboard-page">
-  <section class="secretary-welcome">
-    <h1>Secretary Dashboard</h1>
-    <p>
-      Manage today’s appointments and clinic queues.
-    </p>
-  </section>
-
-  <section class="secretary-stats-grid">
-    <div class="secretary-stat-card stat-blue">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-calendar2-check"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">{{ number_format($totalTodayCount ?? 0) }}</div>
-          <div class="secretary-stat-title">Total Today</div>
-          <p class="secretary-stat-sub">All queue entries today</p>
-        </div>
-      </div>
+  <section class="dashboard-summary-shell">
+    <div class="secretary-welcome">
+      <h1>Secretary Dashboard</h1>
+      <p>
+        Manage today's appointments and clinic queues.
+      </p>
     </div>
 
+    <div class="secretary-stats-grid">
     <div class="secretary-stat-card stat-yellow">
       <div class="secretary-stat-content">
         <div class="secretary-stat-icon">
           <i class="bi bi-hourglass-split"></i>
         </div>
         <div>
-          <div class="secretary-stat-value">{{ number_format($waitingCount ?? 0) }}</div>
-          <div class="secretary-stat-title">Waiting</div>
-          <p class="secretary-stat-sub">Patients still in queue</p>
+          <div class="secretary-stat-value">{{ number_format($totalWaiting ?? 0) }}</div>
+          <div class="secretary-stat-title">Total Waiting</div>
+          <p class="secretary-stat-sub">Patients waiting in queue</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="secretary-stat-card stat-blue">
+      <div class="secretary-stat-content">
+        <div class="secretary-stat-icon">
+          <i class="bi bi-person-check"></i>
+        </div>
+        <div>
+          <div class="secretary-stat-value">{{ number_format($nowServingCount ?? 0) }}</div>
+          <div class="secretary-stat-title">Now Serving</div>
+          <p class="secretary-stat-sub">Active patient encounters</p>
         </div>
       </div>
     </div>
@@ -621,53 +715,17 @@
     <div class="secretary-stat-card stat-green">
       <div class="secretary-stat-content">
         <div class="secretary-stat-icon">
-          <i class="bi bi-check2-circle"></i>
+          <i class="bi bi-person-badge"></i>
         </div>
         <div>
-          <div class="secretary-stat-value">{{ number_format($servedCount ?? 0) }}</div>
-          <div class="secretary-stat-title">Served</div>
-          <p class="secretary-stat-sub">Completed patients</p>
+          <div class="secretary-stat-value">
+            {{ number_format($onDutyDoctors ?? 0) }}/{{ number_format($totalActiveDoctors ?? 0) }}
+          </div>
+          <div class="secretary-stat-title">Doctors</div>
+          <p class="secretary-stat-sub">Serving / active</p>
         </div>
       </div>
     </div>
-
-    <div class="secretary-stat-card stat-gray">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-person-x"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">{{ number_format($noShowCount ?? 0) }}</div>
-          <div class="secretary-stat-title">No Show</div>
-          <p class="secretary-stat-sub">Marked as no-show</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="secretary-stat-card stat-purple">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-calendar2-week"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">{{ number_format($rescheduledCount ?? 0) }}</div>
-          <div class="secretary-stat-title">Rescheduled</div>
-          <p class="secretary-stat-sub">Moved schedules</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="secretary-stat-card stat-cyan">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-person-plus"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">{{ number_format($walkInTodayCount ?? 0) }}</div>
-          <div class="secretary-stat-title">Walk-in Today</div>
-          <p class="secretary-stat-sub">Walk-in queue entries</p>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -676,7 +734,7 @@
       <div>
         <h2 class="workspace-title">
           <i class="bi bi-people-fill"></i>
-          Queue Workstation
+          Service Statuses
         </h2>
         <div class="workspace-subtitle">
           Select a service, choose a doctor lane, then manage the active queue.
@@ -689,254 +747,41 @@
       </span>
     </div>
 
-    @if(($serviceTabs ?? collect())->count())
-      <ul class="nav nav-tabs flex-wrap service-tabs" id="serviceTabs" role="tablist">
-        @foreach($serviceTabs as $serviceTab)
-          <li class="nav-item" role="presentation">
-            <button
-              class="nav-link service-tab {{ ($activeServiceTabId ?? null) === $serviceTab['id'] ? 'active' : '' }}"
-              id="{{ $serviceTab['id'] }}-tab"
-              data-bs-toggle="tab"
-              data-bs-target="#{{ $serviceTab['id'] }}"
-              type="button"
-              role="tab"
-              aria-controls="{{ $serviceTab['id'] }}"
-              aria-selected="{{ ($activeServiceTabId ?? null) === $serviceTab['id'] ? 'true' : 'false' }}">
-              <i class="bi bi-clipboard2-pulse"></i>
-              {{ $serviceTab['service_name'] }}
-              <span class="badge">{{ $serviceTab['doctor_lanes']->count() }}</span>
-            </button>
-          </li>
-        @endforeach
-      </ul>
-
-      <div class="tab-content" id="serviceTabsContent">
-        @foreach($serviceTabs as $serviceTab)
-          <div
-            class="tab-pane fade {{ ($activeServiceTabId ?? null) === $serviceTab['id'] ? 'show active' : '' }}"
-            id="{{ $serviceTab['id'] }}"
-            role="tabpanel"
-            aria-labelledby="{{ $serviceTab['id'] }}-tab">
-
-            <div class="service-panel">
-              @if($serviceTab['doctor_lanes']->isEmpty())
-                <div class="empty-panel">
-                  <div class="empty-panel-icon">
-                    <i class="bi bi-person-badge"></i>
-                  </div>
-                  No doctors are currently assigned to this service.
+    <div class="row g-4">
+      @forelse ($serviceStatusCards ?? [] as $serviceCard)
+        @php
+          $serviceLink = route('secretary.services.queue.index', ['service_id' => $serviceCard['route_key']]);
+        @endphp
+        <div class="col-md-6 col-xl-4 mb-4">
+          <a class="cliniq-service-card-link" href="{{ $serviceLink }}">
+            <div class="cliniq-service-card">
+              <div class="cliniq-service-card__header">
+                <h3 class="cliniq-service-card__title">{{ $serviceCard['name'] }}</h3>
+              </div>
+              <div class="cliniq-service-card__stats">
+                <div class="cliniq-service-card__stat">
+                  <span class="cliniq-service-card__stat-label">WAITING</span>
+                  <span class="cliniq-service-card__stat-value">{{ number_format($serviceCard['waiting_count']) }}</span>
                 </div>
-              @else
-                <ul class="nav nav-pills flex-wrap doctor-lane-tabs" id="queueLaneTabs-{{ $serviceTab['service_id'] }}" role="tablist">
-                  @foreach($serviceTab['doctor_lanes'] as $lane)
-                    @php
-                      $laneTabId = $lane['id'].'-svc-'.$serviceTab['service_id'];
-                    @endphp
-
-                    <li class="nav-item" role="presentation">
-                      <button
-                        class="nav-link doctor-lane-tab {{ ($serviceTab['active_lane_id'] ?? null) === $lane['id'] ? 'active' : '' }}"
-                        id="{{ $laneTabId }}-tab"
-                        data-bs-toggle="tab"
-                        data-bs-target="#{{ $laneTabId }}"
-                        type="button"
-                        role="tab"
-                        aria-controls="{{ $laneTabId }}"
-                        aria-selected="{{ ($serviceTab['active_lane_id'] ?? null) === $lane['id'] ? 'true' : 'false' }}">
-                        <div class="doctor-lane-name">
-                          <i class="bi bi-person-badge me-1"></i>
-                          {{ $lane['doctor_name'] }}
-                        </div>
-                        <div class="doctor-lane-service">
-                          {{ $lane['service_name'] ?: 'General consultation' }}
-                        </div>
-                      </button>
-                    </li>
-                  @endforeach
-                </ul>
-
-                <div class="tab-content" id="queueLaneTabsContent-{{ $serviceTab['service_id'] }}">
-                  @foreach($serviceTab['doctor_lanes'] as $lane)
-                    @php
-                      $nowServing = $lane['now_serving'];
-                      $nextUp = $lane['next_up'];
-                      $callNextEntry = $lane['call_next_entry'];
-                      $noShowEntry = $lane['no_show_entry'];
-                      $lanePaneId = $lane['id'].'-svc-'.$serviceTab['service_id'];
-                    @endphp
-
-                    <div
-                      class="tab-pane fade {{ ($serviceTab['active_lane_id'] ?? null) === $lane['id'] ? 'show active' : '' }}"
-                      id="{{ $lanePaneId }}"
-                      role="tabpanel"
-                      aria-labelledby="{{ $lanePaneId }}-tab">
-
-                      <div class="lane-board">
-                        <div class="lane-board-header">
-                          <div>
-                            <h3 class="lane-title">{{ $lane['doctor_name'] }}</h3>
-                            <div class="lane-subtitle">
-                              {{ $lane['service_name'] ?: 'General consultation' }}
-                            </div>
-                          </div>
-
-                          <span class="lane-depth-pill">
-                            <i class="bi bi-people"></i>
-                            {{ number_format($lane['queue_depth']) }} in active queue
-                          </span>
-                        </div>
-
-                        <div class="lane-content-grid">
-                          <section class="queue-panel now-serving-panel">
-                            <div class="queue-panel-header">
-                              <h4 class="queue-panel-title">
-                                <i class="bi bi-megaphone"></i>
-                                Now Serving
-                              </h4>
-
-                              @if($nowServing)
-                                <span class="status-chip active">
-                                  <i class="bi bi-broadcast"></i>
-                                  Active
-                                </span>
-                              @else
-                                <span class="status-chip empty">
-                                  <i class="bi bi-pause-circle"></i>
-                                  Empty
-                                </span>
-                              @endif
-                            </div>
-
-                            <div class="now-serving-body">
-                              @if($nowServing)
-                                <div class="queue-number-large">#{{ $nowServing->queue_number }}</div>
-                                <div class="patient-name">{{ $nowServing->display_name }}</div>
-                                <div class="patient-meta">
-                                  <i class="bi bi-clock me-1"></i>
-                                  Called at {{ optional($nowServing->updated_at)->format('g:i A') ?? '-' }}
-                                  · {{ $nowServing->appointment_id ? 'Appointment' : 'Walk-in' }}
-                                </div>
-                              @else
-                                <div class="patient-name text-muted">
-                                  No patient is currently being served.
-                                </div>
-                                <div class="patient-meta">
-                                  Start the next waiting patient when ready.
-                                </div>
-                              @endif
-                            </div>
-                          </section>
-
-                          <section class="queue-panel">
-                            <div class="queue-panel-header">
-                              <h4 class="queue-panel-title">
-                                <i class="bi bi-list-ol"></i>
-                                Next Up
-                              </h4>
-
-                              <span class="status-chip empty">
-                                {{ $nextUp->count() }} listed
-                              </span>
-                            </div>
-
-                            <div class="next-up-body">
-                              @if($nextUp->count())
-                                <div class="next-up-list">
-                                  @foreach($nextUp as $entry)
-                                    <div class="next-up-item">
-                                      <div>
-                                        <div class="next-up-number">#{{ $entry->queue_number }}</div>
-                                        <div class="next-up-name">{{ $entry->display_name }}</div>
-                                      </div>
-
-                                      <span class="type-badge">
-                                        <i class="bi {{ $entry->appointment_id ? 'bi-calendar-check' : 'bi-person-plus' }}"></i>
-                                        {{ $entry->appointment_id ? 'Appt' : 'Walk-in' }}
-                                      </span>
-                                    </div>
-                                  @endforeach
-                                </div>
-                              @else
-                                <div class="text-muted small fw-semibold">
-                                  No queued patients waiting in this lane.
-                                </div>
-                              @endif
-                            </div>
-                          </section>
-
-                          @if(!$nowServing && $callNextEntry)
-                            <div class="start-action">
-                              <form method="POST" action="{{ route('secretary.queue.call', [$lane['clinic_id'], $callNextEntry->id]) }}">
-                                @csrf
-                                <button class="btn btn-primary">
-                                  <i class="bi bi-play-fill me-1"></i>
-                                  Start Next Patient
-                                </button>
-                              </form>
-                            </div>
-                          @endif
-
-                          <section class="lane-actions">
-                            <div class="lane-actions-note">
-                              @if($nowServing)
-                                Finish the current patient, then call the next one or mark as no-show.
-                              @else
-                                No active patient is being served in this lane.
-                              @endif
-                            </div>
-
-                            <div class="lane-action-buttons">
-                              @if($nowServing)
-                                <form method="POST" action="{{ route('secretary.queue.done_next', [$lane['clinic_id'], $nowServing->id]) }}">
-                                  @csrf
-                                  <input type="hidden" name="lane" value="{{ $lane['id'] }}">
-                                  <input type="hidden" name="service_tab" value="{{ $serviceTab['id'] }}">
-                                  <button class="btn btn-primary">
-                                    <i class="bi bi-check2-circle me-1"></i>
-                                    Done and Next
-                                  </button>
-                                </form>
-
-                                @if($noShowEntry)
-                                  <form
-                                    method="POST"
-                                    action="{{ route('secretary.queue.no_show', [$lane['clinic_id'], $noShowEntry->id]) }}"
-                                    data-confirm="Mark this patient as no-show?"
-                                    data-confirm-title="Mark As No-Show"
-                                    data-confirm-btn="Mark No-Show">
-                                    @csrf
-                                    <button class="btn btn-outline-secondary">
-                                      <i class="bi bi-person-x me-1"></i>
-                                      Mark No-Show
-                                    </button>
-                                  </form>
-                                @endif
-                              @else
-                                <button class="btn btn-outline-secondary" disabled>
-                                  <i class="bi bi-person-x me-1"></i>
-                                  Mark No-Show
-                                </button>
-                              @endif
-                            </div>
-                          </section>
-                        </div>
-                      </div>
-                    </div>
-                  @endforeach
+                <div class="cliniq-service-card__stat cliniq-service-card__stat--right">
+                  <span class="cliniq-service-card__stat-label">SERVING</span>
+                  <span class="cliniq-service-card__stat-value cliniq-service-card__stat-value--primary">{{ number_format($serviceCard['serving_doctors']) }}</span>
                 </div>
-              @endif
+              </div>
             </div>
-          </div>
-        @endforeach
-      </div>
-    @else
-      <div class="empty-panel">
-        <div class="empty-panel-icon">
-          <i class="bi bi-layers"></i>
+          </a>
         </div>
-        No service tabs with assigned doctors are available yet for your assigned clinics.
-      </div>
-    @endif
+      @empty
+        <div class="col-12">
+          <div class="empty-panel">
+            <div class="empty-panel-icon">
+              <i class="bi bi-layers"></i>
+            </div>
+            No services are assigned to this clinic yet.
+          </div>
+        </div>
+      @endforelse
+    </div>
   </section>
 </div>
 @endsection

@@ -39,6 +39,8 @@ use App\Http\Controllers\Secretary\PatientController as SecretaryPatientControll
 use App\Http\Controllers\Secretary\QueueController as SecretaryQueueController;
 use App\Http\Controllers\Secretary\WalkInPatientDirectoryController;
 use App\Http\Controllers\Secretary\WalkInRegistrationController;
+use App\Http\Controllers\Secretary\ServiceQueueController;
+use App\Http\Controllers\Secretary\DoctorQueueController;
 
 use App\Http\Controllers\Doctor\ClinicSelectionController as DoctorClinicSelectionController;
 
@@ -374,6 +376,18 @@ Route::prefix('secretary')
         Route::get('/clinics/{clinic}/queue', [SecretaryQueueController::class, 'queue'])
             ->whereNumber('clinic')
             ->name('queue.index');
+
+        Route::get('/services/{service_id}/queue', [ServiceQueueController::class, 'index'])
+            ->whereNumber('service_id')
+            ->name('services.queue.index');
+
+        Route::get('/services/{service_id}/doctors/{doctor_id}/queue', [
+            \App\Http\Controllers\Secretary\DoctorQueueController::class,
+            'show',
+        ])
+            ->whereNumber('service_id')
+            ->whereNumber('doctor_id')
+            ->name('services.doctors.queue');
 
         Route::post('/clinics/{clinic}/queue/{entry}/call', [SecretaryQueueController::class, 'call'])
             ->whereNumber('clinic')

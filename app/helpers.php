@@ -104,3 +104,29 @@ if (! function_exists('mask_person')) {
         return implode(' ', $maskedParts);
     }
 }
+
+if (! function_exists('safe_secretary_route')) {
+
+    function safe_secretary_route(string $routeName, string $fallback = '/secretary/dashboard', array $params = []): string
+    {
+        if (!\Illuminate\Support\Facades\Route::has($routeName)) {
+            return url($fallback);
+        }
+
+        try {
+            return route($routeName, $params);
+        } catch (\Throwable $firstError) {
+            $activeClinicId = session('active_clinic_id');
+
+            if ($activeClinicId) {
+                try {
+                    return route($routeName, array_merge(['clinic' => $activeClinicId], $params));
+                } catch (\Throwable $secondError) {
+                    return url($fallback);
+                }
+            }
+
+            return url($fallback);
+        }
+    }
+}

@@ -51,6 +51,25 @@
   $servicesUrl = $safeSecretaryRoute('secretary.services.index', '/secretary/dashboard');
   $walkinUrl = $safeSecretaryRoute('secretary.walkin.index', '/secretary/dashboard');
   $clinicSettingsUrl = $safeSecretaryRoute('secretary.clinic.edit', '/secretary/dashboard');
+  $dashboardUrl = safe_secretary_route('secretary.dashboard', '/secretary/dashboard');
+  $appointmentsUrl = safe_secretary_route('secretary.appointments.index', '/secretary/dashboard');
+  $queueUrl = safe_secretary_route('secretary.queue.index', '/secretary/dashboard');
+  $doctorsUrl = safe_secretary_route('secretary.doctors.index', '/secretary/dashboard');
+  $servicesUrl = safe_secretary_route('secretary.services.index', '/secretary/dashboard');
+  $clinicSettingsUrl = safe_secretary_route('secretary.clinic.edit', '/secretary/dashboard');
+
+  $activeClinicServices = collect();
+  if ($secretaryClinicId) {
+      $activeClinicServices = \App\Models\Service::query()
+          ->forClinics([$secretaryClinicId])
+          ->orderBy('name')
+          ->get(['id', 'name']);
+  }
+
+    $servicesExpanded = request()->routeIs('secretary.services.*')
+      || request()->routeIs('secretary.services.queue.index');
+    $currentServiceParam = request()->route('service_id')
+      ?? request()->query('service');
 @endphp
 
 <style>
@@ -93,6 +112,7 @@
     box-shadow: 12px 0 32px rgba(2, 8, 23, 0.24);
     transform: translateX(-110%);
     transition: transform 0.28s ease;
+    overflow-y: auto;
   }
 
   body.secretary-sidebar-open .secretary-sidebar {
@@ -235,6 +255,81 @@
     color: #ffffff;
     box-shadow: none;
   }
+
+  .secretary-sidebar-collapse-toggle {
+    width: 100%;
+    min-height: 52px;
+    border: 0;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 13px;
+    color: #d8e6f4;
+    background: transparent;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 0 14px;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+
+  .secretary-sidebar-collapse-toggle:hover,
+  .secretary-sidebar-collapse-toggle.is-open {
+    background: rgba(13, 110, 253, 0.2);
+    color: #ffffff;
+  }
+
+  .secretary-sidebar-collapse-toggle i {
+    width: 25px;
+    text-align: center;
+    font-size: 22px;
+    flex: 0 0 auto;
+  }
+
+  .secretary-sidebar-collapse-caret {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+  }
+
+  .secretary-sidebar-collapse-toggle.is-open .secretary-sidebar-collapse-caret {
+    transform: rotate(180deg);
+  }
+
+  .secretary-sidebar-collapse {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    padding-left: 8px;
+  }
+
+  .secretary-sidebar-collapse.is-open {
+    opacity: 1;
+    max-height: 420px;
+  }
+
+  .secretary-sidebar-service-link {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #c8d8ea;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 12px 0 42px;
+    transition: 0.2s ease;
+  }
+
+  .secretary-sidebar-service-link:hover,
+  .secretary-sidebar-service-link.active {
+    background: rgba(13, 110, 253, 0.25);
+    color: #ffffff;
+  }
 </style>
 
 <div class="secretary-sidebar-backdrop" id="secretarySidebarBackdrop"></div>
@@ -290,11 +385,35 @@
       <span>Doctors</span>
     </a>
 
-    <a href="{{ $servicesUrl }}"
-       class="secretary-sidebar-link {{ request()->routeIs('secretary.services.*') ? 'active' : '' }}">
-      <i class="bi bi-clipboard2-pulse"></i>
-      <span>Services</span>
-    </a>
+    <button
+      type="button"
+      class="secretary-sidebar-collapse-toggle {{ $servicesExpanded ? 'is-open' : '' }}"
+      id="secretaryServicesToggle"
+      aria-expanded="{{ $servicesExpanded ? 'true' : 'false' }}"
+      aria-controls="secretaryServicesCollapse">
+      <span class="d-flex align-items-center gap-2">
+        <i class="bi bi-clipboard2-pulse"></i>
+        <span>Services</span>
+      </span>
+      <i class="bi bi-chevron-down secretary-sidebar-collapse-caret"></i>
+    </button>
+    <div
+      class="secretary-sidebar-collapse {{ $servicesExpanded ? 'is-open' : '' }}"
+      id="secretaryServicesCollapse">
+      @forelse ($activeClinicServices as $service)
+        <a
+          href="{{ safe_secretary_route('secretary.services.queue.index', '/secretary/dashboard', ['service_id' => $service->id]) }}"
+          class="secretary-sidebar-service-link {{ $currentServiceParam == $service->id ? 'active' : '' }}">
+          <i class="bi bi-dot"></i>
+          <span>{{ $service->name }}</span>
+        </a>
+      @empty
+        <span class="secretary-sidebar-service-link">
+          <i class="bi bi-dot"></i>
+          <span>No services yet</span>
+        </span>
+      @endforelse
+    </div>
 
     <a href="{{ $clinicSettingsUrl }}"
        class="secretary-sidebar-link {{ request()->routeIs('secretary.clinic.*') ? 'active' : '' }}">
@@ -370,6 +489,19 @@
 
         document.addEventListener('keydown', function (event) {
           if (event.key === 'Escape') closeSidebar();
+        });
+      }
+
+      const servicesToggle = document.getElementById('secretaryServicesToggle');
+      const servicesCollapse = document.getElementById('secretaryServicesCollapse');
+
+      if (servicesToggle && servicesCollapse && servicesToggle.dataset.servicesReady !== 'true') {
+        servicesToggle.dataset.servicesReady = 'true';
+
+        servicesToggle.addEventListener('click', function () {
+          const isOpen = servicesCollapse.classList.toggle('is-open');
+          servicesToggle.classList.toggle('is-open', isOpen);
+          servicesToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
       }
     }

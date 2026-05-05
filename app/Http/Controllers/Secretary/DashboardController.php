@@ -9,6 +9,7 @@ use App\Http\Middleware\SecretaryMiddleware;
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Models\Service;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -36,18 +37,31 @@ class DashboardController extends Controller
 
         $queueEntriesForDashboardDay = QueueEntry::query()->forDashboardPanel([$activeClinicId], $today);
 
-        $walkInTodayCount = (clone $queueEntriesForDashboardDay)->walkIn()->count();
-        $appointmentTodayCount = (clone $queueEntriesForDashboardDay)->withAppointment()->count();
-        $statusCounts = QueueEntry::dashboardStatusCounts($queueEntriesForDashboardDay);
+        $totalWaiting = (clone $queueEntriesForDashboardDay)
+            ->where('status', 'waiting')
+            ->count();
 
-        $stats = [
-            'totalTodayCount' => $walkInTodayCount + $appointmentTodayCount,
-            'waitingCount' => $statusCounts['waiting'],
-            'servedCount' => $statusCounts['served'],
-            'noShowCount' => $statusCounts['no_show'],
-            'rescheduledCount' => $statusCounts['rescheduled'],
-            'walkInTodayCount' => $walkInTodayCount,
-        ];
+        $nowServingCount = (clone $queueEntriesForDashboardDay)
+            ->where('status', 'now_serving')
+            ->count();
+
+        $onDutyDoctorIds = (clone $queueEntriesForDashboardDay)
+            ->where('status', 'now_serving')
+            ->with('appointment:id,doctor_id')
+            ->get()
+            ->pluck('appointment.doctor_id')
+            ->filter()
+            ->unique();
+
+        $onDutyDoctors = $onDutyDoctorIds->count();
+
+        $totalActiveDoctors = User::query()
+            ->where('is_doctor', true)
+            ->where('is_active', true)
+            ->whereHas('clinicsAsDoctor', function ($clinicQuery) use ($activeClinicId) {
+                $clinicQuery->where('clinic_id', $activeClinicId);
+            })
+            ->count();
 
         $clinicsWithDoctors = Clinic::query()
             ->forIds([$activeClinicId])
@@ -58,6 +72,34 @@ class DashboardController extends Controller
         $queueEntriesToday = (clone $queueEntriesForDashboardDay)
             ->withDashboardRelations()
             ->get();
+
+        $serviceStatusCards = $serviceOptions
+            ->map(function ($service) use ($queueEntriesToday) {
+                $serviceId = (int) $service->id;
+
+                $serviceEntries = $queueEntriesToday
+                    ->filter(fn ($entry) => (int) ($entry->appointment?->service_id ?? 0) === $serviceId);
+
+                $waitingCount = $serviceEntries
+                    ->where('status', 'waiting')
+                    ->count();
+
+                $servingDoctors = $serviceEntries
+                    ->where('status', 'now_serving')
+                    ->map(fn ($entry) => $entry->doctor_id ?: $entry->appointment?->doctor_id)
+                    ->filter()
+                    ->unique()
+                    ->count();
+
+                return [
+                    'id' => $serviceId,
+                    'route_key' => $serviceId,
+                    'name' => $service->name,
+                    'waiting_count' => $waitingCount,
+                    'serving_doctors' => $servingDoctors,
+                ];
+            })
+            ->values();
 
         $laneEntriesByKey = $queueEntriesToday
             ->filter(fn ($entry) => $entry->laneKey() !== null)
@@ -149,6 +191,14 @@ class DashboardController extends Controller
             ? $requestedServiceTabId
             : ($availableServiceTabIds->first() ?? null);
 
-        return view('secretary.dashboard', array_merge($stats, compact('serviceTabs', 'activeServiceTabId')));
+        return view('secretary.dashboard', [
+            'totalWaiting' => $totalWaiting,
+            'nowServingCount' => $nowServingCount,
+            'onDutyDoctors' => $onDutyDoctors,
+            'totalActiveDoctors' => $totalActiveDoctors,
+            'serviceStatusCards' => $serviceStatusCards,
+            'serviceTabs' => $serviceTabs,
+            'activeServiceTabId' => $activeServiceTabId,
+        ]);
     }
 }

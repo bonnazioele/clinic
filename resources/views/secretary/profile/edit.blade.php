@@ -1,4 +1,4 @@
-@extends('secretary.dashboard')
+@extends('layouts.app')
 
 @section('title', 'Edit Profile')
 @section('page-title', 'Edit Profile')

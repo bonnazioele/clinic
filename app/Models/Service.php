@@ -11,6 +11,11 @@ class Service extends Model
 
     protected $fillable = ['name','description'];
 
+    public function getIdentifierAttribute()
+    {
+        return $this->id;
+    }
+
     public function clinics()
     {
         return $this->belongsToMany(Clinic::class)
