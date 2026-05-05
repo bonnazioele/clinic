@@ -44,6 +44,7 @@ use App\Http\Controllers\Secretary\WalkInPatientDirectoryController;
 use App\Http\Controllers\Secretary\WalkInRegistrationController;
 
 use App\Http\Controllers\Doctor\ClinicSelectionController as DoctorClinicSelectionController;
+use App\Http\Controllers\Doctor\ReportsController as DoctorReportsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -615,6 +616,12 @@ Route::prefix('doctor')
         Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Doctor\ScheduleController::class, 'destroy'])
             ->whereNumber('schedule')
             ->name('schedules.destroy');
+
+        Route::get('/reports', [DoctorReportsController::class, 'index'])
+            ->name('reports.index');
+
+        Route::get('/reports/export', [DoctorReportsController::class, 'export'])
+            ->name('reports.export');
     });
 
 /*
