@@ -415,6 +415,12 @@
       @endforelse
     </div>
 
+    <a href="{{ route('secretary.analytics.index') }}"
+        class="secretary-sidebar-link {{ request()->routeIs('secretary.analytics.*') ? 'active' : '' }}">
+      <i class="bi bi-graph-up-arrow"></i>
+      <span>Analytics Report</span>
+    </a>
+
     <a href="{{ $clinicSettingsUrl }}"
        class="secretary-sidebar-link {{ request()->routeIs('secretary.clinic.*') ? 'active' : '' }}">
       <i class="bi bi-building-gear"></i>
