@@ -130,3 +130,14 @@ if (! function_exists('safe_secretary_route')) {
         }
     }
 }
+
+if (! function_exists('to_lower')) {
+
+    function to_lower(?string $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        return strtolower(trim($value));
+    }
+}
