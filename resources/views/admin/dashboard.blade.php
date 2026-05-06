@@ -27,9 +27,7 @@
     $servicesUrl = Route::has('admin.services.index') ? route('admin.services.index') : '#';
     $usersUrl = Route::has('admin.users.index') ? route('admin.users.index') : '#';
 
-    $applicationsUrl = Route::has('admin.clinics.applications')
-        ? route('admin.clinics.applications')
-        : $clinicsUrl;
+    $applicationsUrl = $clinicsUrl;
 @endphp
 
 <style>
@@ -547,15 +545,15 @@
 
                 $detailUrl = '#';
 
-                if (Route::has('admin.clinics.application-detail')) {
+                if (Route::has('admin.clinics.application')) {
                     try {
-                        $detailUrl = route('admin.clinics.application-detail', $application);
+                    $detailUrl = route('admin.clinics.application', $application);
                     } catch (\Throwable $e) {
                         $detailUrl = $applicationsUrl;
                     }
-                } elseif (Route::has('admin.application-detail')) {
+                } elseif (Route::has('admin.application')) {
                     try {
-                        $detailUrl = route('admin.application-detail', $application);
+                    $detailUrl = route('admin.application', $application);
                     } catch (\Throwable $e) {
                         $detailUrl = $applicationsUrl;
                     }

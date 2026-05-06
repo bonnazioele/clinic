@@ -445,7 +445,7 @@
                     <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
                         Cancel
                     </button>
-                    <form action="{{ route('admin.clinics.approve', $clinic) }}" method="POST" class="d-inline">
+                    <form action="{{ route('admin.clinics.approve', $clinic) }}" method="POST" class="d-inline" id="approveApplicationForm">
                         @csrf
                         <button type="submit" class="btn btn-success px-4" id="confirmApproveBtn" data-loading-text="Approving...">
                             <i class="bi bi-check-lg me-1"></i>Approve Application
@@ -461,6 +461,17 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const approveForm = document.getElementById('approveApplicationForm');
+    const approveButton = document.getElementById('confirmApproveBtn');
+
+    if (approveForm && approveButton) {
+        approveForm.addEventListener('submit', function () {
+            approveButton.classList.add('loading');
+            approveButton.disabled = true;
+            approveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' + (approveButton.getAttribute('data-loading-text') || 'Processing...');
+        });
+    }
+
     // Decline functionality - only for pending applications
     @if(!$clinic->isApprovedLike() && strtolower($clinic->status) !== 'rejected')
     const declineBtn = document.getElementById('decline-btn');

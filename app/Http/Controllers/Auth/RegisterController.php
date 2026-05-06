@@ -34,7 +34,9 @@ class RegisterController extends Controller
 
     protected function create(array $data)
     {
-        $fullName = trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? ''));
+        $firstName = to_lower($data['first_name'] ?? '');
+        $lastName = to_lower($data['last_name'] ?? '');
+        $fullName = trim($firstName . ' ' . $lastName);
 
         return User::create([
             'name'              => $fullName,

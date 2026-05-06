@@ -81,13 +81,13 @@ class ApplicationController extends Controller
 
         $clinic = Clinic::create([
             'created_by_user_id' => null,
-            'name' => $data['clinic_name'],
+            'name' => to_lower($data['clinic_name']),
             'address' => $data['clinic_address'],
             'contact_number' => $data['clinic_contact'],
             'description' => null,
             'email' => $data['clinic_email'],
-            'contact_first_name' => $data['contact_first_name'],
-            'contact_last_name' => $data['contact_last_name'],
+            'contact_first_name' => to_lower($data['contact_first_name']),
+            'contact_last_name' => to_lower($data['contact_last_name']),
             'contact_person_email' => $data['contact_person_email'],
             'branch_code' => $data['branch_code'],
             'logo' => $logoPath,
