@@ -15,19 +15,33 @@ class QueueEntry extends Model
 
     public const DASHBOARD_STATUS_KEYS = [
         'waiting',
+        'called',
+        'now_serving',
         'served',
+        'completed',
         'no_show',
         'rescheduled',
+        'cancelled',
     ];
+
+    public static function activePatientStatuses(): array
+    {
+        return ['waiting', 'called', 'now_serving'];
+    }
+
+    public static function finalPatientStatuses(): array
+    {
+        return ['served', 'completed', 'rescheduled', 'cancelled', 'no_show'];
+    }
 
     public static function nextCandidateStatuses(): array
     {
-        return ['waiting', 'called', 'rescheduled'];
+        return ['waiting', 'called'];
     }
 
     public static function activeLaneStatuses(): array
     {
-        return ['waiting', 'called', 'now_serving', 'rescheduled'];
+        return ['waiting', 'called', 'now_serving'];
     }
 
     protected $fillable = [
@@ -180,7 +194,7 @@ class QueueEntry extends Model
             'user:id,name,email,phone',
             'patient:id,patient_number,status,first_name,last_name,middle_name,email_address,mobile_number',
             'doctor:id,name,first_name,last_name,email',
-            'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,medical_document',
+            'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,medical_document,status',
             'appointment.user:id,name,email,phone',
             'appointment.service:id,name',
             'clinic:id,name',
@@ -236,9 +250,15 @@ class QueueEntry extends Model
                 'served_at' => now(),
             ]);
 
-            if ($currentEntry->appointment && ! in_array($currentEntry->appointment->status, ['completed', 'cancelled'], true)) {
+            if (
+                $currentEntry->appointment
+                && ! in_array($currentEntry->appointment->status, ['completed', 'cancelled', 'no_show', 'rescheduled'], true)
+            ) {
                 $appointment = $currentEntry->appointment;
-                $appointment->update(['status' => 'completed']);
+
+                $appointment->update([
+                    'status' => 'completed',
+                ]);
 
                 if ($appointment->user) {
                     $appointment->user->notify(new AppointmentStatusChanged($appointment));
@@ -272,7 +292,9 @@ class QueueEntry extends Model
                 ];
             }
 
-            $nextEntry->update(['status' => 'now_serving']);
+            $nextEntry->update([
+                'status' => 'now_serving',
+            ]);
 
             if ($nextEntry->user) {
                 $nextEntry->user->notify(new QueueNotification($nextEntry));
@@ -291,20 +313,20 @@ class QueueEntry extends Model
 
     public function isNextInLine()
     {
-        return $this->status === 'waiting' &&
-            $this->queue_number === $this->clinic->queueEntries()
+        return $this->status === 'waiting'
+            && $this->queue_number === $this->clinic->queueEntries()
                 ->waiting()
                 ->min('queue_number');
     }
 
     public function getEstimatedWaitTime()
     {
-        if ($this->status !== 'waiting') {
+        if (! in_array($this->status, ['waiting', 'called'], true)) {
             return 0;
         }
 
         $ahead = $this->clinic->queueEntries()
-            ->waiting()
+            ->whereIn('status', ['waiting', 'called', 'now_serving'])
             ->where('queue_number', '<', $this->queue_number)
             ->count();
 
@@ -329,12 +351,13 @@ class QueueEntry extends Model
     {
         return match ($this->status) {
             'waiting' => 'Waiting',
-            'now_serving' => 'Now Serving',
             'called' => 'Called',
+            'now_serving' => 'Now Serving',
+            'served' => 'Completed',
+            'completed' => 'Completed',
             'rescheduled' => 'Rescheduled',
             'no_show' => 'No Show',
             'cancelled' => 'Cancelled',
-            'served' => 'Served',
             default => ucfirst(str_replace('_', ' ', $this->status ?? 'Unknown')),
         };
     }
@@ -343,13 +366,14 @@ class QueueEntry extends Model
     {
         return match ($this->status) {
             'waiting' => 'secondary',
-            'now_serving' => 'primary',
             'called' => 'info',
+            'now_serving' => 'primary',
+            'served' => 'success',
+            'completed' => 'success',
             'rescheduled' => 'warning',
             'no_show' => 'dark',
             'cancelled' => 'danger',
-            'served' => 'success',
             default => 'light',
         };
     }
-}   
+}

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Patient;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Clinic;
 use App\Models\Appointment;
+use App\Models\QueueEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,30 +24,78 @@ class AppointmentController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $today = now()->toDateString();
 
-        $upcoming = $user->appointments()
-                         ->where('appointment_date', '>=', now()->toDateString())
-                         ->where('status', 'scheduled')
-                         ->orderBy('appointment_date')
-                         ->orderBy('appointment_time')
-                         ->with('clinic', 'service', 'doctor')
-                         ->get();
+        $activeAppointmentStatuses = ['scheduled'];
+        $historyAppointmentStatuses = ['completed', 'cancelled', 'no_show', 'rescheduled'];
 
-        $past = $user->appointments()
-                     ->where(function($query) {
-                         $query->where('appointment_date', '<', now()->toDateString())
-                               ->orWhereIn('status', ['completed', 'cancelled']);
-                     })
-                     ->orderBy('appointment_date', 'desc')
-                     ->with('clinic', 'service', 'doctor')
-                     ->get();
+        /*
+        |--------------------------------------------------------------------------
+        | Today's Appointments
+        |--------------------------------------------------------------------------
+        | Only today's scheduled appointments.
+        | Active queue status will be shown from queueEntries.
+        */
+        $todayAppointments = $user->appointments()
+            ->with(['clinic', 'service', 'doctor', 'queueEntries'])
+            ->whereDate('appointment_date', $today)
+            ->whereIn('status', $activeAppointmentStatuses)
+            ->orderBy('appointment_time')
+            ->get();
 
-        return view('appointments.index', compact('upcoming', 'past'));
+        /*
+        |--------------------------------------------------------------------------
+        | Upcoming Appointments
+        |--------------------------------------------------------------------------
+        | Future appointments only.
+        | This prevents today's appointments/queues from appearing in Upcoming.
+        */
+        $upcomingAppointments = $user->appointments()
+            ->with(['clinic', 'service', 'doctor', 'queueEntries'])
+            ->whereDate('appointment_date', '>', $today)
+            ->whereIn('status', $activeAppointmentStatuses)
+            ->orderBy('appointment_date')
+            ->orderBy('appointment_time')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Past / History Appointments
+        |--------------------------------------------------------------------------
+        | Includes past dates and final statuses.
+        | No Show must stay visible here.
+        */
+        $pastAppointments = $user->appointments()
+            ->with(['clinic', 'service', 'doctor', 'queueEntries'])
+            ->where(function ($query) use ($today, $historyAppointmentStatuses) {
+                $query->whereDate('appointment_date', '<', $today)
+                    ->orWhereIn('status', $historyAppointmentStatuses);
+            })
+            ->orderByDesc('appointment_date')
+            ->orderByDesc('appointment_time')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Backward compatibility
+        |--------------------------------------------------------------------------
+        | If some old blade code still uses $upcoming or $past, this prevents errors.
+        */
+        $upcoming = $todayAppointments->merge($upcomingAppointments);
+        $past = $pastAppointments;
+
+        return view('appointments.index', compact(
+            'todayAppointments',
+            'upcomingAppointments',
+            'pastAppointments',
+            'upcoming',
+            'past'
+        ));
     }
 
     public function create()
     {
-        $clinics = Clinic::with(['services','doctors.services'])
+        $clinics = Clinic::with(['services', 'doctors.services'])
             ->where('status', 'active')
             ->get();
 
@@ -65,7 +113,7 @@ class AppointmentController extends Controller
             'service_id' => 'nullable|exists:services,id',
         ]);
 
-        $date      = \Carbon\Carbon::parse($data['date']);
+        $date = \Carbon\Carbon::parse($data['date']);
         $dateString = $date->toDateString();
         $dayOfWeek = $date->dayOfWeek;
 
@@ -79,7 +127,7 @@ class AppointmentController extends Controller
                 'weekday' => $date->format('l'),
                 'slots' => [],
                 'schedule' => [],
-                'message' => 'Selected doctor does not offer this service at this clinic.'
+                'message' => 'Selected doctor does not offer this service at this clinic.',
             ]);
         }
 
@@ -96,7 +144,7 @@ class AppointmentController extends Controller
                     ->orWhereDate('end_date', '>=', $dateString);
             })
             ->orderBy('start_time')
-            ->get(['id','start_time','end_time']);
+            ->get(['id', 'start_time', 'end_time']);
 
         if ($schedules->isEmpty()) {
             return response()->json([
@@ -104,57 +152,71 @@ class AppointmentController extends Controller
                 'weekday' => $date->format('l'),
                 'slots' => [],
                 'schedule' => [],
-                'message' => 'No schedule for this doctor on the selected day.'
+                'message' => 'No schedule for this doctor on the selected day.',
             ]);
         }
 
         $slotMinutes = 30;
-        if (!empty($data['service_id'])) {
-            $dur = \DB::table('clinic_service')
+
+        if (! empty($data['service_id'])) {
+            $duration = DB::table('clinic_service')
                 ->where('clinic_id', $data['clinic_id'])
                 ->where('service_id', $data['service_id'])
                 ->value('duration_minutes');
-            if ($dur && is_numeric($dur) && $dur > 0 && $dur <= 480) {
-                $slotMinutes = (int) $dur;
+
+            if ($duration && is_numeric($duration) && $duration > 0 && $duration <= 480) {
+                $slotMinutes = (int) $duration;
             }
         }
 
         $booked = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $date->toDateString())
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
             ->get(['appointment_time'])
-            ->map(function($a){
-                $raw = $a->getRawOriginal('appointment_time');
+            ->map(function ($appointment) {
+                $raw = $appointment->getRawOriginal('appointment_time');
+
                 if (is_string($raw) && strlen($raw) >= 5) {
-                    return substr($raw,0,5);
+                    return substr($raw, 0, 5);
                 }
-                $val = $a->appointment_time;
-                return $val instanceof \Carbon\Carbon ? $val->format('H:i') : (string) $val;
+
+                $value = $appointment->appointment_time;
+
+                return $value instanceof \Carbon\Carbon
+                    ? $value->format('H:i')
+                    : (string) $value;
             })
             ->filter()
             ->unique()
             ->values();
 
         $slots = [];
-        foreach ($schedules as $sch) {
-            $start = \Carbon\Carbon::createFromFormat('H:i:s', $sch->start_time, $date->timezone)
+
+        foreach ($schedules as $schedule) {
+            $start = \Carbon\Carbon::createFromFormat('H:i:s', $schedule->start_time, $date->timezone)
                 ->setDate($date->year, $date->month, $date->day);
-            $end   = \Carbon\Carbon::createFromFormat('H:i:s', $sch->end_time, $date->timezone)
+
+            $end = \Carbon\Carbon::createFromFormat('H:i:s', $schedule->end_time, $date->timezone)
                 ->setDate($date->year, $date->month, $date->day);
 
             $cursor = $start->copy();
+
             while ($cursor < $end) {
                 $slotEnd = $cursor->copy()->addMinutes($slotMinutes);
+
                 if ($slotEnd > $end) {
                     break;
                 }
+
                 $timeLabel = $cursor->format('H:i');
+
                 $slots[] = [
-                    'time'       => $timeLabel,
-                    'display'    => $cursor->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
-                    'available'  => !$booked->contains($timeLabel),
-                    'end_time'   => $slotEnd->format('H:i'),
+                    'time' => $timeLabel,
+                    'display' => $cursor->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
+                    'available' => ! $booked->contains($timeLabel),
+                    'end_time' => $slotEnd->format('H:i'),
                 ];
+
                 $cursor->addMinutes($slotMinutes);
             }
         }
@@ -163,12 +225,12 @@ class AppointmentController extends Controller
             'date' => $date->toDateString(),
             'weekday' => $date->format('l'),
             'slot_minutes' => $slotMinutes,
-            'schedule' => $schedules->map(fn($s) => [
-                'start' => substr($s->start_time,0,5),
-                'end'   => substr($s->end_time,0,5),
+            'schedule' => $schedules->map(fn ($schedule) => [
+                'start' => substr($schedule->start_time, 0, 5),
+                'end' => substr($schedule->end_time, 0, 5),
             ]),
             'booked' => $booked,
-            'slots'  => $slots,
+            'slots' => $slots,
         ]);
     }
 
@@ -193,7 +255,7 @@ class AppointmentController extends Controller
             (int) $data['service_id']
         )) {
             return back()->withInput()->withErrors([
-                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.',
             ]);
         }
 
@@ -212,61 +274,66 @@ class AppointmentController extends Controller
             ->where('start_time', '<=', $time)
             ->where('end_time', '>', $time)
             ->exists();
+
         if (! $hasSchedule) {
             return back()->withInput()->withErrors([
-                'appointment_time' => 'Selected doctor is not available at that time for this clinic.'
+                'appointment_time' => 'Selected doctor is not available at that time for this clinic.',
             ]);
         }
 
         $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $time)
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
             ->exists();
+
         if ($doctorBusy) {
             return back()->withInput()->withErrors([
-                'appointment_time' => 'Doctor is already booked for that timeslot.'
+                'appointment_time' => 'Doctor is already booked for that timeslot.',
             ]);
         }
 
         $patientConflict = Appointment::where('user_id', Auth::id())
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $time)
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
             ->exists();
+
         if ($patientConflict) {
             return back()->withInput()->withErrors([
-                'appointment_time' => 'You already have an appointment at this timeslot.'
+                'appointment_time' => 'You already have an appointment at this timeslot.',
             ]);
         }
-
 
         $sameClinicConflict = Appointment::where('user_id', Auth::id())
             ->where('clinic_id', $data['clinic_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
             ->exists();
+
         if ($sameClinicConflict) {
             return back()->withInput()->withErrors([
-                'appointment_date' => 'You already have an appointment in this clinic for that date.'
+                'appointment_date' => 'You already have an appointment in this clinic for that date.',
             ]);
         }
 
         try {
             $appointment = Auth::user()
-                               ->appointments()
-                               ->create([
-                                   'clinic_id'        => $data['clinic_id'],
-                                   'service_id'       => $data['service_id'],
-                                   'doctor_id'        => $data['doctor_id'],
-                                   'appointment_date' => $data['appointment_date'],
-                                   'appointment_time' => $time,
-                                   'status'           => 'scheduled',
-                               ]);
+                ->appointments()
+                ->create([
+                    'clinic_id'        => $data['clinic_id'],
+                    'service_id'       => $data['service_id'],
+                    'doctor_id'        => $data['doctor_id'],
+                    'appointment_date' => $data['appointment_date'],
+                    'appointment_time' => $time,
+                    'status'           => 'scheduled',
+                ]);
         } catch (QueryException $e) {
             $sqlState = (string) ($e->errorInfo[0] ?? '');
             $errorMessage = strtolower((string) $e->getMessage());
-            $isDoctorSlotConflict = $sqlState === '23000' && str_contains($errorMessage, 'appointments_doctor_date_time_unique');
+
+            $isDoctorSlotConflict = $sqlState === '23000'
+                && str_contains($errorMessage, 'appointments_doctor_date_time_unique');
 
             if ($isDoctorSlotConflict) {
                 return back()->withInput()->withErrors([
@@ -282,13 +349,21 @@ class AppointmentController extends Controller
             $appointment->update(['medical_document' => $path]);
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Automatically join queue after booking
+        |--------------------------------------------------------------------------
+        | This is why the appointment page should show "View Queue Status",
+        | not "Join Queue".
+        */
         $queueService = app(\App\Services\QueueService::class);
         $queueNumber = $queueService->getNextNumber($data['clinic_id']);
 
-        \App\Models\QueueEntry::create([
+        QueueEntry::create([
             'clinic_id'      => $data['clinic_id'],
             'user_id'        => Auth::id(),
             'appointment_id' => $appointment->id,
+            'doctor_id'      => $data['doctor_id'],
             'queue_number'   => $queueNumber,
             'status'         => 'waiting',
         ]);
@@ -296,8 +371,8 @@ class AppointmentController extends Controller
         Auth::user()->notify(new PatientAppointmentBooked($appointment));
 
         if ($appointment->clinic) {
-            $appointment->clinic->secretaries()->each(function($sec) use ($appointment) {
-                $sec->notify(new SecretaryAppointmentBooked($appointment));
+            $appointment->clinic->secretaries()->each(function ($secretary) use ($appointment) {
+                $secretary->notify(new SecretaryAppointmentBooked($appointment));
             });
         }
 
@@ -307,20 +382,28 @@ class AppointmentController extends Controller
 
         return redirect()
             ->route('appointments.index')
-            ->with('status', 'Appointment booked successfully.');
+            ->with('status', 'Appointment booked successfully. You have been automatically added to the queue.');
     }
 
     public function edit(Appointment $appointment)
     {
         if ($appointment->user_id !== Auth::id()) {
-            abort(403,'Forbidden');
+            abort(403, 'Forbidden');
         }
 
-        $appointment->load(['clinic.services','doctor','service']);
+        if (in_array($appointment->status, ['completed', 'cancelled', 'no_show', 'rescheduled'], true)) {
+            return redirect()
+                ->route('appointments.index')
+                ->with('warning', 'This appointment can no longer be modified.');
+        }
+
+        $appointment->load(['clinic.services', 'doctor', 'service']);
 
         $clinic = $appointment->clinic;
-        $clinic->load(['services','doctors']);
+        $clinic->load(['services', 'doctors']);
+
         $this->applyClinicScopedDoctorServices(collect([$clinic]));
+
         return view('appointments.edit', [
             'appointment' => $appointment,
             'clinic' => $clinic,
@@ -330,10 +413,11 @@ class AppointmentController extends Controller
     public function update(Request $request, Appointment $appointment)
     {
         if ($appointment->user_id !== Auth::id()) {
-            abort(403,'Forbidden');
+            abort(403, 'Forbidden');
         }
-        if (in_array($appointment->status, ['completed','cancelled'])) {
-            return back()->with('warning','This appointment can no longer be modified.');
+
+        if (in_array($appointment->status, ['completed', 'cancelled', 'no_show', 'rescheduled'], true)) {
+            return back()->with('warning', 'This appointment can no longer be modified.');
         }
 
         $data = $request->validate([
@@ -345,7 +429,7 @@ class AppointmentController extends Controller
 
         $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
-        $time = $data['appointment_time'];
+        $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
         $clinicId = $appointment->clinic_id;
 
         if (! $this->doctorOffersServiceForClinic(
@@ -354,7 +438,7 @@ class AppointmentController extends Controller
             (int) $data['service_id']
         )) {
             return back()->withInput()->withErrors([
-                'doctor_id' => 'Selected doctor does not offer that service at this clinic.'
+                'doctor_id' => 'Selected doctor does not offer that service at this clinic.',
             ]);
         }
 
@@ -370,34 +454,60 @@ class AppointmentController extends Controller
                 $q->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', $appointmentDate);
             })
-            ->where('start_time','<=',$time)
-            ->where('end_time','>',$time)
+            ->where('start_time', '<=', $time)
+            ->where('end_time', '>', $time)
             ->exists();
-        if(!$hasSchedule) {
-            return back()->withInput()->withErrors(['appointment_time'=>'Doctor not available at that time.']);
+
+        if (! $hasSchedule) {
+            return back()->withInput()->withErrors([
+                'appointment_time' => 'Doctor not available at that time.',
+            ]);
         }
+
         $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $data['appointment_date'])
             ->where('appointment_time', $time)
-            ->where('status','!=','cancelled')
-            ->where('id','!=',$appointment->id)
+            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->where('id', '!=', $appointment->id)
             ->exists();
-        if($doctorBusy) {
-            return back()->withInput()->withErrors(['appointment_time'=>'Doctor already booked for that slot.']);
+
+        if ($doctorBusy) {
+            return back()->withInput()->withErrors([
+                'appointment_time' => 'Doctor already booked for that slot.',
+            ]);
         }
+
         $patientConflict = Appointment::where('user_id', Auth::id())
-            ->whereDate('appointment_date',$data['appointment_date'])
-            ->where('appointment_time',$time)
-            ->where('status','!=','cancelled')
-            ->where('id','!=',$appointment->id)
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where('appointment_time', $time)
+            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->where('id', '!=', $appointment->id)
             ->exists();
-        if($patientConflict) {
-            return back()->withInput()->withErrors(['appointment_time'=>'You have another appointment at that time.']);
+
+        if ($patientConflict) {
+            return back()->withInput()->withErrors([
+                'appointment_time' => 'You have another appointment at that time.',
+            ]);
         }
 
-        $appointment->update($data);
+        $appointment->update([
+            'service_id' => $data['service_id'],
+            'doctor_id' => $data['doctor_id'],
+            'appointment_date' => $data['appointment_date'],
+            'appointment_time' => $time,
+            'status' => 'scheduled',
+        ]);
 
-        return redirect()->route('appointments.index')->with('status','Appointment updated.');
+        QueueEntry::where('appointment_id', $appointment->id)
+            ->whereIn('status', ['waiting', 'called', 'now_serving'])
+            ->update([
+                'doctor_id' => $data['doctor_id'],
+                'status' => 'rescheduled',
+            ]);
+
+        return redirect()
+            ->route('appointments.index')
+            ->with('status', 'Appointment updated. The old queue entry was marked as rescheduled.');
     }
 
     public function destroy(Appointment $appointment)
@@ -406,17 +516,27 @@ class AppointmentController extends Controller
             abort(403, 'Forbidden');
         }
 
-        if ($appointment->status === 'completed') {
-            return back()->with('error', 'Completed appointments cannot be cancelled.');
+        if (in_array($appointment->status, ['completed', 'no_show'], true)) {
+            return back()->with('error', 'This appointment can no longer be cancelled.');
         }
 
-        \App\Models\QueueEntry::where('appointment_id', $appointment->id)
-            ->where('status', 'waiting')
-            ->update(['status' => 'cancelled']);
+        /*
+        |--------------------------------------------------------------------------
+        | Do not delete appointment.
+        |--------------------------------------------------------------------------
+        | It must stay visible in history.
+        */
+        $appointment->update([
+            'status' => 'cancelled',
+        ]);
 
-        $appointment->delete();
+        QueueEntry::where('appointment_id', $appointment->id)
+            ->whereIn('status', ['waiting', 'called', 'now_serving'])
+            ->update([
+                'status' => 'cancelled',
+            ]);
 
-        return back()->with('status', 'Appointment cancelled and slot freed.');
+        return back()->with('status', 'Appointment cancelled and moved to history.');
     }
 
     private function doctorOffersServiceForClinic(int $doctorId, int $clinicId, int $serviceId): bool

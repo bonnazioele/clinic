@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Patient;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Clinic;
 use App\Models\QueueEntry;
 use App\Services\QueueService;
@@ -17,27 +16,38 @@ class QueueController extends Controller
 
     public function __construct(QueueService $queue)
     {
-        $this->middleware('auth')->only(['join','status']);
+        $this->middleware('auth')->only(['join', 'status', 'leave']);
         $this->queue = $queue;
     }
 
-    public function join(Request $req, Clinic $clinic)
+    public function join(Request $request, Clinic $clinic)
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Active queue statuses
+        |--------------------------------------------------------------------------
+        | A queue should still be visible if it is waiting, called, or now serving.
+        | It should only disappear from active queue after final status.
+        */
+        $activeStatuses = QueueEntry::activePatientStatuses();
+
         $existingEntry = QueueEntry::where('clinic_id', $clinic->id)
             ->where('user_id', Auth::id())
-            ->where('status', 'waiting')
+            ->whereIn('status', $activeStatuses)
             ->first();
 
         if ($existingEntry) {
             return redirect()
                 ->route('queue.status.entry', $existingEntry)
-                ->with('status', 'You are already in the queue for this clinic.');
+                ->with('status', 'You already have an active queue for this clinic.');
         }
 
         $appointment = null;
-        if ($req->input('appointment_id')) {
-            $appointment = Auth::user()->appointments()
-                ->where('id', $req->input('appointment_id'))
+
+        if ($request->input('appointment_id')) {
+            $appointment = Auth::user()
+                ->appointments()
+                ->where('id', $request->input('appointment_id'))
                 ->where('clinic_id', $clinic->id)
                 ->where('status', 'scheduled')
                 ->first();
@@ -45,15 +55,15 @@ class QueueController extends Controller
 
         $number = $this->queue->getNextNumber($clinic->id);
 
-    $entry = QueueEntry::create([
-            'clinic_id'     => $clinic->id,
-            'user_id'       => Auth::id(),
-            'appointment_id'=> $appointment ? $appointment->id : null,
-            'queue_number'  => $number,
-            'status'        => 'waiting',
+        $entry = QueueEntry::create([
+            'clinic_id'      => $clinic->id,
+            'user_id'        => Auth::id(),
+            'appointment_id' => $appointment ? $appointment->id : null,
+            'queue_number'   => $number,
+            'status'         => 'waiting',
         ]);
 
-    event(new QueueUpdated($entry,'created'));
+        event(new QueueUpdated($entry, 'created'));
 
         return redirect()
             ->route('queue.status.entry', $entry)
@@ -62,43 +72,60 @@ class QueueController extends Controller
 
     public function status(Request $request, $entry = null)
     {
-        if (!is_null($entry)) {
-            if (!$entry instanceof QueueEntry) {
-                $entry = QueueEntry::with(['clinic','appointment.service'])->findOrFail($entry);
+        $activeStatuses = QueueEntry::activePatientStatuses();
+
+        if (! is_null($entry)) {
+            if (! $entry instanceof QueueEntry) {
+                $entry = QueueEntry::with(['clinic', 'appointment.service', 'appointment.doctor'])
+                    ->findOrFail($entry);
             }
 
-            abort_unless($entry->user_id === Auth::id(), 403);
+            abort_unless((int) $entry->user_id === (int) Auth::id(), 403);
 
-            $ahead = QueueEntry::where('clinic_id', $entry->clinic_id)
-                ->where('status','waiting')
-                ->where('queue_number','<', $entry->queue_number)
-                ->count();
+            $ahead = 0;
 
-            return view('queue.status', compact('entry','ahead'));
-        } else {
-            $userQueues = QueueEntry::with(['clinic', 'appointment'])
-                ->where('user_id', Auth::id())
-                ->where('status', 'waiting')
-                ->orderBy('created_at', 'desc')
-                ->get();
+            if (in_array($entry->status, ['waiting', 'called', 'now_serving'], true)) {
+                $ahead = QueueEntry::where('clinic_id', $entry->clinic_id)
+                    ->whereIn('status', ['waiting', 'called', 'now_serving'])
+                    ->where('queue_number', '<', $entry->queue_number)
+                    ->count();
+            }
 
-            return view('queue.status', compact('userQueues'));
+            return view('queue.status', compact('entry', 'ahead'));
         }
+
+        $userQueues = QueueEntry::with(['clinic', 'appointment.service', 'appointment.doctor'])
+            ->where('user_id', Auth::id())
+            ->whereIn('status', $activeStatuses)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('queue.status', compact('userQueues'));
     }
 
     public function leave(QueueEntry $entry)
     {
-        if ($entry->user_id !== Auth::id()) {
+        if ((int) $entry->user_id !== (int) Auth::id()) {
             abort(403, 'You can only leave your own queue entry.');
         }
 
-        if ($entry->status !== 'waiting') {
-            return back()->with('error', 'Cannot leave queue entry that is not waiting.');
+        if (! in_array($entry->status, ['waiting', 'called'], true)) {
+            return back()->with('error', 'Cannot leave this queue anymore.');
         }
 
-        $clinicName = $entry->clinic->name;
-    $entry->update(['status' => 'cancelled']);
-    event(new QueueUpdated($entry->fresh(),'cancelled'));
+        $clinicName = $entry->clinic?->name ?? 'this clinic';
+
+        $entry->update([
+            'status' => 'cancelled',
+        ]);
+
+        if ($entry->appointment && $entry->appointment->status === 'scheduled') {
+            $entry->appointment->update([
+                'status' => 'cancelled',
+            ]);
+        }
+
+        event(new QueueUpdated($entry->fresh(), 'cancelled'));
 
         return redirect()
             ->route('queue.status')

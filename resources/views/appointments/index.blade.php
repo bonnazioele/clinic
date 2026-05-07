@@ -2,904 +2,1018 @@
 
 @section('title', 'My Appointments')
 
-@push('styles')
-@push('styles')
+@section('content')
+@php
+    $todayAppointments = $todayAppointments ?? collect();
+    $upcomingAppointments = $upcomingAppointments ?? collect();
+    $pastAppointments = $pastAppointments ?? collect();
+
+    $activeQueueStatuses = ['waiting', 'called', 'now_serving'];
+
+    $totalActive = $todayAppointments->count() + $upcomingAppointments->count();
+    $totalHistory = $pastAppointments->count();
+
+    $formatAppointmentTime = function ($appointment) {
+        if (!$appointment->appointment_time) {
+            return '—';
+        }
+
+        if ($appointment->appointment_time instanceof \Carbon\Carbon) {
+            return $appointment->appointment_time->format('g:i A');
+        }
+
+        try {
+            return \Carbon\Carbon::parse($appointment->appointment_time)->format('g:i A');
+        } catch (\Exception $e) {
+            return $appointment->appointment_time;
+        }
+    };
+
+    $formatStatusLabel = function ($status) {
+        return match ($status) {
+            'scheduled' => 'Scheduled',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'no_show' => 'No Show',
+            'rescheduled' => 'Rescheduled',
+            default => ucfirst(str_replace('_', ' ', $status ?? 'Unknown')),
+        };
+    };
+
+    $formatStatusClass = function ($status) {
+        return match ($status) {
+            'scheduled' => 'status-pill status-scheduled',
+            'completed' => 'status-pill status-completed',
+            'cancelled' => 'status-pill status-cancelled',
+            'no_show' => 'status-pill status-noshow',
+            'rescheduled' => 'status-pill status-rescheduled',
+            default => 'status-pill status-default',
+        };
+    };
+
+    $formatQueueStatusLabel = function ($status) {
+        return match ($status) {
+            'waiting' => 'Waiting',
+            'called' => 'Called',
+            'now_serving' => 'Now Serving',
+            'served' => 'Completed',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'no_show' => 'No Show',
+            'rescheduled' => 'Rescheduled',
+            default => ucfirst(str_replace('_', ' ', $status ?? 'Unknown')),
+        };
+    };
+
+    $formatQueueBadgeClass = function ($status) {
+        return match ($status) {
+            'waiting' => 'queue-pill queue-waiting',
+            'called' => 'queue-pill queue-called',
+            'now_serving' => 'queue-pill queue-serving',
+            'served', 'completed' => 'queue-pill queue-completed',
+            'cancelled' => 'queue-pill queue-cancelled',
+            'no_show' => 'queue-pill queue-noshow',
+            'rescheduled' => 'queue-pill queue-rescheduled',
+            default => 'queue-pill queue-default',
+        };
+    };
+
+    $getActiveQueueEntry = function ($appointment) use ($activeQueueStatuses) {
+        if ($appointment->relationLoaded('queueEntries') && $appointment->queueEntries) {
+            return $appointment->queueEntries
+                ->whereIn('status', $activeQueueStatuses)
+                ->sortByDesc('created_at')
+                ->first();
+        }
+
+        return null;
+    };
+
+    $renderAppointmentCard = function ($appointment, $allowActions = false, $mode = 'default') use (
+        $formatAppointmentTime,
+        $formatStatusLabel,
+        $formatStatusClass,
+        $formatQueueStatusLabel,
+        $formatQueueBadgeClass,
+        $getActiveQueueEntry
+    ) {
+        $statusLabel = $formatStatusLabel($appointment->status);
+        $statusClass = $formatStatusClass($appointment->status);
+        $time = $formatAppointmentTime($appointment);
+
+        $date = $appointment->appointment_date
+            ? $appointment->appointment_date->format('M d, Y')
+            : '—';
+
+        $day = $appointment->appointment_date
+            ? $appointment->appointment_date->format('D')
+            : '—';
+
+        $clinicName = $appointment->clinic->name ?? 'Clinic';
+        $serviceName = $appointment->service->name ?? 'Service not specified';
+        $doctorName = $appointment->doctor->name ?? 'Not assigned';
+        $activeQueueEntry = $getActiveQueueEntry($appointment);
+
+        ob_start();
+@endphp
+
+<article class="appointment-card {{ $mode === 'today' ? 'appointment-card-featured' : '' }}">
+    <div class="appointment-date-tile">
+        <span>{{ $day }}</span>
+        <strong>{{ $appointment->appointment_date ? $appointment->appointment_date->format('d') : '—' }}</strong>
+        <small>{{ $appointment->appointment_date ? $appointment->appointment_date->format('M') : '' }}</small>
+    </div>
+
+    <div class="appointment-card-main">
+        <div class="appointment-card-top">
+            <div>
+                <div class="appointment-clinic">
+                    {{ $clinicName }}
+                </div>
+
+                <div class="appointment-service">
+                    <i class="bi bi-clipboard2-pulse"></i>
+                    {{ $serviceName }}
+                </div>
+            </div>
+
+            <span class="{{ $statusClass }}">
+                {{ $statusLabel }}
+            </span>
+        </div>
+
+        <div class="appointment-details-row">
+            <div class="appointment-detail">
+                <span>
+                    <i class="bi bi-clock"></i>
+                    Time
+                </span>
+                <strong>{{ $time }}</strong>
+            </div>
+
+            <div class="appointment-detail">
+                <span>
+                    <i class="bi bi-person-badge"></i>
+                    Doctor
+                </span>
+                <strong>{{ $doctorName }}</strong>
+            </div>
+
+            <div class="appointment-detail">
+                <span>
+                    <i class="bi bi-calendar-event"></i>
+                    Date
+                </span>
+                <strong>{{ $date }}</strong>
+            </div>
+        </div>
+
+        @if($activeQueueEntry)
+            <div class="queue-status-card">
+                <div class="queue-number">
+                    <span>Queue Number</span>
+                    <strong>#{{ $activeQueueEntry->queue_number }}</strong>
+                </div>
+
+                <div class="queue-current-status">
+                    <span>Queue Status</span>
+                    <strong class="{{ $formatQueueBadgeClass($activeQueueEntry->status) }}">
+                        {{ $formatQueueStatusLabel($activeQueueEntry->status) }}
+                    </strong>
+                </div>
+            </div>
+        @endif
+
+        @if($allowActions && $appointment->status === 'scheduled')
+            <div class="appointment-actions">
+                @if($activeQueueEntry && Route::has('queue.status.entry'))
+                    <a href="{{ route('queue.status.entry', $activeQueueEntry) }}" class="btn action-primary">
+                        <i class="bi bi-eye"></i>
+                        View Queue Status
+                    </a>
+                @endif
+
+                @if(Route::has('appointments.edit'))
+                    <a href="{{ route('appointments.edit', $appointment) }}" class="btn action-light">
+                        <i class="bi bi-pencil-square"></i>
+                        Edit
+                    </a>
+                @endif
+
+                @if(Route::has('appointments.destroy'))
+                    <form method="POST"
+                          action="{{ route('appointments.destroy', $appointment) }}"
+                          onsubmit="return confirm('Cancel this appointment? It will still appear in your history.');">
+                        @csrf
+                        @method('DELETE')
+
+                        <button type="submit" class="btn action-danger">
+                            <i class="bi bi-x-circle"></i>
+                            Cancel
+                        </button>
+                    </form>
+                @endif
+            </div>
+        @endif
+    </div>
+</article>
+
+@php
+        return ob_get_clean();
+    };
+@endphp
+
 <style>
-  .patient-tab-shell,
-  .patient-tab-content {
-    width: 100%;
-    max-width: none;
-  }
-
-  .appointments-page {
-    width: 96%;
-    max-width: none;
-    padding: 0.75rem 0 1.25rem;
-  }
-
-  .appointments-shell {
-    width: 100%;
-    border-radius: 22px;
-    border: 1px solid rgba(226, 232, 240, 0.95);
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow:
-      0 16px 42px rgba(15, 23, 42, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.75);
-    overflow: hidden;
-  }
-
-  .appointments-hero {
-    padding: 1.25rem 1.5rem 1rem;
-    background:
-      radial-gradient(circle at top left, rgba(13, 110, 253, 0.12), transparent 32%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.92));
-    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-  }
-
-  .appointments-hero-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.85rem;
-    align-items: flex-start;
-  }
-
-  .appointments-title-wrap {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .appointments-title-icon {
-    width: 46px;
-    height: 46px;
-    flex: 0 0 46px;
-    display: grid;
-    place-items: center;
-    border-radius: 15px;
-    color: #ffffff;
-    background: linear-gradient(135deg, #0d6efd, #1287ff);
-    box-shadow: 0 10px 24px rgba(13, 110, 253, 0.24);
-    font-size: 1.35rem;
-  }
-
-  .appointments-title {
-    margin: 0;
-    color: #071225;
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    font-size: 1.55rem;
-    line-height: 1.05;
-  }
-
-  .appointments-subtitle {
-    margin: 0.35rem 0 0;
-    color: #64748b;
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  .book-main-btn {
-    border-radius: 13px;
-    padding: 0.55rem 0.9rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    box-shadow: 0 10px 22px rgba(13, 110, 253, 0.18);
-  }
-
-  .appointments-body {
-    padding: 1.15rem 1.5rem 1.5rem;
-  }
-
-  .section-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.8rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .section-heading {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-    color: #0f172a;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    font-size: 1.05rem;
-  }
-
-  .section-heading i {
-    color: #0d6efd;
-  }
-
-  .count-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 24px;
-    padding: 0 0.55rem;
-    border-radius: 999px;
-    background: #eaf3ff;
-    color: #0d6efd;
-    font-size: 0.75rem;
-    font-weight: 700;
-  }
-
-  .queue-panel {
-    padding: 0.9rem;
-    border-radius: 18px;
-    border: 1px solid rgba(125, 211, 252, 0.7);
-    background:
-      linear-gradient(135deg, rgba(239, 249, 255, 0.95), rgba(224, 247, 255, 0.78));
-    margin-bottom: 1.15rem;
-  }
-
-  .queue-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-
-  .queue-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.85rem;
-    padding: 0.8rem;
-    min-height: 88px;
-    border-radius: 17px;
-    border: 1px solid rgba(226, 232, 240, 0.95);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
-  }
-
-  .queue-left {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-  }
-
-  .queue-icon {
-    width: 46px;
-    height: 46px;
-    flex: 0 0 46px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: #e8f2ff;
-    color: #0d6efd;
-    font-size: 1.4rem;
-  }
-
-  .queue-title {
-    margin: 0 0 0.15rem;
-    color: #0f172a;
-    font-weight: 700;
-    font-size: 0.98rem;
-  }
-
-  .queue-meta {
-    color: #334155;
-    font-weight: 600;
-    font-size: 0.86rem;
-    line-height: 1.35;
-  }
-
-  .queue-meta span {
-    color: #0d6efd;
-    font-weight: 700;
-  }
-
-  .queue-time {
-    color: #64748b;
-    font-size: 0.78rem;
-    font-weight: 500;
-  }
-
-  .queue-btn {
-    border-radius: 12px;
-    padding: 0.48rem 0.75rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .upcoming-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.8rem;
-    margin-bottom: 1.15rem;
-  }
-
-  .appointment-card {
-    position: relative;
-    padding: 0.95rem;
-    border-radius: 18px;
-    border: 1px solid rgba(226, 232, 240, 0.95);
-    background: #ffffff;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-    overflow: hidden;
-    transition: 0.22s ease;
-  }
-
-  .appointment-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.09);
-  }
-
-  .appointment-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 5px;
-    background: linear-gradient(180deg, #0d6efd, #49a4ff);
-  }
-
-  .appointment-card.pending::before {
-    background: linear-gradient(180deg, #8b5cf6, #a78bfa);
-  }
-
-  .appointment-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 0.85rem;
-  }
-
-  .appointment-main {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-  }
-
-  .clinic-icon {
-    width: 48px;
-    height: 48px;
-    flex: 0 0 48px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: #e8f2ff;
-    color: #0d6efd;
-    font-size: 1.45rem;
-  }
-
-  .appointment-card.pending .clinic-icon {
-    background: #f2eaff;
-    color: #8b5cf6;
-  }
-
-  .clinic-name {
-    margin: 0 0 0.15rem;
-    color: #0f172a;
-    font-size: 1rem;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-  }
-
-  .service-name {
-    color: #64748b;
-    font-size: 0.83rem;
-    font-weight: 600;
-  }
-
-  .status-badge-soft {
-    border-radius: 999px;
-    padding: 0.35rem 0.6rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
-  .appointment-info-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.6rem;
-    padding: 0.75rem 0;
-    margin-bottom: 0.75rem;
-    border-top: 1px solid #edf2f7;
-    border-bottom: 1px solid #edf2f7;
-  }
-
-  .info-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.45rem;
-    color: #334155;
-  }
-
-  .info-item i {
-    color: #0d6efd;
-    font-size: 0.9rem;
-    margin-top: 0.08rem;
-  }
-
-  .info-label {
-    font-size: 0.68rem;
-    color: #64748b;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 0.08rem;
-  }
-
-  .info-value {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #0f172a;
-    line-height: 1.25;
-  }
-
-  .info-subvalue {
-    font-size: 0.74rem;
-    color: #64748b;
-    font-weight: 500;
-  }
-
-  .appointment-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .queue-state {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #0f9f6e;
-  }
-
-  .queue-state.pending-state {
-    color: #8b5cf6;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.45rem;
-    flex-wrap: wrap;
-  }
-
-  .action-buttons .btn {
-    border-radius: 11px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
-  }
-
-  .empty-state {
-    padding: 1.6rem 1rem;
-    text-align: center;
-    border: 1px dashed rgba(13, 110, 253, 0.34);
-    border-radius: 18px;
-    background:
-      linear-gradient(135deg, rgba(13, 110, 253, 0.06), rgba(255, 255, 255, 0.94));
-    margin-bottom: 1.15rem;
-  }
-
-  .empty-icon {
-    width: 58px;
-    height: 58px;
-    margin: 0 auto 0.75rem;
-    display: grid;
-    place-items: center;
-    border-radius: 18px;
-    background: #ffffff;
-    color: #0d6efd;
-    font-size: 1.55rem;
-    box-shadow: 0 10px 28px rgba(13, 110, 253, 0.11);
-  }
-
-  .empty-title {
-    margin: 0 0 0.25rem;
-    color: #0f172a;
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  .empty-text {
-    color: #64748b;
-    margin-bottom: 0.85rem;
-    font-size: 0.88rem;
-    font-weight: 500;
-  }
-
-  .past-accordion {
-    border-radius: 18px;
-    overflow: hidden;
-    border: 1px solid rgba(226, 232, 240, 0.95);
-    background: #ffffff;
-    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
-  }
-
-  .past-accordion .accordion-item {
-    border: 0;
-  }
-
-  .past-accordion .accordion-button {
-    padding: 0.9rem 1rem;
-    background: #ffffff;
-    box-shadow: none;
-    color: #0f172a;
-    font-weight: 700;
-    font-size: 0.98rem;
-    letter-spacing: -0.015em;
-  }
-
-  .past-accordion .accordion-button:not(.collapsed) {
-    color: #0d6efd;
-    background:
-      linear-gradient(135deg, rgba(13, 110, 253, 0.08), rgba(255, 255, 255, 1));
-    box-shadow: none;
-  }
-
-  .past-accordion .accordion-button:focus {
-    box-shadow: none;
-  }
-
-  .past-accordion .accordion-body {
-    padding: 0 1rem 1rem;
-  }
-
-  .past-list {
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .past-item {
-    display: grid;
-    grid-template-columns: 1.35fr 1.25fr 1.25fr 1fr 0.9fr auto;
-    gap: 0.6rem;
-    align-items: center;
-    padding: 0.75rem 0.85rem;
-    border-radius: 14px;
-    border: 1px solid #edf2f7;
-    background: #f8fafc;
-  }
-
-  .past-label {
-    display: none;
-    color: #64748b;
-    font-size: 0.66rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .past-value {
-    color: #0f172a;
-    font-size: 0.82rem;
-    font-weight: 600;
-    line-height: 1.25;
-  }
-
-  .past-item .badge {
-    font-size: 0.72rem;
-  }
-
-  .reminder-box {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-top: 0.8rem;
-    padding: 0.75rem 0.9rem;
-    border-radius: 15px;
-    border: 1px solid rgba(191, 219, 254, 0.9);
-    background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.9));
-    color: #334155;
-    font-size: 0.86rem;
-    font-weight: 500;
-  }
-
-  .reminder-box i {
-    color: #0d6efd;
-    font-size: 1rem;
-  }
-
-  .reminder-box strong {
-    color: #0f172a;
-    margin-right: 0.2rem;
-  }
-
-  @media (max-width: 1200px) {
-    .queue-grid,
-    .upcoming-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 992px) {
-    .appointment-info-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .past-item {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .past-label {
-      display: block;
-    }
-  }
-
-  @media (max-width: 768px) {
     .appointments-page {
-      width: 100%;
-      padding-top: 0.75rem;
+        width: min(96%, 1500px);
+        margin: 0 auto;
+        padding: 1rem 0 2.5rem;
     }
 
-    .appointments-hero,
-    .appointments-body {
-      padding-left: 0.85rem;
-      padding-right: 0.85rem;
+    .appointments-shell {
+        display: grid;
+        gap: 1.1rem;
     }
 
-    .appointments-hero-row,
-    .appointment-top,
-    .queue-card {
-      flex-direction: column;
-      align-items: stretch;
+    .appointments-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 30px;
+        padding: 1.5rem;
+        color: #fff;
+        background:
+            radial-gradient(circle at 8% 18%, rgba(255,255,255,.26), transparent 18%),
+            radial-gradient(circle at 88% 14%, rgba(125,211,252,.28), transparent 20%),
+            linear-gradient(135deg, #0f52ba 0%, #0d6efd 48%, #1d4ed8 100%);
+        box-shadow: 0 24px 60px rgba(37, 99, 235, .28);
     }
 
-    .appointments-title-wrap,
-    .appointment-main,
-    .queue-left {
-      align-items: flex-start;
+    .appointments-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -60px -110px auto;
+        width: 280px;
+        height: 280px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.13);
     }
 
-    .appointments-title {
-      font-size: 1.35rem;
+    .appointments-hero-content {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 1rem;
+        align-items: center;
     }
 
-    .appointments-subtitle {
-      font-size: 0.82rem;
+    .appointments-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .35rem .7rem;
+        margin-bottom: .7rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.16);
+        border: 1px solid rgba(255,255,255,.22);
+        font-size: .78rem;
+        font-weight: 800;
+        letter-spacing: .03em;
+        text-transform: uppercase;
     }
 
-    .book-main-btn,
-    .queue-btn {
-      width: 100%;
+    .appointments-hero h2 {
+        font-weight: 900;
+        font-size: clamp(1.55rem, 2vw, 2.4rem);
+        margin-bottom: .35rem;
+    }
+
+    .appointments-hero p {
+        max-width: 650px;
+        margin-bottom: 0;
+        opacity: .92;
+        line-height: 1.6;
+    }
+
+    .hero-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: .65rem;
+        flex-wrap: wrap;
+    }
+
+    .hero-book-btn {
+        border: 0;
+        border-radius: 16px;
+        padding: .8rem 1rem;
+        background: #fff;
+        color: #0d6efd;
+        font-weight: 900;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, .16);
+        white-space: nowrap;
+    }
+
+    .hero-book-btn:hover {
+        color: #0b5ed7;
+        background: #f8fafc;
+        transform: translateY(-1px);
+    }
+
+    .appointment-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .85rem;
+    }
+
+    .summary-card {
+        display: flex;
+        align-items: center;
+        gap: .9rem;
+        border-radius: 24px;
+        padding: 1rem;
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(226,232,240,.95);
+        box-shadow: 0 14px 35px rgba(15,23,42,.07);
+    }
+
+    .summary-icon {
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border-radius: 18px;
+        font-size: 1.35rem;
+        color: #0d6efd;
+        background: rgba(13,110,253,.1);
+    }
+
+    .summary-icon.today {
+        color: #047857;
+        background: rgba(16,185,129,.12);
+    }
+
+    .summary-icon.history {
+        color: #7c3aed;
+        background: rgba(124,58,237,.12);
+    }
+
+    .summary-text span {
+        display: block;
+        color: #64748b;
+        font-size: .82rem;
+        font-weight: 800;
+    }
+
+    .summary-text strong {
+        display: block;
+        color: #0f172a;
+        font-size: 1.45rem;
+        font-weight: 900;
+        line-height: 1.1;
+    }
+
+    .appointments-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(360px, .8fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .appointments-main-column,
+    .appointments-side-column {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .appointment-section {
+        background: rgba(255,255,255,.98);
+        border: 1px solid rgba(226,232,240,.95);
+        border-radius: 28px;
+        box-shadow: 0 16px 40px rgba(15,23,42,.07);
+        overflow: hidden;
+    }
+
+    .appointment-section-header {
+        padding: 1rem 1.15rem;
+        border-bottom: 1px solid rgba(226,232,240,.9);
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        background:
+            linear-gradient(135deg, rgba(248,250,252,.98), rgba(255,255,255,.98));
+    }
+
+    .section-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+
+    .section-icon {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 16px;
+        color: #0d6efd;
+        background: rgba(13,110,253,.1);
+        flex: 0 0 auto;
+    }
+
+    .section-icon.today {
+        color: #047857;
+        background: rgba(16,185,129,.12);
+    }
+
+    .section-icon.history {
+        color: #7c3aed;
+        background: rgba(124,58,237,.12);
+    }
+
+    .appointment-section-title {
+        margin: 0;
+        font-size: 1.03rem;
+        font-weight: 900;
+        color: #0f172a;
+    }
+
+    .appointment-section-subtitle {
+        margin: .15rem 0 0;
+        font-size: .83rem;
+        color: #64748b;
+    }
+
+    .appointment-count {
+        border-radius: 999px;
+        padding: .42rem .8rem;
+        font-size: .78rem;
+        font-weight: 900;
+        color: #0d6efd;
+        background: rgba(13,110,253,.1);
+        white-space: nowrap;
+    }
+
+    .appointment-list {
+        padding: 1rem;
+        display: grid;
+        gap: .85rem;
+    }
+
+    .appointment-card {
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr);
+        gap: .9rem;
+        border: 1px solid rgba(226,232,240,.95);
+        border-radius: 24px;
+        padding: .95rem;
+        background:
+            linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        box-shadow: 0 10px 28px rgba(15,23,42,.055);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .appointment-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 36px rgba(15,23,42,.09);
+        border-color: rgba(13,110,253,.2);
+    }
+
+    .appointment-card-featured {
+        border-color: rgba(16,185,129,.24);
+        background:
+            linear-gradient(180deg, rgba(240,253,250,.95) 0%, #ffffff 58%);
+    }
+
+    .appointment-date-tile {
+        min-height: 92px;
+        border-radius: 20px;
+        display: grid;
+        place-items: center;
+        align-content: center;
+        background: #f1f5f9;
+        border: 1px solid rgba(226,232,240,.95);
+        color: #0f172a;
+        text-align: center;
+    }
+
+    .appointment-date-tile span {
+        font-size: .72rem;
+        color: #64748b;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+
+    .appointment-date-tile strong {
+        font-size: 1.65rem;
+        font-weight: 950;
+        line-height: 1;
+        color: #0f172a;
+    }
+
+    .appointment-date-tile small {
+        margin-top: .12rem;
+        color: #64748b;
+        font-weight: 800;
+    }
+
+    .appointment-card-main {
+        min-width: 0;
+    }
+
+    .appointment-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .appointment-clinic {
+        font-weight: 950;
+        font-size: 1.05rem;
+        color: #0f172a;
+        margin-bottom: .25rem;
+    }
+
+    .appointment-service {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        color: #64748b;
+        font-size: .9rem;
+        line-height: 1.4;
+    }
+
+    .appointment-details-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .65rem;
+        margin-top: .85rem;
+    }
+
+    .appointment-detail {
+        border-radius: 16px;
+        background: #f8fafc;
+        padding: .72rem;
+        border: 1px solid rgba(226,232,240,.9);
+    }
+
+    .appointment-detail span {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        font-size: .73rem;
+        color: #64748b;
+        font-weight: 850;
+        margin-bottom: .2rem;
+    }
+
+    .appointment-detail strong {
+        display: block;
+        color: #0f172a;
+        font-weight: 900;
+        font-size: .9rem;
+        overflow-wrap: anywhere;
+    }
+
+    .status-pill,
+    .queue-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        border-radius: 999px;
+        padding: .35rem .7rem;
+        font-size: .74rem;
+        line-height: 1;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .status-scheduled {
+        color: #0d6efd;
+        background: rgba(13,110,253,.1);
+    }
+
+    .status-completed {
+        color: #047857;
+        background: rgba(16,185,129,.12);
+    }
+
+    .status-cancelled {
+        color: #b91c1c;
+        background: rgba(239,68,68,.12);
+    }
+
+    .status-noshow {
+        color: #111827;
+        background: rgba(17,24,39,.12);
+    }
+
+    .status-rescheduled {
+        color: #92400e;
+        background: rgba(245,158,11,.16);
+    }
+
+    .status-default {
+        color: #475569;
+        background: rgba(100,116,139,.12);
+    }
+
+    .queue-status-card {
+        margin-top: .85rem;
+        padding: .85rem;
+        border-radius: 20px;
+        border: 1px solid rgba(34,197,94,.22);
+        background:
+            linear-gradient(135deg, rgba(34,197,94,.09), rgba(240,253,250,.8));
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: .85rem;
+        align-items: center;
+    }
+
+    .queue-number span,
+    .queue-current-status span {
+        display: block;
+        font-size: .72rem;
+        font-weight: 900;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        margin-bottom: .2rem;
+    }
+
+    .queue-number strong {
+        color: #047857;
+        font-size: 1.3rem;
+        font-weight: 950;
+    }
+
+    .queue-waiting {
+        color: #475569;
+        background: rgba(100,116,139,.13);
+    }
+
+    .queue-called {
+        color: #075985;
+        background: rgba(14,165,233,.15);
+    }
+
+    .queue-serving {
+        color: #047857;
+        background: rgba(16,185,129,.15);
+    }
+
+    .queue-completed {
+        color: #047857;
+        background: rgba(16,185,129,.13);
+    }
+
+    .queue-cancelled {
+        color: #b91c1c;
+        background: rgba(239,68,68,.12);
+    }
+
+    .queue-noshow {
+        color: #111827;
+        background: rgba(17,24,39,.12);
+    }
+
+    .queue-rescheduled {
+        color: #92400e;
+        background: rgba(245,158,11,.16);
+    }
+
+    .queue-default {
+        color: #475569;
+        background: rgba(100,116,139,.12);
     }
 
     .appointment-actions {
-      align-items: stretch;
-      flex-direction: column;
+        display: flex;
+        gap: .55rem;
+        flex-wrap: wrap;
+        margin-top: .95rem;
     }
 
-    .action-buttons {
-      width: 100%;
+    .appointment-actions form {
+        margin: 0;
     }
 
-    .action-buttons .btn,
-    .action-buttons form,
-    .action-buttons form button {
-      width: 100%;
+    .appointment-actions .btn {
+        border-radius: 14px;
+        min-height: 38px;
+        padding: .48rem .78rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .42rem;
+        font-weight: 900;
+        font-size: .83rem;
     }
 
-    .past-item {
-      grid-template-columns: 1fr;
+    .action-primary {
+        border: 0;
+        color: #fff;
+        background: linear-gradient(135deg, #16a34a, #059669);
+        box-shadow: 0 10px 22px rgba(22,163,74,.2);
     }
 
-    .reminder-box {
-      align-items: flex-start;
+    .action-primary:hover {
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 14px 28px rgba(22,163,74,.26);
     }
-  }
+
+    .action-light {
+        border: 1px solid rgba(13,110,253,.18);
+        color: #0d6efd;
+        background: rgba(13,110,253,.08);
+    }
+
+    .action-light:hover {
+        color: #0b5ed7;
+        background: rgba(13,110,253,.12);
+    }
+
+    .action-danger {
+        border: 1px solid rgba(220,38,38,.18);
+        color: #dc2626;
+        background: rgba(220,38,38,.08);
+    }
+
+    .action-danger:hover {
+        color: #b91c1c;
+        background: rgba(220,38,38,.12);
+    }
+
+    .empty-appointments {
+        text-align: center;
+        padding: 2.4rem 1rem;
+        color: #64748b;
+    }
+
+    .empty-appointments-icon {
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+        margin: 0 auto .75rem;
+        border-radius: 22px;
+        color: #0d6efd;
+        background: rgba(13,110,253,.1);
+        font-size: 1.65rem;
+    }
+
+    .empty-appointments strong {
+        display: block;
+        color: #0f172a;
+        font-weight: 900;
+        margin-bottom: .2rem;
+    }
+
+    .empty-appointments p {
+        max-width: 340px;
+        margin: 0 auto;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 1200px) {
+        .appointments-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .appointments-side-column {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 850px) {
+        .appointments-page {
+            width: 100%;
+            padding-inline: .2rem;
+        }
+
+        .appointments-hero-content {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-actions {
+            justify-content: flex-start;
+        }
+
+        .appointment-summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .appointment-section-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .appointment-card {
+            grid-template-columns: 1fr;
+        }
+
+        .appointment-date-tile {
+            min-height: auto;
+            grid-template-columns: auto auto auto;
+            justify-content: start;
+            gap: .35rem;
+            padding: .75rem;
+            text-align: left;
+        }
+
+        .appointment-date-tile strong {
+            font-size: 1.2rem;
+        }
+
+        .appointment-details-row {
+            grid-template-columns: 1fr;
+        }
+
+        .queue-status-card {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
-@endpush
+<div class="appointments-page">
+    @include('partials.alerts')
 
-@section('content')
-<div class="patient-tab-shell">
-  <div class="patient-tab-content">
-    <div class="container-fluid appointments-page px-0">
-      @include('partials.alerts')
-
-      <div class="appointments-shell">
-        <div class="appointments-hero">
-          <div class="appointments-hero-row">
-            <div class="appointments-title-wrap">
-              <div class="appointments-title-icon">
-                <i class="bi bi-calendar2-check"></i>
-              </div>
-
-              <div>
-                <h1 class="appointments-title">My Appointments</h1>
-                <p class="appointments-subtitle">
-                  View your queue status, upcoming visits, and appointment history in one place.
-                </p>
-              </div>
-            </div>
-
-            <a href="{{ route('appointments.create') }}" class="btn btn-primary book-main-btn">
-              <i class="bi bi-plus-lg me-1"></i>
-              Book Appointment
-            </a>
-          </div>
-        </div>
-
-        <div class="appointments-body">
-          @php
-            $activeQueues = auth()->user()->queueEntries()
-              ->where('status', 'waiting')
-              ->with('clinic')
-              ->orderBy('created_at', 'desc')
-              ->get();
-          @endphp
-
-          @if($activeQueues->count() > 0)
-            <section class="queue-panel">
-              <div class="section-row">
-                <h4 class="section-heading">
-                  <i class="bi bi-people-fill"></i>
-                  Current Queue Status
-                </h4>
-
-                <span class="count-pill">{{ $activeQueues->count() }} Active</span>
-              </div>
-
-              <div class="queue-grid">
-                @foreach($activeQueues as $queueEntry)
-                  <div class="queue-card">
-                    <div class="queue-left">
-                      <div class="queue-icon">
+    <div class="appointments-shell">
+        <section class="appointments-hero">
+            <div class="appointments-hero-content">
+                <div>
+                    <span class="appointments-eyebrow">
                         <i class="bi bi-heart-pulse"></i>
-                      </div>
+                        Patient Appointments
+                    </span>
 
-                      <div>
-                        <h5 class="queue-title">{{ $queueEntry->clinic->name }}</h5>
+                    <h2>Manage your clinic visits clearly.</h2>
 
-                        <div class="queue-meta">
-                          Queue <span>#{{ $queueEntry->queue_number }}</span>
-                        </div>
-
-                        <div class="queue-time">
-                          <i class="bi bi-clock me-1"></i>
-                          Joined at {{ $queueEntry->formatted_created_time }}
-                        </div>
-                      </div>
-                    </div>
-
-                    <a href="{{ route('queue.status.entry', $queueEntry) }}" class="btn btn-primary queue-btn">
-                      <i class="bi bi-eye me-1"></i>
-                      View Details
-                    </a>
-                  </div>
-                @endforeach
-              </div>
-            </section>
-          @endif
-
-          <section>
-            <div class="section-row">
-              <h4 class="section-heading">
-                <i class="bi bi-calendar-week"></i>
-                Upcoming Appointments
-                <span class="count-pill">{{ $upcoming->count() }}</span>
-              </h4>
-
-
-            </div>
-
-            @if($upcoming->isEmpty())
-              <div class="empty-state">
-                <div class="empty-icon">
-                  <i class="bi bi-calendar-plus"></i>
+                    <p>
+                        Today’s appointments, future schedules, and appointment history are separated
+                        so queue status and past records are easier to track.
+                    </p>
                 </div>
 
-                <h5 class="empty-title">No upcoming appointments</h5>
-                <p class="empty-text">You do not have any scheduled appointment right now.</p>
-
-
-              </div>
-            @else
-              <div class="upcoming-grid">
-                @foreach($upcoming as $a)
-                  @php
-                    $inQueue = \App\Models\QueueEntry::where('appointment_id', $a->id)
-                      ->where('status', 'waiting')
-                      ->first();
-
-                    $isPendingQueue = !$inQueue;
-                  @endphp
-
-                  <article class="appointment-card {{ $isPendingQueue ? 'pending' : '' }}">
-                    <div class="appointment-top">
-                      <div class="appointment-main">
-                        <div class="clinic-icon">
-                          <i class="bi bi-heart-pulse"></i>
-                        </div>
-
-                        <div>
-                          <h5 class="clinic-name">{{ $a->clinic->name }}</h5>
-                          <div class="service-name">{{ $a->service->name }}</div>
-                        </div>
-                      </div>
-
-                      <span class="badge status-badge-soft {{ $a->status_badge_class }}">
-                        {{ $a->status_label }}
-                      </span>
-                    </div>
-
-                    <div class="appointment-info-grid">
-                      <div class="info-item">
-                        <i class="bi bi-person"></i>
-                        <div>
-                          <div class="info-label">Doctor</div>
-                          <div class="info-value">
-                            {{ $a->doctor ? ('Dr. ' . $a->doctor->name) : '—' }}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="info-item">
-                        <i class="bi bi-calendar3"></i>
-                        <div>
-                          <div class="info-label">Date</div>
-                          <div class="info-value">
-                            {{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}
-                          </div>
-                          <div class="info-subvalue">
-                            {{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('dddd') }}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="info-item">
-                        <i class="bi bi-clock"></i>
-                        <div>
-                          <div class="info-label">Time</div>
-                          <div class="info-value">
-                            {{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="appointment-actions">
-                      @if($inQueue)
-                        <div class="queue-state">
-                          <i class="bi bi-check-circle-fill"></i>
-                          In Queue #{{ $inQueue->queue_number }}
-                        </div>
-                      @else
-                        <div class="queue-state pending-state">
-                          <i class="bi bi-clock-fill"></i>
-                          Queue Pending
-                        </div>
-                      @endif
-
-                      @if($a->status === 'scheduled')
-                        <div class="action-buttons">
-                          @if($inQueue)
-                            <a href="{{ route('queue.status.entry', $inQueue) }}"
-                               class="btn btn-sm btn-outline-primary px-3">
-                              <i class="bi bi-eye me-1"></i>
-                              View Status
-                            </a>
-                          @endif
-
-                          <form method="POST"
-                                action="{{ route('appointments.destroy', $a) }}"
-                                class="d-inline"
-                                data-confirm="Cancel this appointment? You will also be removed from the queue."
-                                data-confirm-title="Cancel Appointment"
-                                data-confirm-btn="Cancel Appointment">
-                            @csrf
-                            @method('DELETE')
-
-                            <button class="btn btn-sm btn-outline-danger px-3">
-                              <i class="bi bi-trash3 me-1"></i>
-                              Cancel
-                            </button>
-                          </form>
-                        </div>
-                      @endif
-                    </div>
-                  </article>
-                @endforeach
-              </div>
-            @endif
-          </section>
-
-          <div class="accordion past-accordion mt-4" id="pastAppointmentsAccordion">
-            <div class="accordion-item">
-              <h2 class="accordion-header" id="pastAppointmentsHeading">
-                <button class="accordion-button collapsed"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#pastAppointmentsCollapse"
-                        aria-expanded="false"
-                        aria-controls="pastAppointmentsCollapse">
-                  <i class="bi bi-archive-fill me-2"></i>
-                  Past Appointments
-                  <span class="count-pill ms-2">{{ $past->count() }}</span>
-                </button>
-              </h2>
-
-              <div id="pastAppointmentsCollapse"
-                   class="accordion-collapse collapse"
-                   aria-labelledby="pastAppointmentsHeading"
-                   data-bs-parent="#pastAppointmentsAccordion">
-                <div class="accordion-body">
-                  @if($past->isEmpty())
-                    <div class="empty-state mb-0">
-                      <div class="empty-icon">
-                        <i class="bi bi-archive"></i>
-                      </div>
-
-                      <h5 class="empty-title">No past appointments</h5>
-                      <p class="empty-text mb-0">
-                        Your completed and previous appointments will appear here.
-                      </p>
-                    </div>
-                  @else
-                    <div class="past-list">
-                      @foreach($past as $a)
-                        <div class="past-item">
-                          <div>
-                            <span class="past-label">Clinic</span>
-                            <div class="past-value">{{ $a->clinic->name }}</div>
-                          </div>
-
-                          <div>
-                            <span class="past-label">Service</span>
-                            <div class="past-value">{{ $a->service->name }}</div>
-                          </div>
-
-                          <div>
-                            <span class="past-label">Doctor</span>
-                            <div class="past-value">
-                              {{ $a->doctor ? ('Dr. ' . $a->doctor->name) : '—' }}
-                            </div>
-                          </div>
-
-                          <div>
-                            <span class="past-label">Date</span>
-                            <div class="past-value">
-                              {{ \Carbon\Carbon::parse($a->appointment_date)->isoFormat('MMM D, YYYY') }}
-                            </div>
-                          </div>
-
-                          <div>
-                            <span class="past-label">Time</span>
-                            <div class="past-value">
-                              {{ \Carbon\Carbon::parse($a->appointment_time)->format('h:i A') }}
-                            </div>
-                          </div>
-
-                          <div>
-                            <span class="past-label">Status</span>
-                            <span class="badge rounded-pill {{ $a->status_badge_class }}">
-                              {{ $a->status_label }}
-                            </span>
-                          </div>
-                        </div>
-                      @endforeach
-                    </div>
-                  @endif
+                <div class="hero-actions">
+                    @if(Route::has('appointments.create'))
+                        <a href="{{ route('appointments.create') }}" class="btn hero-book-btn">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            Book Appointment
+                        </a>
+                    @endif
                 </div>
-              </div>
             </div>
-          </div>
+        </section>
 
-          <div class="reminder-box">
-            <i class="bi bi-info-circle-fill"></i>
-            <div>
-              <strong>Reminder:</strong>
-              Please arrive 30 minutes before your scheduled appointment.
+        <section class="appointment-summary-grid">
+            <div class="summary-card">
+                <div class="summary-icon today">
+                    <i class="bi bi-calendar-day"></i>
+                </div>
+                <div class="summary-text">
+                    <span>Today</span>
+                    <strong>{{ $todayAppointments->count() }}</strong>
+                </div>
             </div>
-          </div>
+
+            <div class="summary-card">
+                <div class="summary-icon">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <div class="summary-text">
+                    <span>Active / Upcoming</span>
+                    <strong>{{ $totalActive }}</strong>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-icon history">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="summary-text">
+                    <span>History</span>
+                    <strong>{{ $totalHistory }}</strong>
+                </div>
+            </div>
+        </section>
+
+        <div class="appointments-layout">
+            <main class="appointments-main-column">
+                <section class="appointment-section">
+                    <div class="appointment-section-header">
+                        <div class="section-title-wrap">
+                            <div class="section-icon today">
+                                <i class="bi bi-calendar-day"></i>
+                            </div>
+
+                            <div>
+                                <h4 class="appointment-section-title">Today’s Appointments</h4>
+                                <p class="appointment-section-subtitle">
+                                    Queue status stays visible while waiting, called, or now serving.
+                                </p>
+                            </div>
+                        </div>
+
+                        <span class="appointment-count">
+                            {{ $todayAppointments->count() }} Today
+                        </span>
+                    </div>
+
+                    <div class="appointment-list">
+                        @forelse($todayAppointments as $appointment)
+                            {!! $renderAppointmentCard($appointment, true, 'today') !!}
+                        @empty
+                            <div class="empty-appointments">
+                                <div class="empty-appointments-icon">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <strong>No appointments today.</strong>
+                                <p>Your appointments for today will appear here.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+
+                <section class="appointment-section">
+                    <div class="appointment-section-header">
+                        <div class="section-title-wrap">
+                            <div class="section-icon">
+                                <i class="bi bi-calendar-event"></i>
+                            </div>
+
+                            <div>
+                                <h4 class="appointment-section-title">Upcoming Appointments</h4>
+                                <p class="appointment-section-subtitle">
+                                    Only future scheduled appointments are shown here.
+                                </p>
+                            </div>
+                        </div>
+
+                        <span class="appointment-count">
+                            {{ $upcomingAppointments->count() }} Upcoming
+                        </span>
+                    </div>
+
+                    <div class="appointment-list">
+                        @forelse($upcomingAppointments as $appointment)
+                            {!! $renderAppointmentCard($appointment, true, 'upcoming') !!}
+                        @empty
+                            <div class="empty-appointments">
+                                <div class="empty-appointments-icon">
+                                    <i class="bi bi-calendar-plus"></i>
+                                </div>
+                                <strong>No upcoming appointments.</strong>
+                                <p>Future appointments will appear here after booking.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+            </main>
+
+            <aside class="appointments-side-column">
+                <section class="appointment-section">
+                    <div class="appointment-section-header">
+                        <div class="section-title-wrap">
+                            <div class="section-icon history">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+
+                            <div>
+                                <h4 class="appointment-section-title">Past / History</h4>
+                                <p class="appointment-section-subtitle">
+                                    Completed, cancelled, rescheduled, and no-show records stay here.
+                                </p>
+                            </div>
+                        </div>
+
+                        <span class="appointment-count">
+                            {{ $pastAppointments->count() }} History
+                        </span>
+                    </div>
+
+                    <div class="appointment-list">
+                        @forelse($pastAppointments as $appointment)
+                            {!! $renderAppointmentCard($appointment, false, 'history') !!}
+                        @empty
+                            <div class="empty-appointments">
+                                <div class="empty-appointments-icon">
+                                    <i class="bi bi-inbox"></i>
+                                </div>
+                                <strong>No appointment history yet.</strong>
+                                <p>Completed, cancelled, rescheduled, and no-show appointments will appear here.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+            </aside>
         </div>
-      </div>
     </div>
-  </div>
 </div>
 @endsection
