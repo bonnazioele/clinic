@@ -2,6 +2,7 @@
   $user = auth()->user();
   $userName = $user->name ?? 'Patient';
   $userInitial = strtoupper(substr($userName, 0, 1));
+  
 @endphp
 
 <style>

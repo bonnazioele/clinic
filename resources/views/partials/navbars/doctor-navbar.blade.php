@@ -3,6 +3,37 @@
   $userName = $user->name ?? 'Doctor';
   $userInitial = strtoupper(substr($userName, 0, 1));
 
+  /*
+  |--------------------------------------------------------------------------
+  | Selected clinic only
+  |--------------------------------------------------------------------------
+  | Do NOT use $user->clinics()->first() here.
+  | That makes a clinic appear even before the doctor chooses one.
+  */
+  $doctorClinicRouteValue = request()->route('clinic');
+  $doctorClinicId = null;
+  $doctorClinicName = null;
+
+  if (is_object($doctorClinicRouteValue) && isset($doctorClinicRouteValue->id)) {
+      $doctorClinicId = $doctorClinicRouteValue->id;
+      $doctorClinicName = $doctorClinicRouteValue->name ?? null;
+  }
+
+  if (!$doctorClinicId && is_numeric($doctorClinicRouteValue)) {
+      $doctorClinicId = $doctorClinicRouteValue;
+  }
+
+  if (!$doctorClinicId && session('active_clinic_id')) {
+      $doctorClinicId = session('active_clinic_id');
+  }
+
+  if (!$doctorClinicName && $doctorClinicId) {
+      $doctorClinicName = \App\Models\Clinic::where('id', $doctorClinicId)->value('name');
+  }
+
+  $hasSelectedClinic = filled($doctorClinicName);
+  $doctorClinicDisplayName = $hasSelectedClinic ? $doctorClinicName : '';
+
   $safeDoctorRoute = function ($routeName, $fallback = '/doctor/dashboard') {
       if (!Route::has($routeName)) {
           return url($fallback);
@@ -16,10 +47,9 @@
   };
 
   $dashboardUrl = $safeDoctorRoute('doctor.dashboard', '/doctor/dashboard');
-  $queueUrl = $safeDoctorRoute('doctor.queue.index', '/doctor/queue');
-  $schedulesUrl = $safeDoctorRoute('doctor.schedules.index', '/doctor/schedules');
-  $appointmentsUrl = $safeDoctorRoute('doctor.appointments.index', '/doctor/dashboard');
-  $profileUrl = Route::has('profile.edit') ? route('profile.edit') : '#';
+  $profileUrl = Route::has('doctor.profile.show')
+      ? route('doctor.profile.show')
+      : (Route::has('profile.edit') ? route('profile.edit') : '#');
 @endphp
 
 <style>
@@ -103,6 +133,7 @@
   align-items: center;
   gap: 16px;
   text-decoration: none;
+  min-width: 0;
 }
 
 .doctor-navbar .navbar-logo {
@@ -123,16 +154,56 @@
   display: flex;
   flex-direction: column;
   line-height: 1.05;
+  min-width: 0;
 }
 
-.doctor-navbar .navbar-brand-text strong {
+.doctor-navbar .brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.doctor-navbar .brand-title-row strong {
   font-size: 1.95rem;
   font-weight: 900;
   color: #020617;
   letter-spacing: -0.05em;
 }
 
-.doctor-navbar .navbar-brand-text span {
+.doctor-navbar .clinic-name-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 320px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doctor-navbar .clinic-name-pill.has-clinic {
+  background: rgba(13, 110, 253, 0.10);
+  color: #0d6efd;
+  border: 1px solid rgba(13, 110, 253, 0.16);
+}
+
+.doctor-navbar .clinic-name-pill.no-clinic {
+  background: rgba(100, 116, 139, 0.10);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.16);
+}
+
+.doctor-navbar .clinic-name-pill i {
+  flex-shrink: 0;
+}
+
+.doctor-navbar .navbar-brand-text > span:not(.brand-title-row) {
   font-size: 0.86rem;
   color: #64748b;
   margin-top: 5px;
@@ -242,11 +313,16 @@
     border-radius: 24px;
   }
 
-  .doctor-navbar .navbar-brand-text strong {
+  .doctor-navbar .brand-title-row strong {
     font-size: 1.65rem;
   }
 
-  .doctor-navbar .navbar-brand-text span {
+  .doctor-navbar .clinic-name-pill {
+    max-width: 240px;
+    font-size: 0.78rem;
+  }
+
+  .doctor-navbar .navbar-brand-text > span:not(.brand-title-row) {
     font-size: 0.8rem;
   }
 
@@ -292,11 +368,17 @@
     font-size: 1.35rem;
   }
 
-  .doctor-navbar .navbar-brand-text strong {
+  .doctor-navbar .brand-title-row strong {
     font-size: 1.45rem;
   }
 
-  .doctor-navbar .navbar-brand-text span {
+  .doctor-navbar .clinic-name-pill {
+    max-width: 170px;
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+
+  .doctor-navbar .navbar-brand-text > span:not(.brand-title-row) {
     display: none;
   }
 
@@ -323,6 +405,12 @@
     display: none;
   }
 }
+
+@media (max-width: 520px) {
+  .doctor-navbar .clinic-name-pill {
+    display: none;
+  }
+}
 </style>
 
 <div class="doctor-navbar-wrap">
@@ -343,49 +431,55 @@
         </span>
 
         <span class="navbar-brand-text">
-          <strong>CliniQ</strong>
+          <span class="brand-title-row">
+            <strong>CliniQ</strong>
+
+            <span class="clinic-name-pill {{ $hasSelectedClinic ? 'has-clinic' : 'no-clinic' }}"
+                  title="{{ $doctorClinicDisplayName }}">
+              <i class="bi {{ $hasSelectedClinic ? 'bi-building' : 'bi-exclamation-circle' }}"></i>
+              {{ $doctorClinicDisplayName }}
+            </span>
+          </span>
+
           <span>Doctor portal</span>
         </span>
       </a>
     </div>
 
     <div class="navbar-right">
-    @include('partials.notification-bell')
+      @include('partials.notification-bell')
 
-  <div class="navbar-profile dropdown">
-    <button class="profile-btn dropdown-toggle"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false">
-      <span class="profile-avatar">{{ $userInitial }}</span>
-      <span class="profile-name">{{ $userName }}</span>
-      <i class="bi bi-chevron-down profile-chevron"></i>
-    </button>
+      <div class="navbar-profile dropdown">
+        <button class="profile-btn dropdown-toggle"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+          <span class="profile-avatar">{{ $userInitial }}</span>
+          <span class="profile-name">{{ $userName }}</span>
+          <i class="bi bi-chevron-down profile-chevron"></i>
+        </button>
 
-    <ul class="dropdown-menu dropdown-menu-end">
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a class="dropdown-item" href="{{ $profileUrl }}">
+              <i class="bi bi-person-gear me-2"></i>
+              Profile
+            </a>
+          </li>
 
+          <li><hr class="dropdown-divider"></li>
 
-      <li>
-        <a class="dropdown-item" href="{{ $profileUrl }}">
-          <i class="bi bi-person-gear me-2"></i>
-          Profile
-        </a>
-      </li>
-
-      <li><hr class="dropdown-divider"></li>
-
-      <li>
-        <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}">
-          @csrf
-          <button type="submit" class="dropdown-item text-danger">
-            <i class="bi bi-box-arrow-right me-2"></i>
-            Logout
-          </button>
-        </form>
-      </li>
-    </ul>
-  </div>
-</div>
-   
+          <li>
+            <form method="POST" action="{{ Route::has('logout') ? route('logout') : url('/logout') }}">
+              @csrf
+              <button type="submit" class="dropdown-item text-danger">
+                <i class="bi bi-box-arrow-right me-2"></i>
+                Logout
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
   </header>
 </div>

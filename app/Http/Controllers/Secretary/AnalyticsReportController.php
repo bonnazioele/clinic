@@ -11,6 +11,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AnalyticsReportController extends Controller
@@ -31,12 +32,18 @@ class AnalyticsReportController extends Controller
                 $endDate->toDateString(),
             ]);
 
-        $walkInsBase = QueueEntry::query()
+        $queueBase = QueueEntry::query()
             ->where('clinic_id', $activeClinicId)
             ->whereBetween('created_at', [
                 $startDate->copy()->startOfDay(),
                 $endDate->copy()->endOfDay(),
             ]);
+
+        $walkInsBase = clone $queueBase;
+
+        if (Schema::hasColumn('queue_entries', 'appointment_id')) {
+            $walkInsBase->whereNull('appointment_id');
+        }
 
         $appointmentSummary = [
             'total' => (clone $appointmentsBase)->count(),
@@ -73,10 +80,11 @@ class AnalyticsReportController extends Controller
         );
 
         $averageServiceMinutes = $this->averageServiceMinutes(
-            (clone $walkInsBase)
+            (clone $queueBase)
                 ->where('status', 'served')
-                ->whereNotNull('served_at')
-                ->get(['created_at', 'served_at'])
+                ->whereNotNull('service_started_at')
+                ->whereNotNull('service_ended_at')
+                ->get(['service_started_at', 'service_ended_at'])
         );
 
         $dailyAppointmentData = $this->dailyAppointmentData(
@@ -118,13 +126,18 @@ class AnalyticsReportController extends Controller
             ])
             ->count();
 
-        $previousWalkInsTotal = QueueEntry::query()
+        $previousWalkInsQuery = QueueEntry::query()
             ->where('clinic_id', $activeClinicId)
             ->whereBetween('created_at', [
                 $previousRange['start']->copy()->startOfDay(),
                 $previousRange['end']->copy()->endOfDay(),
-            ])
-            ->count();
+            ]);
+
+        if (Schema::hasColumn('queue_entries', 'appointment_id')) {
+            $previousWalkInsQuery->whereNull('appointment_id');
+        }
+
+        $previousWalkInsTotal = $previousWalkInsQuery->count();
 
         $trends = [
             'appointments' => $this->trendPercent(
@@ -712,16 +725,18 @@ class AnalyticsReportController extends Controller
 
         $minutes = $servedEntries
             ->map(function ($entry) {
-                if (! $entry->created_at || ! $entry->served_at) {
+                if (! $entry->service_started_at || ! $entry->service_ended_at) {
                     return null;
                 }
 
-                $createdAt = Carbon::parse($entry->created_at);
-                $servedAt = Carbon::parse($entry->served_at);
+                $startedAt = Carbon::parse($entry->service_started_at);
+                $endedAt = Carbon::parse($entry->service_ended_at);
 
-                return max(0, $createdAt->diffInMinutes($servedAt));
+                return max(0, $startedAt->diffInMinutes($endedAt));
             })
-            ->filter();
+            ->filter(function ($value) {
+                return ! is_null($value);
+            });
 
         if ($minutes->isEmpty()) {
             return 0;

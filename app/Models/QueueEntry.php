@@ -53,15 +53,14 @@ class QueueEntry extends Model
         'queue_number',
         'status',
         'served_at',
-        'patient_disposition',
-        'doctor_notes',
-        'prescription',
-        'follow_up_at',
+        'service_started_at',
+        'service_ended_at',
     ];
 
     protected $casts = [
         'served_at' => 'datetime',
-        'follow_up_at' => 'datetime',
+        'service_started_at' => 'datetime',
+        'service_ended_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -245,9 +244,12 @@ class QueueEntry extends Model
 
             $doctorId = (int) ($currentEntry->doctor_id ?: $currentEntry->appointment?->doctor_id ?: 0);
 
+            $now = now();
+
             $currentEntry->update([
                 'status' => 'served',
-                'served_at' => now(),
+                'served_at' => $now,
+                'service_ended_at' => $now,
             ]);
 
             if (
@@ -294,6 +296,7 @@ class QueueEntry extends Model
 
             $nextEntry->update([
                 'status' => 'now_serving',
+                'service_started_at' => now(),
             ]);
 
             if ($nextEntry->user) {
@@ -345,6 +348,37 @@ class QueueEntry extends Model
         }
 
         return \Carbon\Carbon::parse($this->served_at)->format('g:i A');
+    }
+
+    public function getFormattedServiceStartedTimeAttribute()
+    {
+        if (! $this->service_started_at) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($this->service_started_at)->format('g:i A');
+    }
+
+    public function getFormattedServiceEndedTimeAttribute()
+    {
+        if (! $this->service_ended_at) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($this->service_ended_at)->format('g:i A');
+    }
+
+    public function getServiceDurationMinutesAttribute(): int
+    {
+        if (! $this->service_started_at || ! $this->service_ended_at) {
+            return 0;
+        }
+
+        return max(
+            0,
+            \Carbon\Carbon::parse($this->service_started_at)
+                ->diffInMinutes(\Carbon\Carbon::parse($this->service_ended_at))
+        );
     }
 
     public function getStatusLabelAttribute(): string

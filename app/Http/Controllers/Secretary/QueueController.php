@@ -153,8 +153,11 @@ class QueueController extends Controller
                 return;
             }
 
+            $now = now();
+
             $fresh->update([
                 'status' => 'now_serving',
+                'service_started_at' => $fresh->service_started_at ?? $now,
             ]);
 
             if ($fresh->user) {
@@ -226,9 +229,12 @@ class QueueController extends Controller
                 return;
             }
 
+            $now = now();
+
             $fresh->update([
                 'status' => 'served',
-                'served_at' => now(),
+                'served_at' => $now,
+                'service_ended_at' => $now,
             ]);
 
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
@@ -253,8 +259,11 @@ class QueueController extends Controller
                 ->first();
 
             if ($next) {
+                $nextStartedAt = now();
+
                 $next->update([
                     'status' => 'now_serving',
+                    'service_started_at' => $next->service_started_at ?? $nextStartedAt,
                 ]);
 
                 if ($next->user) {

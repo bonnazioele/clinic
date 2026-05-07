@@ -364,7 +364,7 @@
                         <div class="metric-value">{{ $averageServiceMinutes }}m</div>
 
                         <div class="metric-note">
-                            Based on served walk-ins
+                            Now Serving to Done and Next
                         </div>
                     </div>
                 </div>
