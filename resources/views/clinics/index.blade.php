@@ -933,7 +933,7 @@
                     $lng = $clinic->gps_longitude;
 
                     $waitingCount = \App\Models\QueueEntry::where('clinic_id', $clinic->id)
-                      ->whereIn('status', ['waiting', 'called', 'now_serving'])
+                      ->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving'])
                       ->whereDate('created_at', now()->toDateString())
                       ->count();
                   @endphp

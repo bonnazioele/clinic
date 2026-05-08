@@ -9,6 +9,7 @@ class Appointment extends Model
 {
     public const ACTIVE_STATUSES = [
         'scheduled',
+        'in_progress',
     ];
 
     public const HISTORY_STATUSES = [
@@ -150,6 +151,7 @@ class Appointment extends Model
     {
         return match ($this->status) {
             'scheduled' => 'Scheduled',
+            'in_progress' => 'In Progress',
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'no_show' => 'No Show',
@@ -162,6 +164,7 @@ class Appointment extends Model
     {
         return match ($this->status) {
             'scheduled' => 'bg-primary',
+            'in_progress' => 'bg-info text-dark',
             'completed' => 'bg-success',
             'cancelled' => 'bg-danger',
             'no_show' => 'bg-dark',

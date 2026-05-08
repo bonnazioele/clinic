@@ -27,7 +27,7 @@ class ServiceQueueController extends Controller
         // TODO: Include walk-in counts when walk-in queue integrates with services.
         $queueEntriesForDay = QueueEntry::query()
             ->where('clinic_id', $activeClinicId)
-            ->whereIn('status', ['waiting', 'now_serving', 'served'])
+            ->whereIn('status', ['waiting', 'in_progress', 'now_serving', 'served'])
             ->whereHas('appointment', function ($appointmentQuery) use ($service, $today) {
                 $appointmentQuery
                     ->where('service_id', $service->id)
@@ -38,11 +38,13 @@ class ServiceQueueController extends Controller
             ->get();
 
         $waitingCount = $queueEntriesForDay->where('status', 'waiting')->count();
-        $nowServingCount = $queueEntriesForDay->where('status', 'now_serving')->count();
+        $nowServingCount = $queueEntriesForDay
+            ->filter(fn ($entry) => in_array($entry->status, ['in_progress', 'now_serving'], true))
+            ->count();
         $completedToday = $queueEntriesForDay->where('status', 'served')->count();
 
         $queueEntries = $queueEntriesForDay
-            ->whereIn('status', ['waiting', 'now_serving'])
+            ->whereIn('status', ['waiting', 'in_progress', 'now_serving'])
             ->groupBy(function ($entry) {
                 return $entry->appointment?->doctor_id;
             });
@@ -59,7 +61,7 @@ class ServiceQueueController extends Controller
 
         $doctorCards = $doctors->map(function ($doctor) use ($queueEntries) {
             $entries = $queueEntries->get($doctor->id, collect());
-            $nowServingEntry = $entries->firstWhere('status', 'now_serving');
+            $nowServingEntry = $entries->first(fn ($entry) => in_array($entry->status, ['in_progress', 'now_serving'], true));
             $waiting = $entries->where('status', 'waiting')->count();
 
             return [

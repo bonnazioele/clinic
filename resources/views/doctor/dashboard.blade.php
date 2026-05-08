@@ -40,7 +40,7 @@
     $todayAppointmentsCount = $appointments->count();
     $activeQueueCount = $queue->count();
 
-    $nowServingCount = $queue->where('status', 'now_serving')->count();
+    $nowServingCount = $queue->whereIn('status', ['in_progress', 'now_serving'])->count();
     $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'pending'])->count();
 
     if ($waitingCount === 0 && $nowServingCount === 0 && $activeQueueCount > 0) {
@@ -734,9 +734,9 @@
                     $statusClass = 'default';
                     $statusLabel = ucfirst(str_replace('_', ' ', $status));
 
-                    if ($status === 'now_serving') {
+                    if (in_array($status, ['in_progress', 'now_serving'], true)) {
                         $statusClass = 'serving';
-                        $statusLabel = 'Now Serving';
+                        $statusLabel = 'In Progress';
                     } elseif (in_array($status, ['waiting', 'called', 'pending'])) {
                         $statusClass = 'waiting';
                         $statusLabel = $status === 'called' ? 'Called' : 'Waiting';
@@ -766,7 +766,7 @@
                       </div>
 
                       <span class="doctor-status {{ $statusClass }}">
-                        <i class="bi {{ $status === 'now_serving' ? 'bi-play-circle-fill' : 'bi-hourglass-split' }}"></i>
+                        <i class="bi {{ in_array($status, ['in_progress', 'now_serving'], true) ? 'bi-play-circle-fill' : 'bi-hourglass-split' }}"></i>
                         {{ $statusLabel }}
                       </span>
                     </div>

@@ -16,6 +16,7 @@ use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\PatientAppointmentBooked;
 use App\Notifications\SecretaryAppointmentBooked;
 use App\Notifications\DoctorAppointmentBooked;
+use App\Services\QueueService;
 
 class AppointmentController extends Controller
 {
@@ -110,7 +111,7 @@ class AppointmentController extends Controller
             'doctor_id'        => 'nullable|exists:users,id',
             'appointment_date' => 'required|date',
             'appointment_time' => 'required',
-            'status'           => 'required|in:scheduled,completed,cancelled,no_show',
+            'status'           => 'required|in:scheduled,in_progress,completed,cancelled,no_show',
         ]);
 
         $activeClinicId = $this->activeClinicId($req);
@@ -284,6 +285,18 @@ class AppointmentController extends Controller
             return back()->withInput()->withErrors(['appointment_time' => 'Doctor already booked for that timeslot.']);
         }
 
+        $queueService = app(QueueService::class);
+
+        if (! $queueService->slotIsAvailable(
+            (int) $clinicId,
+            (int) $data['doctor_id'],
+            (int) $data['service_id'],
+            $appointmentDate,
+            $time
+        )) {
+            return back()->withInput()->withErrors(['appointment_time' => 'Doctor already booked for that timeslot.']);
+        }
+
         try {
             $appointment = Appointment::create([
                 'user_id'          => $patient->id,
@@ -314,15 +327,17 @@ class AppointmentController extends Controller
             $appointment->update(['medical_document' => $path]);
         }
 
-        $queueService = app(\App\Services\QueueService::class);
         $queueNumber = $queueService->getNextNumber($clinicId);
 
         \App\Models\QueueEntry::create([
-            'clinic_id'     => $clinicId,
-            'user_id'       => $patient->id,
-            'appointment_id'=> $appointment->id,
-            'queue_number'  => $queueNumber,
-            'status'        => 'waiting',
+            'clinic_id'           => $clinicId,
+            'user_id'             => $patient->id,
+            'appointment_id'      => $appointment->id,
+            'doctor_id'           => $data['doctor_id'],
+            'queue_number'        => $queueNumber,
+            'scheduled_slot_date' => $appointmentDate,
+            'scheduled_slot_time' => $time,
+            'status'              => 'waiting',
         ]);
 
         $appointment->user->notify(new PatientAppointmentBooked($appointment));

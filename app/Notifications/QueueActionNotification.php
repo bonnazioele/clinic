@@ -40,6 +40,7 @@ class QueueActionNotification extends Notification implements ShouldBroadcast
 
         $messages = [
             'call'   => "You are being called for your turn (#{$this->entry->queue_number}) at {$clinic}.",
+            'start'  => "Your queue (#{$this->entry->queue_number}) at {$clinic} is now in progress.",
             'resched'=> "Your queue (#{$this->entry->queue_number}) at {$clinic} has been rescheduled.",
             'done'   => "Your consultation at {$clinic} is marked as done. Thank you!",
         ];
@@ -55,6 +56,10 @@ class QueueActionNotification extends Notification implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('user.notifications.' . $this->entry->user_id)];
+        $userId = $this->entry->user_id
+            ?: $this->entry->appointment?->user_id
+            ?: $this->entry->patient?->user_id;
+
+        return [new PrivateChannel('user.notifications.' . $userId)];
     }
 }

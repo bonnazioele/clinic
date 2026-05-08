@@ -20,7 +20,7 @@
   })->values();
 
   $waitingCount = $waiting->count();
-  $nowServingCount = $waiting->where('status', 'now_serving')->count();
+  $nowServingCount = $waiting->whereIn('status', ['in_progress', 'now_serving'])->count();
   $waitingOnlyCount = $waiting->where('status', 'waiting')->count();
 @endphp
 
@@ -517,7 +517,14 @@
                 </td>
 
                 <td>
-                  @if($queueEntry->appointment)
+                  @if($queueEntry->scheduled_slot_date || $queueEntry->formatted_scheduled_slot_time)
+                    <div class="fw-bold">
+                      {{ $queueEntry->scheduledSlotDateString() ? \Carbon\Carbon::parse($queueEntry->scheduledSlotDateString())->format('M j, Y') : 'Today' }}
+                    </div>
+                    <small class="text-muted">
+                      {{ $queueEntry->formatted_scheduled_slot_time ?? 'Slot pending' }}
+                    </small>
+                  @elseif($queueEntry->appointment)
                     <div class="fw-bold">
                       {{ $queueEntry->appointment->appointment_date->format('M j, Y') }}
                     </div>
@@ -610,7 +617,14 @@
             @endif
 
             <div class="mt-3 mb-3">
-              @if($queueEntry->appointment)
+              @if($queueEntry->scheduled_slot_date || $queueEntry->formatted_scheduled_slot_time)
+                <div class="fw-bold">
+                  {{ $queueEntry->scheduledSlotDateString() ? \Carbon\Carbon::parse($queueEntry->scheduledSlotDateString())->format('M j, Y') : 'Today' }}
+                </div>
+                <small class="text-muted">
+                  {{ $queueEntry->formatted_scheduled_slot_time ?? 'Slot pending' }}
+                </small>
+              @elseif($queueEntry->appointment)
                 <div class="fw-bold">
                   {{ $queueEntry->appointment->appointment_date->format('M j, Y') }}
                 </div>

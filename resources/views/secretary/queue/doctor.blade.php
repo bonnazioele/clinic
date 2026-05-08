@@ -659,14 +659,14 @@
 
         <div class="queue-actions">
           @if ($nowServing)
-            <button class="btn btn-primary" type="button" disabled>
-              <i class="bi bi-play-fill"></i>
-              Serving
+            <button class="btn btn-primary queue-pause-action" type="button">
+              <i class="bi bi-pause-fill"></i>
+              Pause Queue
             </button>
           @elseif ($queueNextCallUrl)
-            <form method="POST" action="{{ $queueNextCallUrl }}">
+            <form method="POST" action="{{ $queueNextCallUrl }}" class="queue-start-form" data-keep-enabled>
               @csrf
-              <button class="btn btn-primary w-100" type="submit">
+              <button class="btn btn-primary w-100 queue-start-button" type="submit">
                 <i class="bi bi-play-fill"></i>
                 Start Next
               </button>
@@ -679,7 +679,7 @@
           @endif
 
           @if ($nowServingDoneNextUrl)
-            <form method="POST" action="{{ $nowServingDoneNextUrl }}">
+            <form method="POST" action="{{ $nowServingDoneNextUrl }}" data-keep-enabled>
               @csrf
               <button class="btn btn-done w-100" type="submit">
                 <i class="bi bi-check2-circle"></i>
@@ -694,7 +694,7 @@
           @endif
 
           @if ($nowServingNoShowUrl)
-            <form method="POST" action="{{ $nowServingNoShowUrl }}">
+            <form method="POST" action="{{ $nowServingNoShowUrl }}" data-keep-enabled>
               @csrf
               <button class="btn btn-outline-warning btn-no-show w-100" type="submit">
                 <i class="bi bi-exclamation-circle"></i>
@@ -789,7 +789,7 @@
               <th>#</th>
               <th>Patient Name</th>
               <th>Visit Type</th>
-              <th>Appt Time</th>
+              <th>Slot Time</th>
               <th>Status</th>
               <th class="text-end">Actions</th>
             </tr>
@@ -807,7 +807,7 @@
                 <td>{{ $row['visit'] }}</td>
                 <td>{{ $row['time'] }}</td>
                 <td>
-                  @if ($row['status_key'] === 'now_serving')
+                  @if (in_array($row['status_key'], ['in_progress', 'now_serving'], true))
                     <span class="status-badge status-in-progress">
                       <span class="dot"></span>
                       {{ $row['status'] }}
@@ -821,17 +821,17 @@
                 </td>
                 <td class="text-end">
                   <div class="row-action-links">
-                    @if ($row['status_key'] !== 'now_serving')
-                      <form method="POST" action="{{ $row['call_url'] }}">
+                    @if (! in_array($row['status_key'], ['in_progress', 'now_serving'], true))
+                      <form method="POST" action="{{ $row['call_url'] }}" data-keep-enabled>
                         @csrf
                         <button class="row-action-link" type="submit">Call</button>
                       </form>
                     @endif
-                    <form method="POST" action="{{ $row['no_show_url'] }}">
+                    <form method="POST" action="{{ $row['no_show_url'] }}" data-keep-enabled>
                       @csrf
                       <button class="row-action-link row-action-link--warning" type="submit">No Show</button>
                     </form>
-                    <form method="POST" action="{{ $row['cancel_url'] }}">
+                    <form method="POST" action="{{ $row['cancel_url'] }}" data-keep-enabled>
                       @csrf
                       <button class="row-action-link row-action-link--danger" type="submit">Cancel</button>
                     </form>
@@ -870,4 +870,28 @@
   <i class="bi bi-person-plus"></i>
   <span class="fab-tooltip">Add Patient to Queue</span>
 </button>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.queue-start-form').forEach(function (form) {
+      form.addEventListener('submit', function () {
+        const button = form.querySelector('.queue-start-button');
+
+        if (!button) return;
+
+        button.innerHTML = '<i class="bi bi-pause-fill"></i> Pause Queue';
+      });
+    });
+
+    document.querySelectorAll('.queue-pause-action').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const isPaused = button.getAttribute('aria-pressed') === 'true';
+        button.setAttribute('aria-pressed', isPaused ? 'false' : 'true');
+        button.innerHTML = isPaused
+          ? '<i class="bi bi-pause-fill"></i> Pause Queue'
+          : '<i class="bi bi-play-fill"></i> Resume Queue';
+      });
+    });
+  });
+</script>
 @endsection

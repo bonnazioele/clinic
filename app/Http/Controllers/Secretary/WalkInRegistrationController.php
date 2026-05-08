@@ -169,17 +169,33 @@ class WalkInRegistrationController extends Controller
             ], 422);
         }
 
-        $doctorHandlesService = DB::table('doctor_service')
+        $service = DB::table('doctor_service')
             ->join('services', 'services.id', '=', 'doctor_service.service_id')
             ->where('doctor_service.clinic_id', $clinicId)
             ->where('doctor_service.doctor_id', $doctor->id)
             ->where('services.name', $data['requested_service'])
-            ->exists();
+            ->select('services.id', 'services.name')
+            ->first();
 
-        if (! $doctorHandlesService) {
+        if (! $service) {
             return response()->json([
                 'success' => false,
                 'message' => 'The selected doctor does not handle this service in the active clinic.',
+            ], 422);
+        }
+
+        $slot = $this->queueService->findEarliestWalkInSlot(
+            $clinicId,
+            (int) $doctor->id,
+            (int) $service->id,
+            now(),
+            0
+        );
+
+        if (! $slot) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No available time slot remains for this doctor today.',
             ], 422);
         }
 
@@ -217,6 +233,8 @@ class WalkInRegistrationController extends Controller
                 'user_id' => null,
                 'appointment_id' => null,
                 'queue_number' => $this->queueService->getNextNumber($clinicId),
+                'scheduled_slot_date' => now()->toDateString(),
+                'scheduled_slot_time' => $slot['time_with_seconds'],
                 'status' => 'waiting',
             ]);
 
@@ -233,6 +251,7 @@ class WalkInRegistrationController extends Controller
                     'patient_name' => $patient->full_name,
                     'patient_status' => $patient->status,
                     'doctor_name' => $doctor->name,
+                    'scheduled_slot_time' => $slot['time'],
                     'visit_id' => $visit->id,
                     'queue_entry_id' => $queueEntry->id,
                     'queue_number' => $queueEntry->queue_number,

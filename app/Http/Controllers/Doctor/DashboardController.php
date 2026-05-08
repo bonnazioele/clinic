@@ -43,29 +43,9 @@ class DashboardController extends Controller
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinicId)
             ->forDoctor($doctor->id)
-            ->whereIn('status', ['waiting', 'called', 'now_serving', 'rescheduled'])
-            ->where(function ($query) use ($today) {
-                $query->where(function ($appointmentQueue) use ($today) {
-                    $appointmentQueue->whereNotNull('appointment_id')
-                        ->whereHas('appointment', function ($appointmentQuery) use ($today) {
-                            $appointmentQuery->whereDate('appointment_date', $today);
-                        });
-                })->orWhere(function ($walkInQueue) use ($today) {
-                    $walkInQueue->whereNull('appointment_id')
-                        ->whereNotNull('patient_id')
-                        ->whereDate('created_at', $today);
-                });
-            })
-            ->orderByRaw("
-                CASE
-                    WHEN status = 'now_serving' THEN 0
-                    WHEN status = 'called' THEN 1
-                    WHEN status = 'waiting' THEN 2
-                    WHEN status = 'rescheduled' THEN 3
-                    ELSE 4
-                END
-            ")
-            ->orderBy('queue_number')
+            ->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])
+            ->forDashboardDay($today)
+            ->orderByScheduledSlot()
             ->get();
 
         $servicesOfferedCount = $doctor->servicesForClinic($activeClinicId)

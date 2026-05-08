@@ -16,6 +16,7 @@ class QueueEntry extends Model
     public const DASHBOARD_STATUS_KEYS = [
         'waiting',
         'called',
+        'in_progress',
         'now_serving',
         'served',
         'completed',
@@ -26,7 +27,7 @@ class QueueEntry extends Model
 
     public static function activePatientStatuses(): array
     {
-        return ['waiting', 'called', 'now_serving'];
+        return ['waiting', 'called', 'in_progress', 'now_serving'];
     }
 
     public static function finalPatientStatuses(): array
@@ -41,7 +42,7 @@ class QueueEntry extends Model
 
     public static function activeLaneStatuses(): array
     {
-        return ['waiting', 'called', 'now_serving'];
+        return ['waiting', 'called', 'in_progress', 'now_serving'];
     }
 
     protected $fillable = [
@@ -51,6 +52,8 @@ class QueueEntry extends Model
         'doctor_id',
         'appointment_id',
         'queue_number',
+        'scheduled_slot_date',
+        'scheduled_slot_time',
         'status',
         'served_at',
         'service_started_at',
@@ -59,6 +62,7 @@ class QueueEntry extends Model
 
     protected $casts = [
         'served_at' => 'datetime',
+        'scheduled_slot_date' => 'date',
         'service_started_at' => 'datetime',
         'service_ended_at' => 'datetime',
         'created_at' => 'datetime',
@@ -135,7 +139,8 @@ class QueueEntry extends Model
     public function scopeForDashboardDay($query, $date)
     {
         return $query->where(function ($dayQuery) use ($date) {
-            $dayQuery->whereHas('appointment', function ($appointmentQuery) use ($date) {
+            $dayQuery->whereDate('scheduled_slot_date', $date)
+            ->orWhereHas('appointment', function ($appointmentQuery) use ($date) {
                 $appointmentQuery->whereDate('appointment_date', $date);
             })->orWhere(function ($walkInQuery) use ($date) {
                 $walkInQuery->walkIn()->createdOn($date);
@@ -200,6 +205,48 @@ class QueueEntry extends Model
         ]);
     }
 
+    public function scopeOrderByScheduledSlot($query, string $table = 'queue_entries')
+    {
+        return $query
+            ->orderByRaw("{$table}.scheduled_slot_date IS NULL")
+            ->orderBy("{$table}.scheduled_slot_date")
+            ->orderByRaw("{$table}.scheduled_slot_time IS NULL")
+            ->orderBy("{$table}.scheduled_slot_time")
+            ->orderBy("{$table}.priority_rank")
+            ->orderBy("{$table}.queue_number")
+            ->orderBy("{$table}.id");
+    }
+
+    public function scheduledSlotDateString(): ?string
+    {
+        if ($this->scheduled_slot_date) {
+            return $this->scheduled_slot_date->toDateString();
+        }
+
+        if ($this->appointment?->appointment_date) {
+            return $this->appointment->appointment_date->toDateString();
+        }
+
+        return $this->created_at?->toDateString();
+    }
+
+    public function scheduledSlotTimeString(): ?string
+    {
+        $raw = $this->getRawOriginal('scheduled_slot_time');
+
+        if (is_string($raw) && strlen($raw) >= 5) {
+            return substr($raw, 0, 5);
+        }
+
+        $appointmentTime = $this->appointment?->getRawOriginal('appointment_time');
+
+        if (is_string($appointmentTime) && strlen($appointmentTime) >= 5) {
+            return substr($appointmentTime, 0, 5);
+        }
+
+        return null;
+    }
+
     public function laneKey(): ?string
     {
         $doctorId = $this->doctor_id ?: $this->appointment?->doctor_id;
@@ -234,7 +281,7 @@ class QueueEntry extends Model
                 return ['result' => 'invalid'];
             }
 
-            if ($currentEntry->status !== 'now_serving') {
+            if (! in_array($currentEntry->status, ['in_progress', 'now_serving'], true)) {
                 return [
                     'result' => 'noop',
                     'current' => $currentEntry->fresh(),
@@ -282,7 +329,7 @@ class QueueEntry extends Model
                 ->forLaneCandidates($clinicId, $doctorId, $date)
                 ->whereKeyNot($currentEntry->id)
                 ->withStatuses(self::nextCandidateStatuses())
-                ->orderBy('queue_number')
+                ->orderByScheduledSlot()
                 ->lockForUpdate()
                 ->first();
 
@@ -295,7 +342,7 @@ class QueueEntry extends Model
             }
 
             $nextEntry->update([
-                'status' => 'now_serving',
+                'status' => 'in_progress',
                 'service_started_at' => now(),
             ]);
 
@@ -304,7 +351,7 @@ class QueueEntry extends Model
             }
 
             $nextEntry = $nextEntry->fresh(['appointment.user', 'patient', 'clinic']);
-            event(new QueueUpdated($nextEntry, 'now_serving'));
+            event(new QueueUpdated($nextEntry, 'in_progress'));
 
             return [
                 'result' => 'served_and_promoted',
@@ -316,10 +363,16 @@ class QueueEntry extends Model
 
     public function isNextInLine()
     {
-        return $this->status === 'waiting'
-            && $this->queue_number === $this->clinic->queueEntries()
-                ->waiting()
-                ->min('queue_number');
+        if ($this->status !== 'waiting') {
+            return false;
+        }
+
+        $next = $this->clinic->queueEntries()
+            ->waiting()
+            ->orderByScheduledSlot()
+            ->first();
+
+        return $next && (int) $next->id === (int) $this->id;
     }
 
     public function getEstimatedWaitTime()
@@ -328,12 +381,27 @@ class QueueEntry extends Model
             return 0;
         }
 
-        $ahead = $this->clinic->queueEntries()
-            ->whereIn('status', ['waiting', 'called', 'now_serving'])
-            ->where('queue_number', '<', $this->queue_number)
+        $entries = $this->clinic->queueEntries()
+            ->whereIn('status', self::activePatientStatuses())
+            ->orderByScheduledSlot()
+            ->get(['id', 'queue_number', 'scheduled_slot_date', 'scheduled_slot_time']);
+
+        $ahead = $entries
+            ->takeUntil(fn ($entry) => (int) $entry->id === (int) $this->id)
             ->count();
 
         return $ahead * 15;
+    }
+
+    public function getFormattedScheduledSlotTimeAttribute(): ?string
+    {
+        $time = $this->scheduledSlotTimeString();
+
+        if (! $time) {
+            return null;
+        }
+
+        return \Carbon\Carbon::createFromFormat('H:i', $time)->format('g:i A');
     }
 
     public function getFormattedCreatedTimeAttribute()
@@ -386,6 +454,7 @@ class QueueEntry extends Model
         return match ($this->status) {
             'waiting' => 'Waiting',
             'called' => 'Called',
+            'in_progress' => 'In Progress',
             'now_serving' => 'Now Serving',
             'served' => 'Completed',
             'completed' => 'Completed',
@@ -401,6 +470,7 @@ class QueueEntry extends Model
         return match ($this->status) {
             'waiting' => 'secondary',
             'called' => 'info',
+            'in_progress' => 'primary',
             'now_serving' => 'primary',
             'served' => 'success',
             'completed' => 'success',

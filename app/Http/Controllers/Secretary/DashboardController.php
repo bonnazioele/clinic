@@ -42,14 +42,14 @@ class DashboardController extends Controller
             ->count();
 
         $nowServingCount = (clone $queueEntriesForDashboardDay)
-            ->where('status', 'now_serving')
+            ->whereIn('status', ['in_progress', 'now_serving'])
             ->count();
 
         $onDutyDoctorIds = (clone $queueEntriesForDashboardDay)
-            ->where('status', 'now_serving')
+            ->whereIn('status', ['in_progress', 'now_serving'])
             ->with('appointment:id,doctor_id')
             ->get()
-            ->pluck('appointment.doctor_id')
+            ->map(fn ($entry) => $entry->doctor_id ?: $entry->appointment?->doctor_id)
             ->filter()
             ->unique();
 
@@ -85,7 +85,7 @@ class DashboardController extends Controller
                     ->count();
 
                 $servingDoctors = $serviceEntries
-                    ->where('status', 'now_serving')
+                    ->whereIn('status', ['in_progress', 'now_serving'])
                     ->map(fn ($entry) => $entry->doctor_id ?: $entry->appointment?->doctor_id)
                     ->filter()
                     ->unique()
@@ -119,13 +119,18 @@ class DashboardController extends Controller
                 $laneEntries = $laneEntriesByKey->get($clinic->id . ':' . $doctor->id, collect());
 
                 $nowServing = $laneEntries
-                    ->where('status', 'now_serving')
+                    ->filter(fn ($entry) => in_array($entry->status, ['in_progress', 'now_serving'], true))
                     ->sortByDesc('updated_at')
                     ->first();
 
                 $nextCandidates = $laneEntries
                     ->filter(fn ($entry) => in_array($entry->status, QueueEntry::nextCandidateStatuses(), true))
-                    ->sortBy('queue_number')
+                    ->sortBy(fn (QueueEntry $entry) => sprintf(
+                        '%s %s %010d',
+                        $entry->scheduledSlotDateString() ?? '9999-12-31',
+                        $entry->scheduledSlotTimeString() ?? '99:99',
+                        $entry->queue_number
+                    ))
                     ->values();
 
                 $firstNextCandidate = $nextCandidates->first();

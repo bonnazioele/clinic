@@ -63,8 +63,7 @@ class DoctorQueueController extends Controller
                 'user:id,name,email,phone',
             ])
             ->whereIn('status', QueueEntry::activeLaneStatuses())
-            ->orderByRaw("CASE status WHEN 'now_serving' THEN 0 WHEN 'called' THEN 1 WHEN 'waiting' THEN 2 WHEN 'rescheduled' THEN 3 ELSE 4 END")
-            ->orderBy('queue_number')
+            ->orderByScheduledSlot()
             ->get();
 
         $visitsByPatient = PatientVisit::query()
@@ -76,10 +75,15 @@ class DoctorQueueController extends Controller
             ->get()
             ->groupBy('patient_id');
 
-        $nowServing = $queueEntries->firstWhere('status', 'now_serving');
+        $nowServing = $queueEntries->first(fn ($entry) => in_array($entry->status, ['in_progress', 'now_serving'], true));
         $nextEntry = $queueEntries
             ->whereIn('status', QueueEntry::nextCandidateStatuses())
-            ->sortBy('queue_number')
+            ->sortBy(fn (QueueEntry $entry) => sprintf(
+                '%s %s %010d',
+                $entry->scheduledSlotDateString() ?? '9999-12-31',
+                $entry->scheduledSlotTimeString() ?? '99:99',
+                $entry->queue_number
+            ))
             ->first();
 
         $queueRows = $queueEntries->map(function (QueueEntry $entry) use ($visitsByPatient) {
@@ -92,10 +96,11 @@ class DoctorQueueController extends Controller
                 'name' => $entry->display_name,
                 'id' => $entry->patient?->patient_number ?? ($entry->user_id ? 'USR-' . $entry->user_id : 'QE-' . $entry->id),
                 'visit' => $entry->is_walk_in ? 'Walk-in' : 'Appointment',
-                'time' => $appointmentTime ? $appointmentTime->format('g:i A') : ($visit?->time_in?->format('g:i A') ?? $entry->created_at->format('g:i A')),
+                'time' => $entry->formatted_scheduled_slot_time
+                    ?? ($appointmentTime ? $appointmentTime->format('g:i A') : ($visit?->time_in?->format('g:i A') ?? $entry->created_at->format('g:i A'))),
                 'status' => $entry->status_label,
                 'status_key' => $entry->status,
-                'active' => $entry->status === 'now_serving',
+                'active' => in_array($entry->status, ['in_progress', 'now_serving'], true),
                 'call_url' => route('secretary.queue.call', ['clinic' => $entry->clinic_id, 'entry' => $entry->id]),
                 'done_next_url' => route('secretary.queue.done_next', ['clinic' => $entry->clinic_id, 'entry' => $entry->id]),
                 'no_show_url' => route('secretary.queue.no_show', ['clinic' => $entry->clinic_id, 'entry' => $entry->id]),

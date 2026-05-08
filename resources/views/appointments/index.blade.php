@@ -8,7 +8,7 @@
     $upcomingAppointments = $upcomingAppointments ?? collect();
     $pastAppointments = $pastAppointments ?? collect();
 
-    $activeQueueStatuses = ['waiting', 'called', 'now_serving'];
+    $activeQueueStatuses = ['waiting', 'called', 'in_progress', 'now_serving'];
 
     $totalActive = $todayAppointments->count() + $upcomingAppointments->count();
     $totalHistory = $pastAppointments->count();

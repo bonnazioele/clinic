@@ -84,7 +84,7 @@ class ClinicServiceController extends Controller
         if ($serviceIds->isNotEmpty()) {
             $todayQueueCounts = QueueEntry::query()
                 ->where('queue_entries.clinic_id', $clinic->id)
-                ->whereIn('queue_entries.status', ['waiting', 'now_serving', 'rescheduled'])
+                ->whereIn('queue_entries.status', ['waiting', 'in_progress', 'now_serving', 'rescheduled'])
                 ->join('appointments', 'appointments.id', '=', 'queue_entries.appointment_id')
                 ->whereDate('appointments.appointment_date', today())
                 ->whereIn('appointments.service_id', $serviceIds)
@@ -115,7 +115,7 @@ class ClinicServiceController extends Controller
                 })
                 ->where('qe.clinic_id', $clinic->id)
                 ->whereDate('a.appointment_date', today())
-                ->whereIn('qe.status', ['waiting', 'now_serving'])
+                ->whereIn('qe.status', ['waiting', 'in_progress', 'now_serving'])
                 ->whereNotNull('a.doctor_id')
                 ->whereIn('a.service_id', $serviceIds)
                 ->where('u.is_doctor', true)
@@ -364,7 +364,7 @@ class ClinicServiceController extends Controller
     {
         return QueueEntry::query()
             ->where('queue_entries.clinic_id', $clinic->id)
-            ->whereIn('queue_entries.status', ['waiting', 'now_serving', 'rescheduled'])
+            ->whereIn('queue_entries.status', ['waiting', 'in_progress', 'now_serving', 'rescheduled'])
             ->join('appointments', 'appointments.id', '=', 'queue_entries.appointment_id')
             ->whereDate('appointments.appointment_date', today())
             ->where('appointments.service_id', $service->id)

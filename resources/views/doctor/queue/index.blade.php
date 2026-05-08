@@ -433,9 +433,10 @@
           $isWalkIn = $entry->is_walk_in;
           $serviceName = $entry->appointment?->service?->name ?? 'Walk-in service';
           $appointmentTime = $entry->appointment?->appointment_time;
+          $slotTime = $entry->formatted_scheduled_slot_time;
         @endphp
 
-        <div class="queue-row {{ $entry->status === 'now_serving' ? 'now-serving' : '' }}">
+        <div class="queue-row {{ in_array($entry->status, ['in_progress', 'now_serving'], true) ? 'now-serving' : '' }}">
           <div class="row align-items-center g-3">
 
             <div class="col-12 col-lg-1">
@@ -478,7 +479,10 @@
               <div class="queue-label">Schedule</div>
 
               <div class="fw-bold text-dark">
-                @if($appointmentTime)
+                @if($slotTime)
+                  <i class="bi bi-clock text-primary me-1"></i>
+                  {{ $slotTime }}
+                @elseif($appointmentTime)
                   <i class="bi bi-clock text-primary me-1"></i>
                   {{ function_exists('time12') ? time12($appointmentTime) : \Carbon\Carbon::parse($appointmentTime)->format('h:i A') }}
                 @else
@@ -491,7 +495,7 @@
               <div class="queue-label">Status</div>
 
               <span class="status-pill bg-{{ $entry->status_badge_class }} {{ in_array($entry->status_badge_class, ['warning', 'info']) ? 'text-dark' : 'text-white' }}">
-                <i class="bi {{ $entry->status === 'now_serving' ? 'bi-megaphone-fill' : 'bi-clock-history' }}"></i>
+                <i class="bi {{ in_array($entry->status, ['in_progress', 'now_serving'], true) ? 'bi-megaphone-fill' : 'bi-clock-history' }}"></i>
                 {{ $entry->status_label }}
               </span>
             </div>

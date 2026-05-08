@@ -34,50 +34,9 @@ class QueueController extends Controller
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinic->id)
             ->forDoctor($doctor->id)
-            ->whereIn('status', ['waiting', 'called', 'now_serving', 'rescheduled'])
-            ->where(function ($query) use ($today) {
-                $query->where(function ($appointmentQueue) use ($today) {
-                    $appointmentQueue->whereNotNull('appointment_id')
-                        ->whereHas('appointment', function ($appointmentQuery) use ($today) {
-                            $appointmentQuery->whereDate('appointment_date', $today);
-                        });
-                })->orWhere(function ($walkInQueue) use ($today) {
-                    $walkInQueue->whereNull('appointment_id')
-                        ->whereNotNull('patient_id')
-                        ->whereDate('created_at', $today);
-                });
-            });
-
-        if ($activeClinic->queue_mode === 'priority') {
-            $waitingQuery
-                ->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
-                ->select('queue_entries.*')
-                ->orderByRaw("
-                    CASE
-                        WHEN queue_entries.status = 'now_serving' THEN 0
-                        WHEN queue_entries.status = 'called' THEN 1
-                        WHEN queue_entries.status = 'waiting' THEN 2
-                        WHEN queue_entries.status = 'rescheduled' THEN 3
-                        ELSE 4
-                    END
-                ")
-                ->orderByRaw('appointments.appointment_date IS NULL')
-                ->orderBy('appointments.appointment_date')
-                ->orderBy('appointments.appointment_time')
-                ->orderBy('queue_entries.queue_number');
-        } else {
-            $waitingQuery
-                ->orderByRaw("
-                    CASE
-                        WHEN status = 'now_serving' THEN 0
-                        WHEN status = 'called' THEN 1
-                        WHEN status = 'waiting' THEN 2
-                        WHEN status = 'rescheduled' THEN 3
-                        ELSE 4
-                    END
-                ")
-                ->orderBy('queue_number');
-        }
+            ->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])
+            ->forDashboardDay($today)
+            ->orderByScheduledSlot();
 
         $waiting = $waitingQuery->get();
 
@@ -110,7 +69,7 @@ class QueueController extends Controller
                 ->lockForUpdate()
                 ->find($entry->id);
 
-            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'now_serving', 'rescheduled'], true)) {
+            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'], true)) {
                 return;
             }
 

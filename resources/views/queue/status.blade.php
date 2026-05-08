@@ -187,6 +187,18 @@
     border: 1px solid #ffe7a2;
   }
 
+  .status-badge.called {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+  }
+
+  .status-badge.in-progress {
+    background: #e8f2ff;
+    color: #0d6efd;
+    border: 1px solid #bfdbfe;
+  }
+
   .status-badge.served {
     background: #e8fff3;
     color: #0f9f6e;
@@ -615,6 +627,18 @@
     margin-bottom: 0.85rem;
   }
 
+  .queue-mini-status.called {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #bae6fd;
+  }
+
+  .queue-mini-status.in-progress {
+    background: #e8f2ff;
+    color: #0d6efd;
+    border-color: #bfdbfe;
+  }
+
   .queue-mini-footer {
     padding-top: 0.7rem;
     margin-top: 0.75rem;
@@ -816,9 +840,21 @@
                   $visitDateClass = 'later';
                 }
               }
+
+              $entryStatus = $entry->status ?? 'waiting';
+              $appointmentStatus = $entry->appointment?->status;
+              $isInProgress = in_array($entryStatus, ['in_progress', 'now_serving'], true)
+                || $appointmentStatus === 'in_progress';
+              $isCalled = $entryStatus === 'called';
+              $isWaiting = $entryStatus === 'waiting' && ! $isInProgress;
+              $isActiveQueue = $isWaiting || $isCalled || $isInProgress;
+              $statusBadgeClass = $isInProgress ? 'in-progress' : ($isCalled ? 'called' : ($isWaiting ? 'waiting' : 'served'));
+              $statusIcon = $isInProgress ? 'bi-play-circle-fill' : ($isCalled ? 'bi-megaphone-fill' : ($isWaiting ? 'bi-clock-fill' : 'bi-check-circle-fill'));
+              $statusLabel = $isInProgress ? 'In Progress' : ($isCalled ? 'Called' : ($isWaiting ? 'Waiting' : $entry->status_label));
+              $focusCardClass = $isActiveQueue ? '' : 'served';
             @endphp
 
-            <article class="queue-focus-card {{ $entry->status === 'waiting' ? '' : 'served' }}">
+            <article class="queue-focus-card {{ $focusCardClass }}">
               <div class="queue-status-header">
                 <div class="queue-clinic-wrap">
                   <div class="queue-clinic-icon">
@@ -852,17 +888,10 @@
                   </div>
                 </div>
 
-                @if($entry->status === 'waiting')
-                  <span class="status-badge waiting">
-                    <i class="bi bi-clock-fill"></i>
-                    Waiting
-                  </span>
-                @else
-                  <span class="status-badge served">
-                    <i class="bi bi-check-circle-fill"></i>
-                    Served
-                  </span>
-                @endif
+                <span class="status-badge {{ $statusBadgeClass }}">
+                  <i class="bi {{ $statusIcon }}"></i>
+                  {{ $statusLabel }}
+                </span>
               </div>
 
               <div class="queue-main-status">
@@ -870,9 +899,13 @@
                   <div class="queue-number-label">Your Queue Number</div>
                   <div class="queue-number">#{{ $entry->queue_number }}</div>
 
-                  @if($entry->status === 'waiting')
+                  @if($isWaiting || $isCalled)
                     <div class="queue-number-help">
                       Keep this number visible while waiting at the clinic.
+                    </div>
+                  @elseif($isInProgress)
+                    <div class="queue-number-help">
+                      Your consultation is currently in progress.
                     </div>
                   @else
                     <div class="queue-number-help">
@@ -881,7 +914,7 @@
                   @endif
                 </div>
 
-                @if($entry->status === 'waiting')
+                @if($isWaiting || $isCalled)
                   <div class="queue-summary-grid">
                     <div class="summary-box">
                       <div class="summary-icon">
@@ -910,6 +943,35 @@
                       <div class="summary-label">Expected Call</div>
                       <div class="summary-value">{{ $estimatedTime->format('g:i A') }}</div>
                       <div class="summary-sub">Estimated only</div>
+                    </div>
+                  </div>
+                @elseif($isInProgress)
+                  <div class="queue-summary-grid">
+                    <div class="summary-box">
+                      <div class="summary-icon">
+                        <i class="bi bi-play-circle"></i>
+                      </div>
+                      <div class="summary-label">Queue Status</div>
+                      <div class="summary-value">In Progress</div>
+                      <div class="summary-sub">Your consultation has started</div>
+                    </div>
+
+                    <div class="summary-box">
+                      <div class="summary-icon">
+                        <i class="bi bi-clock-history"></i>
+                      </div>
+                      <div class="summary-label">Started At</div>
+                      <div class="summary-value">{{ $entry->formatted_service_started_time ?? 'Now' }}</div>
+                      <div class="summary-sub">Service start time</div>
+                    </div>
+
+                    <div class="summary-box">
+                      <div class="summary-icon">
+                        <i class="bi bi-hospital"></i>
+                      </div>
+                      <div class="summary-label">Clinic</div>
+                      <div class="summary-value">{{ $entry->clinic->name }}</div>
+                      <div class="summary-sub">Queue location</div>
                     </div>
                   </div>
                 @else
@@ -944,10 +1006,10 @@
                 @endif
               </div>
 
-              @if($entry->status === 'waiting')
+              @if($isWaiting || $isCalled)
                 <div class="queue-message">
                   <i class="bi bi-info-circle me-2"></i>
-                  <strong>You are still waiting.</strong>
+                  <strong>{{ $isCalled ? 'You have been called.' : 'You are still waiting.' }}</strong>
                   There {{ $ahead == 1 ? 'is' : 'are' }} {{ $ahead }} {{ $ahead == 1 ? 'person' : 'people' }} ahead of you.
                   Your estimated call time is around {{ $estimatedTime->format('g:i A') }}.
                 </div>
@@ -1028,6 +1090,12 @@
                     <li>The expected call time is only an estimate and may still change.</li>
                   </ul>
                 </div>
+              @elseif($isInProgress)
+                <div class="queue-message">
+                  <i class="bi bi-play-circle me-2"></i>
+                  <strong>Your consultation is in progress.</strong>
+                  Please follow the clinic staff or doctor's instructions.
+                </div>
               @else
                 <div class="queue-message served">
                   <i class="bi bi-check-circle me-2"></i>
@@ -1037,7 +1105,7 @@
               @endif
 
               <div class="queue-actions">
-                @if($entry->status === 'waiting')
+                @if($isWaiting || $isCalled)
                   <form method="POST"
                         action="{{ route('queue.leave', $entry) }}"
                         data-confirm="Leave this queue? Your spot will be forfeited."
@@ -1099,6 +1167,15 @@
                         $miniVisitDateClass = 'later';
                       }
                     }
+
+                    $miniStatus = $queueEntry->status ?? 'waiting';
+                    $miniAppointmentStatus = $queueEntry->appointment?->status;
+                    $miniIsInProgress = in_array($miniStatus, ['in_progress', 'now_serving'], true)
+                      || $miniAppointmentStatus === 'in_progress';
+                    $miniIsCalled = $miniStatus === 'called';
+                    $miniStatusClass = $miniIsInProgress ? 'in-progress' : ($miniIsCalled ? 'called' : 'waiting');
+                    $miniStatusIcon = $miniIsInProgress ? 'bi-play-circle-fill' : ($miniIsCalled ? 'bi-megaphone-fill' : 'bi-clock-fill');
+                    $miniStatusLabel = $miniIsInProgress ? 'In Progress' : ($miniIsCalled ? 'Called' : 'Waiting');
                   @endphp
 
                   <article class="queue-mini-card">
@@ -1109,7 +1186,7 @@
 
                       <div>
                         <h5 class="queue-mini-clinic">{{ $queueEntry->clinic->name }}</h5>
-                        <div class="queue-mini-sub">Currently waiting</div>
+                        <div class="queue-mini-sub">{{ $miniStatusLabel }}</div>
                       </div>
                     </div>
 
@@ -1128,9 +1205,9 @@
                       </div>
                     @endif
 
-                    <div class="queue-mini-status">
-                      <i class="bi bi-clock-fill"></i>
-                      Waiting
+                    <div class="queue-mini-status {{ $miniStatusClass }}">
+                      <i class="bi {{ $miniStatusIcon }}"></i>
+                      {{ $miniStatusLabel }}
                     </div>
 
                     <div class="queue-mini-footer">

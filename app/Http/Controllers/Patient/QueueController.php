@@ -56,11 +56,14 @@ class QueueController extends Controller
         $number = $this->queue->getNextNumber($clinic->id);
 
         $entry = QueueEntry::create([
-            'clinic_id'      => $clinic->id,
-            'user_id'        => Auth::id(),
-            'appointment_id' => $appointment ? $appointment->id : null,
-            'queue_number'   => $number,
-            'status'         => 'waiting',
+            'clinic_id'           => $clinic->id,
+            'user_id'             => Auth::id(),
+            'appointment_id'      => $appointment ? $appointment->id : null,
+            'doctor_id'           => $appointment?->doctor_id,
+            'queue_number'        => $number,
+            'scheduled_slot_date' => $appointment?->appointment_date?->toDateString(),
+            'scheduled_slot_time' => $appointment?->getRawOriginal('appointment_time'),
+            'status'              => 'waiting',
         ]);
 
         event(new QueueUpdated($entry, 'created'));
@@ -84,10 +87,12 @@ class QueueController extends Controller
 
             $ahead = 0;
 
-            if (in_array($entry->status, ['waiting', 'called', 'now_serving'], true)) {
+            if (in_array($entry->status, QueueEntry::activePatientStatuses(), true)) {
                 $ahead = QueueEntry::where('clinic_id', $entry->clinic_id)
-                    ->whereIn('status', ['waiting', 'called', 'now_serving'])
-                    ->where('queue_number', '<', $entry->queue_number)
+                    ->whereIn('status', QueueEntry::activePatientStatuses())
+                    ->orderByScheduledSlot()
+                    ->get(['id', 'queue_number', 'scheduled_slot_date', 'scheduled_slot_time'])
+                    ->takeUntil(fn ($candidate) => (int) $candidate->id === (int) $entry->id)
                     ->count();
             }
 
@@ -97,7 +102,7 @@ class QueueController extends Controller
         $userQueues = QueueEntry::with(['clinic', 'appointment.service', 'appointment.doctor'])
             ->where('user_id', Auth::id())
             ->whereIn('status', $activeStatuses)
-            ->orderByDesc('created_at')
+            ->orderByScheduledSlot()
             ->get();
 
         return view('queue.status', compact('userQueues'));

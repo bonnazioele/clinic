@@ -931,7 +931,12 @@
 
         if (!btn) return;
 
-        if (form.hasAttribute('data-confirm') || btn.hasAttribute('data-confirm')) return;
+        if (
+          form.hasAttribute('data-confirm')
+          || btn.hasAttribute('data-confirm')
+          || form.hasAttribute('data-keep-enabled')
+          || btn.hasAttribute('data-keep-enabled')
+        ) return;
 
         btn.classList.add('loading');
         btn.disabled = true;

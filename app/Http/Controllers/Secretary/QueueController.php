@@ -6,9 +6,10 @@ use App\Events\QueueUpdated;
 use App\Http\Controllers\Concerns\InteractsWithClinic;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
+use App\Models\PatientVisit;
 use App\Models\QueueEntry;
 use App\Notifications\AppointmentStatusChanged;
-use App\Notifications\QueueNotification;
+use App\Notifications\QueueActionNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,7 @@ class QueueController extends Controller
     private array $activeQueueStatuses = [
         'waiting',
         'called',
+        'in_progress',
         'now_serving',
     ];
 
@@ -28,12 +30,14 @@ class QueueController extends Controller
     ];
 
     private array $completableStatuses = [
+        'in_progress',
         'now_serving',
     ];
 
     private array $modifiableStatuses = [
         'waiting',
         'called',
+        'in_progress',
         'now_serving',
     ];
 
@@ -52,7 +56,7 @@ class QueueController extends Controller
             ->with([
                 'queueEntries' => function ($q) {
                     $q->whereIn('status', $this->activeQueueStatuses)
-                        ->orderBy('queue_number')
+                        ->orderByScheduledSlot()
                         ->with(['user', 'patient']);
                 },
             ])
@@ -87,32 +91,7 @@ class QueueController extends Controller
             ->where('clinic_id', $activeClinicId)
             ->whereIn('status', $this->activeQueueStatuses);
 
-        if ($clinic->queueModeIs('priority')) {
-            $waitingQuery->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
-                ->select('queue_entries.*')
-                ->orderByRaw("
-                    CASE
-                        WHEN queue_entries.status = 'now_serving' THEN 0
-                        WHEN queue_entries.status = 'called' THEN 1
-                        WHEN queue_entries.status = 'waiting' THEN 2
-                        ELSE 3
-                    END
-                ")
-                ->orderByRaw('appointments.appointment_date IS NULL')
-                ->orderBy('appointments.appointment_date')
-                ->orderBy('appointments.appointment_time')
-                ->orderBy('queue_number');
-        } else {
-            $waitingQuery->orderByRaw("
-                CASE
-                    WHEN status = 'now_serving' THEN 0
-                    WHEN status = 'called' THEN 1
-                    WHEN status = 'waiting' THEN 2
-                    ELSE 3
-                END
-            ")
-            ->orderBy('queue_number');
-        }
+        $waitingQuery->orderByScheduledSlot();
 
         $waiting = $waitingQuery->get();
 
@@ -127,8 +106,9 @@ class QueueController extends Controller
         $message = null;
         $messageType = 'status';
         $updatedEntry = null;
+        $promotedEntry = null;
 
-        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry) {
+        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry, &$promotedEntry) {
             $fresh = QueueEntry::query()
                 ->where('clinic_id', $activeClinicId)
                 ->whereKey($entry->id)
@@ -141,8 +121,8 @@ class QueueController extends Controller
                 return;
             }
 
-            if ($fresh->status === 'now_serving') {
-                $message = "Queue #{$fresh->queue_number} is already now serving.";
+            if (in_array($fresh->status, ['in_progress', 'now_serving'], true)) {
+                $message = "Queue #{$fresh->queue_number} is already in progress.";
                 $updatedEntry = $fresh;
                 return;
             }
@@ -156,20 +136,19 @@ class QueueController extends Controller
             $now = now();
 
             $fresh->update([
-                'status' => 'now_serving',
+                'status' => 'in_progress',
                 'service_started_at' => $fresh->service_started_at ?? $now,
             ]);
 
-            if ($fresh->user) {
-                $fresh->user->notify(new QueueNotification($fresh));
-            }
+            $this->markRelatedRecordInProgress($fresh);
 
-            $updatedEntry = $fresh->fresh();
-            $message = "Now serving queue #{$fresh->queue_number}.";
+            $updatedEntry = $fresh->fresh(['appointment.user', 'patient.user', 'clinic']);
+            $this->notifyQueueAction($updatedEntry, 'start');
+            $message = "Queue #{$fresh->queue_number} is now in progress.";
         });
 
         if ($updatedEntry) {
-            event(new QueueUpdated($updatedEntry, 'now_serving'));
+            event(new QueueUpdated($updatedEntry, 'in_progress'));
         }
 
         return back()->with($messageType, $message ?? 'Queue entry updated.');
@@ -247,32 +226,35 @@ class QueueController extends Controller
                 }
             }
 
-            $completedEntry = $fresh->fresh();
+            $completedEntry = $fresh->fresh(['appointment.user', 'patient.user', 'clinic']);
+            $this->notifyQueueAction($completedEntry, 'done');
 
-            $next = QueueEntry::query()
-                ->where('clinic_id', $activeClinicId)
-                ->where('status', 'waiting')
-                ->whereDate('created_at', now()->toDateString())
-                ->whereKeyNot($fresh->id)
-                ->orderBy('queue_number')
-                ->lockForUpdate()
-                ->first();
+            $doctorId = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
+
+            $next = $doctorId > 0
+                ? QueueEntry::query()
+                    ->forLaneCandidates($activeClinicId, $doctorId, now()->toDateString())
+                    ->whereKeyNot($fresh->id)
+                    ->withStatuses(QueueEntry::nextCandidateStatuses())
+                    ->orderByScheduledSlot()
+                    ->lockForUpdate()
+                    ->first()
+                : null;
 
             if ($next) {
                 $nextStartedAt = now();
 
                 $next->update([
-                    'status' => 'now_serving',
+                    'status' => 'in_progress',
                     'service_started_at' => $next->service_started_at ?? $nextStartedAt,
                 ]);
 
-                if ($next->user) {
-                    $next->user->notify(new QueueNotification($next));
-                }
+                $this->markRelatedRecordInProgress($next);
 
-                $promotedEntry = $next->fresh();
+                $promotedEntry = $next->fresh(['appointment.user', 'patient.user', 'clinic']);
+                $this->notifyQueueAction($promotedEntry, 'start');
 
-                $message = "Completed #{$fresh->queue_number} and moved #{$next->queue_number} to now serving.";
+                $message = "Completed #{$fresh->queue_number} and moved #{$next->queue_number} to in progress.";
                 return;
             }
 
@@ -284,7 +266,7 @@ class QueueController extends Controller
         }
 
         if ($promotedEntry) {
-            event(new QueueUpdated($promotedEntry, 'now_serving'));
+            event(new QueueUpdated($promotedEntry, 'in_progress'));
         }
 
         if ($redirectToDashboard) {
@@ -370,8 +352,9 @@ class QueueController extends Controller
         $message = null;
         $messageType = 'status';
         $updatedEntry = null;
+        $promotedEntry = null;
 
-        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry) {
+        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry, &$promotedEntry) {
             $fresh = QueueEntry::query()
                 ->where('clinic_id', $activeClinicId)
                 ->whereKey($entry->id)
@@ -425,11 +408,13 @@ class QueueController extends Controller
         $message = null;
         $messageType = 'status';
         $updatedEntry = null;
+        $promotedEntry = null;
 
-        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry) {
+        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry, &$promotedEntry) {
             $fresh = QueueEntry::query()
                 ->where('clinic_id', $activeClinicId)
                 ->whereKey($entry->id)
+                ->with(['appointment'])
                 ->lockForUpdate()
                 ->first();
 
@@ -444,6 +429,9 @@ class QueueController extends Controller
                 $message = $this->invalidActionMessage($fresh->status, 'marked as no-show');
                 return;
             }
+
+            $shouldPromoteNext = in_array($fresh->status, ['called', 'in_progress', 'now_serving'], true);
+            $doctorId = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
 
             $fresh->update([
                 'status' => 'no_show',
@@ -463,12 +451,44 @@ class QueueController extends Controller
                 }
             }
 
-            $updatedEntry = $fresh->fresh();
+            $updatedEntry = $fresh->fresh(['appointment.user', 'patient.user', 'clinic']);
+
+            $next = $shouldPromoteNext && $doctorId > 0
+                ? QueueEntry::query()
+                    ->forLaneCandidates($activeClinicId, $doctorId, now()->toDateString())
+                    ->whereKeyNot($fresh->id)
+                    ->withStatuses(QueueEntry::nextCandidateStatuses())
+                    ->orderByScheduledSlot()
+                    ->lockForUpdate()
+                    ->first()
+                : null;
+
+            if ($next) {
+                $nextStartedAt = now();
+
+                $next->update([
+                    'status' => 'in_progress',
+                    'service_started_at' => $next->service_started_at ?? $nextStartedAt,
+                ]);
+
+                $this->markRelatedRecordInProgress($next);
+
+                $promotedEntry = $next->fresh(['appointment.user', 'patient.user', 'clinic']);
+                $this->notifyQueueAction($promotedEntry, 'start');
+
+                $message = "Marked #{$fresh->queue_number} as no-show and moved #{$next->queue_number} to in progress.";
+                return;
+            }
+
             $message = "Marked queue #{$fresh->queue_number} as no-show.";
         });
 
         if ($updatedEntry) {
             event(new QueueUpdated($updatedEntry, 'no_show'));
+        }
+
+        if ($promotedEntry) {
+            event(new QueueUpdated($promotedEntry, 'in_progress'));
         }
 
         return back()->with($messageType, $message ?? 'Queue entry updated.');
@@ -492,13 +512,54 @@ class QueueController extends Controller
         }
     }
 
+    private function markRelatedRecordInProgress(QueueEntry $entry): void
+    {
+        $entry->loadMissing(['appointment', 'patient']);
+
+        if (
+            $entry->appointment
+            && ! in_array($entry->appointment->status, ['in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'], true)
+        ) {
+            $entry->appointment->update([
+                'status' => 'in_progress',
+            ]);
+        }
+
+        if ($entry->patient_id) {
+            $visit = PatientVisit::query()
+                ->where('clinic_id', $entry->clinic_id)
+                ->where('patient_id', $entry->patient_id)
+                ->whereDate('date_of_visit', $entry->scheduledSlotDateString() ?? now()->toDateString())
+                ->where('status', 'Registered')
+                ->latest('time_in')
+                ->first();
+
+            $visit?->update([
+                'status' => 'In Progress',
+            ]);
+        }
+    }
+
+    private function notifyQueueAction(QueueEntry $entry, string $action): void
+    {
+        $entry->loadMissing(['appointment.user', 'patient.user', 'clinic']);
+
+        $recipient = $entry->user
+            ?: $entry->appointment?->user
+            ?: $entry->patient?->user;
+
+        if ($recipient) {
+            $recipient->notify(new QueueActionNotification($entry, $action));
+        }
+    }
+
     private function invalidActionMessage(?string $status, string $action): string
     {
         $status = $status ?: 'unknown';
 
         return match ($status) {
             'waiting' => "Queue is still waiting. Call the patient first before it can be {$action}.",
-            'called' => "Queue is only called. Move it to now serving first before it can be {$action}.",
+            'called' => "Queue is only called. Move it to in progress first before it can be {$action}.",
             'served' => "Queue is already completed and cannot be {$action} again.",
             'cancelled' => "Queue is cancelled and cannot be {$action}.",
             'rescheduled' => "Queue is rescheduled and cannot be {$action}.",

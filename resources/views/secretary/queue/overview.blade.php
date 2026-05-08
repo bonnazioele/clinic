@@ -5,7 +5,7 @@
 @section('content')
 @php
   $today = now()->toDateString();
-  $activeStatuses = ['waiting', 'called', 'now_serving'];
+  $activeStatuses = ['waiting', 'called', 'in_progress', 'now_serving'];
 
   $isTodayQueueEntry = function ($entry) use ($today, $activeStatuses) {
       if (! in_array($entry->status, $activeStatuses, true)) {
