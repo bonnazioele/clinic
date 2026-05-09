@@ -158,6 +158,9 @@ class QueueService
         $cutoff = $date->isToday() ? now()->addMinutes($bufferMinutes) : null;
 
         return $this->buildSlotGrid($clinicId, $doctorId, $serviceId, $date)
+            ->filter(function (array $slot) use ($cutoff) {
+                return ! $cutoff || ! $slot['start_at']->lt($cutoff);
+            })
             ->map(function (array $slot) use ($occupied, $cutoff) {
                 $expired = $cutoff ? $slot['start_at']->lt($cutoff) : false;
 

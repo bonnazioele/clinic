@@ -397,8 +397,17 @@ class AppointmentController extends Controller
 
     protected function patientBelongsToClinic(int $userId, int $clinicId): bool
     {
-        return (bool) \App\Models\Patient::where('user_id', $userId)
-            ->where('clinic_id', $clinicId)
+        return User::query()
+            ->whereKey($userId)
+            ->where(function ($query) use ($clinicId) {
+                $query->whereHas('appointments', function ($appointments) use ($clinicId) {
+                    $appointments->where('clinic_id', $clinicId);
+                })->orWhereHas('queueEntries', function ($queues) use ($clinicId) {
+                    $queues->where('clinic_id', $clinicId);
+                })->orWhereHas('clinicsAsPatient', function ($patientClinics) use ($clinicId) {
+                    $patientClinics->where('clinics.id', $clinicId);
+                });
+            })
             ->exists();
     }
 
