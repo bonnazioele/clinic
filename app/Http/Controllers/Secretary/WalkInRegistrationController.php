@@ -232,7 +232,13 @@ class WalkInRegistrationController extends Controller
                 'doctor_id' => $doctor->id,
                 'user_id' => null,
                 'appointment_id' => null,
-                'queue_number' => $this->queueService->getNextNumber($clinicId),
+                'queue_number' => $this->queueService->getSlotQueueNumber(
+                    (int) $clinicId,
+                    (int) $doctor->id,
+                    (int) $service->id,
+                    now(),
+                    $slot['time_with_seconds']
+                ),
                 'scheduled_slot_date' => now()->toDateString(),
                 'scheduled_slot_time' => $slot['time_with_seconds'],
                 'status' => 'waiting',

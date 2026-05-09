@@ -11,14 +11,24 @@ use Illuminate\Support\Facades\DB;
 
 class QueueService
 {
-    public function getNextNumber(int $clinicId): int
+    public function getSlotQueueNumber(
+        int $clinicId,
+        int $doctorId,
+        ?int $serviceId,
+        Carbon|string $date,
+        string $time
+    ): int
     {
-        $today = Carbon::today();
-        $max   = QueueEntry::where('clinic_id', $clinicId)
-                           ->whereDate('created_at', $today)
-                           ->max('queue_number');
+        $normalizedTime = $this->normalizeTimeLabel($time);
 
-        return ($max ?? 0) + 1;
+        $slotIndex = $this->buildSlotGrid($clinicId, $doctorId, $serviceId, $date)
+            ->search(fn (array $slot) => $slot['time'] === $normalizedTime);
+
+        if ($slotIndex === false) {
+            throw new \InvalidArgumentException('Selected time is not part of the doctor schedule slot grid.');
+        }
+
+        return $slotIndex + 1;
     }
 
     public function getSlotMinutes(int $clinicId, ?int $serviceId): int

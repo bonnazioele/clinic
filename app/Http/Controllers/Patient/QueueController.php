@@ -53,7 +53,19 @@ class QueueController extends Controller
                 ->first();
         }
 
-        $number = $this->queue->getNextNumber($clinic->id);
+        if (! $appointment) {
+            return redirect()
+                ->route('appointments.index')
+                ->with('error', 'Book an appointment first so your queue number can match your time slot.');
+        }
+
+        $number = $this->queue->getSlotQueueNumber(
+            (int) $clinic->id,
+            (int) $appointment->doctor_id,
+            (int) $appointment->service_id,
+            $appointment->appointment_date,
+            (string) $appointment->getRawOriginal('appointment_time')
+        );
 
         $entry = QueueEntry::create([
             'clinic_id'           => $clinic->id,

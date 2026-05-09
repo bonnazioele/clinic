@@ -315,7 +315,13 @@ class AppointmentController extends Controller
         | This is why the appointment page should show "View Queue Status",
         | not "Join Queue".
         */
-        $queueNumber = $queueService->getNextNumber($data['clinic_id']);
+        $queueNumber = $queueService->getSlotQueueNumber(
+            (int) $data['clinic_id'],
+            (int) $data['doctor_id'],
+            (int) $data['service_id'],
+            $appointmentDate,
+            $time
+        );
 
         QueueEntry::create([
             'clinic_id'           => $data['clinic_id'],

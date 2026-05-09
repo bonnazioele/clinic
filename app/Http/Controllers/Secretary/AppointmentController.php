@@ -327,7 +327,13 @@ class AppointmentController extends Controller
             $appointment->update(['medical_document' => $path]);
         }
 
-        $queueNumber = $queueService->getNextNumber($clinicId);
+        $queueNumber = $queueService->getSlotQueueNumber(
+            (int) $clinicId,
+            (int) $data['doctor_id'],
+            (int) $data['service_id'],
+            $appointmentDate,
+            $time
+        );
 
         \App\Models\QueueEntry::create([
             'clinic_id'           => $clinicId,
