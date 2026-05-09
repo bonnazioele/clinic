@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Secretary;
 
+use App\Events\QueueUpdated;
 use App\Http\Controllers\Concerns\InteractsWithActiveClinic;
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\PatientVisit;
 use App\Models\QueueEntry;
 use App\Models\Service;
+use App\Notifications\AppointmentStatusChanged;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class DoctorQueueController extends Controller
@@ -35,27 +39,7 @@ class DoctorQueueController extends Controller
             ->where('users.id', $doctor_id)
             ->firstOrFail($doctorSelect);
 
-        $queueEntries = QueueEntry::query()
-            ->where('clinic_id', $activeClinicId)
-            ->forDoctor($doctor_id)
-            ->where(function ($queueQuery) use ($service, $activeClinicId, $today) {
-                $queueQuery->whereHas('appointment', function ($appointmentQuery) use ($service, $today) {
-                    $appointmentQuery
-                        ->where('service_id', $service->id)
-                        ->whereDate('appointment_date', $today);
-                })->orWhere(function ($walkInQuery) use ($service, $activeClinicId, $today) {
-                    $walkInQuery
-                        ->walkIn()
-                        ->whereExists(function ($visitQuery) use ($service, $activeClinicId, $today) {
-                            $visitQuery->selectRaw('1')
-                                ->from('patient_visits')
-                                ->whereColumn('patient_visits.patient_id', 'queue_entries.patient_id')
-                                ->where('patient_visits.clinic_id', $activeClinicId)
-                                ->whereDate('patient_visits.date_of_visit', $today)
-                                ->where('patient_visits.requested_service', $service->name);
-                        });
-                });
-            })
+        $queueEntries = $this->todayDoctorServiceQueueQuery($activeClinicId, $service, $doctor_id, $today)
             ->with([
                 'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,status',
                 'appointment.user:id,name,email,phone',
@@ -130,5 +114,133 @@ class DoctorQueueController extends Controller
             'queueNextCallUrl' => $nextEntry ? route('secretary.queue.call', ['clinic' => $activeClinicId, 'entry' => $nextEntry->id]) : null,
             'queueRows' => $queueRows,
         ]);
+    }
+
+    public function cancelToday(Request $request, int $service_id, int $doctor_id)
+    {
+        $activeClinicId = $this->activeClinicId($request);
+        $today = now()->toDateString();
+
+        $service = Service::query()
+            ->forClinics([$activeClinicId])
+            ->where('id', $service_id)
+            ->firstOrFail();
+
+        $service->doctors()
+            ->wherePivot('clinic_id', $activeClinicId)
+            ->where('users.id', $doctor_id)
+            ->firstOrFail();
+
+        $cancelledEntries = collect();
+        $cancelledAppointments = collect();
+
+        DB::transaction(function () use (
+            $activeClinicId,
+            $service,
+            $doctor_id,
+            $today,
+            &$cancelledEntries,
+            &$cancelledAppointments
+        ) {
+            $entries = $this->todayDoctorServiceQueueQuery($activeClinicId, $service, $doctor_id, $today)
+                ->with(['appointment.user', 'patient'])
+                ->whereIn('status', QueueEntry::activeLaneStatuses())
+                ->lockForUpdate()
+                ->get();
+
+            if ($entries->isEmpty()) {
+                return;
+            }
+
+            $entryIds = $entries->pluck('id');
+            $appointmentIds = $entries->pluck('appointment_id')->filter()->unique()->values();
+            $walkInPatientIds = $entries
+                ->filter(fn (QueueEntry $entry) => $entry->is_walk_in)
+                ->pluck('patient_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            QueueEntry::query()
+                ->whereIn('id', $entryIds)
+                ->update([
+                    'status' => 'cancelled',
+                ]);
+
+            if ($appointmentIds->isNotEmpty()) {
+                Appointment::query()
+                    ->whereIn('id', $appointmentIds)
+                    ->whereNotIn('status', Appointment::FINAL_STATUSES)
+                    ->update([
+                        'status' => 'cancelled',
+                    ]);
+
+                $cancelledAppointments = Appointment::query()
+                    ->with('user')
+                    ->whereIn('id', $appointmentIds)
+                    ->where('status', 'cancelled')
+                    ->get();
+            }
+
+            if ($walkInPatientIds->isNotEmpty()) {
+                PatientVisit::query()
+                    ->where('clinic_id', $activeClinicId)
+                    ->whereDate('date_of_visit', $today)
+                    ->where('requested_service', $service->name)
+                    ->whereIn('patient_id', $walkInPatientIds)
+                    ->whereIn('status', ['Registered', 'In Progress'])
+                    ->update([
+                        'status' => 'Cancelled',
+                        'time_out' => DB::raw('COALESCE(time_out, CURRENT_TIMESTAMP)'),
+                    ]);
+            }
+
+            $cancelledEntries = QueueEntry::query()
+                ->with(['appointment.user', 'patient', 'clinic'])
+                ->whereIn('id', $entryIds)
+                ->get();
+        });
+
+        foreach ($cancelledAppointments as $appointment) {
+            if ($appointment->user) {
+                $appointment->user->notify(new AppointmentStatusChanged($appointment));
+            }
+        }
+
+        foreach ($cancelledEntries as $entry) {
+            event(new QueueUpdated($entry, 'cancelled'));
+        }
+
+        $count = $cancelledEntries->count();
+        $message = $count === 1
+            ? 'Cancelled 1 queue entry for today.'
+            : "Cancelled {$count} queue entries for today.";
+
+        return back()->with($count > 0 ? 'status' : 'warning', $count > 0 ? $message : 'No active queue entries were available to cancel.');
+    }
+
+    private function todayDoctorServiceQueueQuery(int $activeClinicId, Service $service, int $doctorId, string $today)
+    {
+        return QueueEntry::query()
+            ->where('clinic_id', $activeClinicId)
+            ->forDoctor($doctorId)
+            ->where(function ($queueQuery) use ($service, $activeClinicId, $today) {
+                $queueQuery->whereHas('appointment', function ($appointmentQuery) use ($service, $today) {
+                    $appointmentQuery
+                        ->where('service_id', $service->id)
+                        ->whereDate('appointment_date', $today);
+                })->orWhere(function ($walkInQuery) use ($service, $activeClinicId, $today) {
+                    $walkInQuery
+                        ->walkIn()
+                        ->whereExists(function ($visitQuery) use ($service, $activeClinicId, $today) {
+                            $visitQuery->selectRaw('1')
+                                ->from('patient_visits')
+                                ->whereColumn('patient_visits.patient_id', 'queue_entries.patient_id')
+                                ->where('patient_visits.clinic_id', $activeClinicId)
+                                ->whereDate('patient_visits.date_of_visit', $today)
+                                ->where('patient_visits.requested_service', $service->name);
+                        });
+                });
+            });
     }
 }

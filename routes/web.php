@@ -412,6 +412,14 @@ Route::prefix('secretary')
             ->whereNumber('doctor_id')
             ->name('services.doctors.queue');
 
+        Route::post('/services/{service_id}/doctors/{doctor_id}/queue/cancel-today', [
+            \App\Http\Controllers\Secretary\DoctorQueueController::class,
+            'cancelToday',
+        ])
+            ->whereNumber('service_id')
+            ->whereNumber('doctor_id')
+            ->name('services.doctors.queue.cancel_today');
+
         Route::post('/clinics/{clinic}/queue/{entry}/call', [SecretaryQueueController::class, 'call'])
             ->whereNumber('clinic')
             ->whereNumber('entry')

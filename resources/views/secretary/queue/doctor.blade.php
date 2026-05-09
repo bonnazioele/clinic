@@ -11,6 +11,10 @@
   $serviceQueueUrl = safe_secretary_route('secretary.services.queue.index', '/secretary/dashboard', [
       'service_id' => $service->id ?? request()->route('service_id'),
   ]);
+  $cancelTodayUrl = route('secretary.services.doctors.queue.cancel_today', [
+      'service_id' => $service->id ?? request()->route('service_id'),
+      'doctor_id' => $doctor->id ?? request()->route('doctor_id'),
+  ]);
 @endphp
 
 <style>
@@ -90,6 +94,21 @@
     font-size: 0.78rem;
     font-weight: 900;
     white-space: nowrap;
+  }
+
+  .doctor-queue-hero-pills form {
+    display: inline-flex;
+  }
+
+  .hero-action-btn--danger {
+    border-color: rgba(255, 255, 255, 0.85);
+    background: rgba(220, 38, 38, 0.92);
+    color: #ffffff;
+  }
+
+  .hero-action-btn--danger:hover {
+    background: #b91c1c;
+    color: #ffffff;
   }
 
   .queue-grid {
@@ -627,6 +646,18 @@
           <i class="bi bi-slash-circle"></i>
           Block Incoming Appointments
         </button>
+        <form
+          method="POST"
+          action="{{ $cancelTodayUrl }}"
+          data-confirm="Cancel all active appointments and walk-ins in this doctor queue for today?"
+          data-confirm-title="Cancel Today's Queue"
+          data-confirm-btn="Cancel Queue">
+          @csrf
+          <button class="btn hero-action-btn hero-action-btn--danger" type="submit" {{ $queueRows->isEmpty() ? 'disabled' : '' }}>
+            <i class="bi bi-x-octagon"></i>
+            Cancel Today's Queue
+          </button>
+        </form>
       </div>
     </div>
   </section>
