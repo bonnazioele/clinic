@@ -3,10 +3,68 @@
 @section('title', 'Patients')
 
 @section('content')
-<div class="container py-4">
+<style>
+  .patients-page {
+    width: 96%;
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+  }
+
+  .patients-page .medical-card {
+    border: 1px solid rgba(226, 232, 240, 0.96) !important;
+    border-radius: 24px !important;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .patients-hero {
+    color: #ffffff;
+    background:
+      radial-gradient(circle at 90% 28%, rgba(255, 255, 255, 0.18), transparent 18%),
+      linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%) !important;
+  }
+
+  .patients-hero h1,
+  .patients-hero .text-muted {
+    color: #ffffff !important;
+  }
+
+  .patients-hero .badge {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .patients-page .form-control {
+    min-height: 46px;
+    border-radius: 14px;
+    border-color: #dbe3ef;
+    background: #f8fafc;
+    font-weight: 650;
+    box-shadow: none;
+  }
+
+  .patients-page .btn {
+    border-radius: 14px;
+    font-weight: 900;
+  }
+
+  .patients-page table thead th {
+    background: #f8fafc !important;
+    color: #475569;
+    letter-spacing: 0.06em;
+  }
+
+  .patients-page table tbody tr:hover {
+    background: #f8fafc;
+  }
+</style>
+
+<div class="container py-4 patients-page">
   @include('partials.alerts')
 
-  <div class="medical-card p-4 mb-4">
+  <div class="medical-card patients-hero p-4 mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
       <div>
         <h1 class="h3 fw-bold text-primary mb-1">

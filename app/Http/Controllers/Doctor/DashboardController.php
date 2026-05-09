@@ -43,7 +43,7 @@ class DashboardController extends Controller
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinicId)
             ->forDoctor($doctor->id)
-            ->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])
+            ->whereIn('status', QueueEntry::doctorQueueVisibleStatuses())
             ->forDashboardDay($today)
             ->orderByScheduledSlot()
             ->get();

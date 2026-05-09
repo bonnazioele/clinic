@@ -45,6 +45,16 @@ class QueueEntry extends Model
         return ['waiting', 'called', 'in_progress', 'now_serving'];
     }
 
+    public static function blockingSlotStatuses(): array
+    {
+        return ['waiting', 'called', 'in_progress', 'now_serving', 'served', 'completed'];
+    }
+
+    public static function doctorQueueVisibleStatuses(): array
+    {
+        return ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled', 'served', 'completed'];
+    }
+
     protected $fillable = [
         'clinic_id',
         'user_id',

@@ -3,10 +3,52 @@
 @section('title', 'Edit Patient')
 
 @section('content')
-<div class="container py-4">
+<style>
+  .patient-edit-page {
+    width: 96%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+  }
+
+  .patient-edit-page .medical-card {
+    border: 1px solid rgba(226, 232, 240, 0.96) !important;
+    border-radius: 24px !important;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .patient-edit-hero {
+    color: #ffffff;
+    background:
+      radial-gradient(circle at 90% 28%, rgba(255, 255, 255, 0.18), transparent 18%),
+      linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%) !important;
+  }
+
+  .patient-edit-hero h1,
+  .patient-edit-hero .text-muted {
+    color: #ffffff !important;
+  }
+
+  .patient-edit-page .form-control {
+    min-height: 46px;
+    border-radius: 14px;
+    border-color: #dbe3ef;
+    background: #f8fafc;
+    font-weight: 650;
+    box-shadow: none;
+  }
+
+  .patient-edit-page .btn {
+    border-radius: 14px;
+    font-weight: 900;
+  }
+</style>
+
+<div class="container py-4 patient-edit-page">
   @include('partials.alerts')
 
-  <div class="medical-card p-4 mb-4">
+  <div class="medical-card patient-edit-hero p-4 mb-4">
     <div class="d-flex justify-content-between flex-wrap gap-3 align-items-center">
       <div>
         <h1 class="h4 fw-bold text-primary mb-1">

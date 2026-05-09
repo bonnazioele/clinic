@@ -38,13 +38,15 @@
     };
 
     $todayAppointmentsCount = $appointments->count();
-    $activeQueueCount = $queue->count();
+    $queuePatientCount = $queue->count();
+    $activeQueueCount = $queue->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])->count();
+    $completedQueueCount = $queue->whereIn('status', ['served', 'completed'])->count();
 
     $nowServingCount = $queue->whereIn('status', ['in_progress', 'now_serving'])->count();
-    $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'pending'])->count();
+    $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'pending', 'rescheduled'])->count();
 
-    if ($waitingCount === 0 && $nowServingCount === 0 && $activeQueueCount > 0) {
-        $waitingCount = $activeQueueCount;
+    if ($waitingCount === 0 && $nowServingCount === 0 && $completedQueueCount === 0 && $queuePatientCount > 0) {
+        $waitingCount = $queuePatientCount;
     }
 
     $todayAppointments = $appointments->sortBy('appointment_time')->take(6);
@@ -718,10 +720,10 @@
                   <i class="bi bi-list-ol"></i>
                   Today’s Queue
                 </h3>
-                <p class="section-subtitle">See who is waiting and who is currently being served.</p>
+                <p class="section-subtitle">See who is waiting, in consultation, or completed today.</p>
               </div>
 
-              <span class="section-count yellow">{{ $activeQueueCount }}</span>
+              <span class="section-count yellow">{{ $queuePatientCount }}</span>
             </div>
           </div>
 
@@ -737,6 +739,9 @@
                     if (in_array($status, ['in_progress', 'now_serving'], true)) {
                         $statusClass = 'serving';
                         $statusLabel = 'In Progress';
+                    } elseif (in_array($status, ['served', 'completed'], true)) {
+                        $statusClass = 'serving';
+                        $statusLabel = 'Completed';
                     } elseif (in_array($status, ['waiting', 'called', 'pending'])) {
                         $statusClass = 'waiting';
                         $statusLabel = $status === 'called' ? 'Called' : 'Waiting';
@@ -766,7 +771,7 @@
                       </div>
 
                       <span class="doctor-status {{ $statusClass }}">
-                        <i class="bi {{ in_array($status, ['in_progress', 'now_serving'], true) ? 'bi-play-circle-fill' : 'bi-hourglass-split' }}"></i>
+                        <i class="bi {{ in_array($status, ['served', 'completed'], true) ? 'bi-check2-circle' : (in_array($status, ['in_progress', 'now_serving'], true) ? 'bi-play-circle-fill' : 'bi-hourglass-split') }}"></i>
                         {{ $statusLabel }}
                       </span>
                     </div>
@@ -774,7 +779,7 @@
                 @endforeach
               </div>
 
-              @if($activeQueueCount > 6)
+              @if($queuePatientCount > 6)
                 <div class="text-center mt-3">
                   <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-outline-warning doctor-quick-btn">
                     View Full Queue
@@ -891,7 +896,7 @@
 
             <div class="mini-info">
               <div class="mini-info-title">Queue Summary</div>
-              <p class="mini-info-value">{{ $waitingCount }} waiting · {{ $nowServingCount }} serving</p>
+              <p class="mini-info-value">{{ $waitingCount }} waiting · {{ $nowServingCount }} serving · {{ $completedQueueCount }} completed</p>
               <p class="mini-info-text">Helpful for checking today’s actual workload quickly.</p>
             </div>
 

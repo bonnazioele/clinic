@@ -134,7 +134,8 @@ class AppointmentController extends Controller
         $schedules = $queueService->schedulesForDate(
             (int) $data['clinic_id'],
             (int) $data['doctor_id'],
-            $date
+            $date,
+            ! empty($data['service_id']) ? (int) $data['service_id'] : null
         );
 
         if ($schedules->isEmpty()) {
@@ -190,7 +191,6 @@ class AppointmentController extends Controller
             'medical_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,gif,webp|max:5120',
         ]);
 
-        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
 
@@ -204,21 +204,13 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
-            ->where('clinic_id', $data['clinic_id'])
-            ->where('day_of_week', $day)
-            ->where('is_active', true)
-            ->where(function ($q) use ($appointmentDate) {
-                $q->whereNull('start_date')
-                    ->orWhereDate('start_date', '<=', $appointmentDate);
-            })
-            ->where(function ($q) use ($appointmentDate) {
-                $q->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $appointmentDate);
-            })
-            ->where('start_time', '<=', $time)
-            ->where('end_time', '>', $time)
-            ->exists();
+        $hasSchedule = app(\App\Services\DoctorScheduleAvailability::class)->doctorHasScheduleAt(
+            (int) $data['doctor_id'],
+            (int) $data['clinic_id'],
+            (int) $data['service_id'],
+            $appointmentDate,
+            $time
+        );
 
         if (! $hasSchedule) {
             return back()->withInput()->withErrors([
@@ -393,7 +385,6 @@ class AppointmentController extends Controller
             'appointment_time' => 'required',
         ]);
 
-        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
         $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
         $clinicId = $appointment->clinic_id;
@@ -408,21 +399,13 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
-            ->where('clinic_id', $clinicId)
-            ->where('day_of_week', $day)
-            ->where('is_active', true)
-            ->where(function ($q) use ($appointmentDate) {
-                $q->whereNull('start_date')
-                    ->orWhereDate('start_date', '<=', $appointmentDate);
-            })
-            ->where(function ($q) use ($appointmentDate) {
-                $q->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $appointmentDate);
-            })
-            ->where('start_time', '<=', $time)
-            ->where('end_time', '>', $time)
-            ->exists();
+        $hasSchedule = app(\App\Services\DoctorScheduleAvailability::class)->doctorHasScheduleAt(
+            (int) $data['doctor_id'],
+            (int) $clinicId,
+            (int) $data['service_id'],
+            $appointmentDate,
+            $time
+        );
 
         if (! $hasSchedule) {
             return back()->withInput()->withErrors([

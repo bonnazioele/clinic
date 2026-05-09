@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Appointment;
-use App\Models\DoctorSchedule;
 use App\Models\QueueEntry;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -49,26 +48,12 @@ class QueueService
         return 30;
     }
 
-    public function schedulesForDate(int $clinicId, int $doctorId, Carbon|string $date): Collection
+    public function schedulesForDate(int $clinicId, int $doctorId, Carbon|string $date, ?int $serviceId = null): Collection
     {
         $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
-        $dateString = $date->toDateString();
 
-        return DoctorSchedule::query()
-            ->where('doctor_id', $doctorId)
-            ->where('clinic_id', $clinicId)
-            ->where('day_of_week', $date->dayOfWeek)
-            ->where('is_active', true)
-            ->where(function ($q) use ($dateString) {
-                $q->whereNull('start_date')
-                    ->orWhereDate('start_date', '<=', $dateString);
-            })
-            ->where(function ($q) use ($dateString) {
-                $q->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $dateString);
-            })
-            ->orderBy('start_time')
-            ->get(['id', 'start_time', 'end_time']);
+        return app(DoctorScheduleAvailability::class)
+            ->schedulesForAppointmentDate($doctorId, $clinicId, $serviceId, $date);
     }
 
     public function buildSlotGrid(int $clinicId, int $doctorId, ?int $serviceId, Carbon|string $date): Collection
@@ -77,19 +62,10 @@ class QueueService
         $slotMinutes = $this->getSlotMinutes($clinicId, $serviceId);
         $slots = collect();
 
-        foreach ($this->schedulesForDate($clinicId, $doctorId, $date) as $schedule) {
-            $start = Carbon::createFromFormat(
-                strlen((string) $schedule->start_time) === 5 ? 'H:i' : 'H:i:s',
-                (string) $schedule->start_time,
-                $date->timezone
-            )->setDate($date->year, $date->month, $date->day);
+        $scheduleAvailability = app(DoctorScheduleAvailability::class);
 
-            $end = Carbon::createFromFormat(
-                strlen((string) $schedule->end_time) === 5 ? 'H:i' : 'H:i:s',
-                (string) $schedule->end_time,
-                $date->timezone
-            )->setDate($date->year, $date->month, $date->day);
-
+        foreach ($this->schedulesForDate($clinicId, $doctorId, $date, $serviceId) as $schedule) {
+            [$start, $end] = $scheduleAvailability->scheduleDateTimes($schedule, $date);
             $cursor = $start->copy();
 
             while ($cursor < $end) {
@@ -97,6 +73,11 @@ class QueueService
 
                 if ($slotEnd > $end) {
                     break;
+                }
+
+                if ($cursor->toDateString() !== $date->toDateString()) {
+                    $cursor->addMinutes($slotMinutes);
+                    continue;
                 }
 
                 $slots->push([
@@ -127,6 +108,7 @@ class QueueService
             ->where('clinic_id', $clinicId)
             ->where('doctor_id', $doctorId)
             ->whereDate('scheduled_slot_date', $dateString)
+            ->whereIn('status', QueueEntry::blockingSlotStatuses())
             ->whereNotNull('scheduled_slot_time')
             ->pluck('scheduled_slot_time')
             ->map(fn ($time) => $this->normalizeTimeLabel($time));

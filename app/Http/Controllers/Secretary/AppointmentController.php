@@ -130,24 +130,15 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
             $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
-            $time = $data['appointment_time'];
-            $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
-                ->where('clinic_id', $data['clinic_id'])
-                ->where('day_of_week', $day)
-                ->where('is_active', true)
-                ->where(function ($q) use ($appointmentDate) {
-                    $q->whereNull('start_date')
-                        ->orWhereDate('start_date', '<=', $appointmentDate);
-                })
-                ->where(function ($q) use ($appointmentDate) {
-                    $q->whereNull('end_date')
-                        ->orWhereDate('end_date', '>=', $appointmentDate);
-                })
-                ->where('start_time', '<=', $time)
-                ->where('end_time', '>', $time)
-                ->exists();
+            $time = \Carbon\Carbon::parse($data['appointment_time'])->format('H:i:s');
+            $hasSchedule = app(\App\Services\DoctorScheduleAvailability::class)->doctorHasScheduleAt(
+                (int) $data['doctor_id'],
+                (int) $data['clinic_id'],
+                (int) $data['service_id'],
+                $appointmentDate,
+                $time
+            );
             if (! $hasSchedule) {
                 return back()->withInput()->withErrors(['appointment_time' => 'Doctor not available for that time.']);
             }
@@ -255,24 +246,15 @@ class AppointmentController extends Controller
                 ->withErrors(['appointment_time' => 'Patient already has another appointment at this timeslot.']);
         }
 
-        $day = \Carbon\Carbon::parse($data['appointment_date'])->dayOfWeek;
         $appointmentDate = \Carbon\Carbon::parse($data['appointment_date'])->toDateString();
 
-        $hasSchedule = \App\Models\DoctorSchedule::where('doctor_id', $data['doctor_id'])
-            ->where('clinic_id', $clinicId)
-            ->where('day_of_week', $day)
-            ->where('is_active', true)
-            ->where(function ($q) use ($appointmentDate) {
-                $q->whereNull('start_date')
-                    ->orWhereDate('start_date', '<=', $appointmentDate);
-            })
-            ->where(function ($q) use ($appointmentDate) {
-                $q->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $appointmentDate);
-            })
-            ->where('start_time', '<=', $time)
-            ->where('end_time', '>', $time)
-            ->exists();
+        $hasSchedule = app(\App\Services\DoctorScheduleAvailability::class)->doctorHasScheduleAt(
+            (int) $data['doctor_id'],
+            (int) $clinicId,
+            (int) $data['service_id'],
+            $appointmentDate,
+            $time
+        );
         if (! $hasSchedule) {
             return back()->withInput()->withErrors(['appointment_time' => 'Doctor not available for that time.']);
         }

@@ -34,7 +34,7 @@ class QueueController extends Controller
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinic->id)
             ->forDoctor($doctor->id)
-            ->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])
+            ->whereIn('status', QueueEntry::doctorQueueVisibleStatuses())
             ->forDashboardDay($today)
             ->orderByScheduledSlot();
 
@@ -69,7 +69,7 @@ class QueueController extends Controller
                 ->lockForUpdate()
                 ->find($entry->id);
 
-            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'], true)) {
+            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'in_progress', 'now_serving'], true)) {
                 return;
             }
 

@@ -146,6 +146,11 @@
     background: rgba(16, 185, 129, 0.08);
   }
 
+  .queue-row.completed {
+    background: rgba(34, 197, 94, 0.06);
+    opacity: 0.88;
+  }
+
   .queue-number {
     min-width: 64px;
     height: 46px;
@@ -383,7 +388,7 @@
             <div>
               <h1 class="queue-hero-title">Today’s Queue</h1>
               <p class="queue-hero-text">
-                View appointment patients and guest walk-ins assigned to you. Click <strong>Complete</strong> only after the consultation is finished.
+                View appointment patients and guest walk-ins assigned to you. Called patients stay visible as <strong>In Progress</strong> until the consultation is completed.
               </p>
             </div>
           </div>
@@ -393,7 +398,7 @@
           <div class="queue-summary-card">
             <div class="d-flex align-items-center justify-content-between gap-3">
               <div>
-                <div class="queue-summary-label">Active Patients</div>
+                <div class="queue-summary-label">Queue Patients</div>
                 <h2 class="queue-summary-value">{{ $waiting->count() }}</h2>
               </div>
 
@@ -415,7 +420,7 @@
               Active Queue Board
             </h3>
             <p class="queue-board-subtitle">
-              Patients waiting, called, or currently in consultation.
+              Patients waiting, in consultation, or completed today.
             </p>
           </div>
 
@@ -434,9 +439,12 @@
           $serviceName = $entry->appointment?->service?->name ?? 'Walk-in service';
           $appointmentTime = $entry->appointment?->appointment_time;
           $slotTime = $entry->formatted_scheduled_slot_time;
+          $isInProgress = in_array($entry->status, ['in_progress', 'now_serving'], true);
+          $isCompleted = in_array($entry->status, ['served', 'completed'], true);
+          $canComplete = in_array($entry->status, ['waiting', 'called', 'in_progress', 'now_serving'], true);
         @endphp
 
-        <div class="queue-row {{ in_array($entry->status, ['in_progress', 'now_serving'], true) ? 'now-serving' : '' }}">
+        <div class="queue-row {{ $isInProgress ? 'now-serving' : '' }} {{ $isCompleted ? 'completed' : '' }}">
           <div class="row align-items-center g-3">
 
             <div class="col-12 col-lg-1">
@@ -495,7 +503,7 @@
               <div class="queue-label">Status</div>
 
               <span class="status-pill bg-{{ $entry->status_badge_class }} {{ in_array($entry->status_badge_class, ['warning', 'info']) ? 'text-dark' : 'text-white' }}">
-                <i class="bi {{ in_array($entry->status, ['in_progress', 'now_serving'], true) ? 'bi-megaphone-fill' : 'bi-clock-history' }}"></i>
+                <i class="bi {{ $isCompleted ? 'bi-check2-circle' : ($isInProgress ? 'bi-megaphone-fill' : 'bi-clock-history') }}"></i>
                 {{ $entry->status_label }}
               </span>
             </div>
@@ -515,16 +523,28 @@
             </div>
 
             <div class="col-6 col-lg-2 text-lg-end">
-              <button type="button"
-                      class="btn btn-success action-btn complete-btn"
-                      data-bs-toggle="modal"
-                      data-bs-target="#completeModal"
-                      data-action-url="{{ route('doctor.queue.serve', $entry) }}"
-                      data-patient="{{ $patientName }}"
-                      data-queue="#{{ $entry->queue_number }}">
-                <i class="bi bi-check2-circle me-1"></i>
-                Complete
-              </button>
+              @if($isCompleted)
+                <span class="btn btn-outline-success action-btn disabled">
+                  <i class="bi bi-check2-circle me-1"></i>
+                  Completed
+                </span>
+              @elseif($canComplete)
+                <button type="button"
+                        class="btn btn-success action-btn complete-btn"
+                        data-bs-toggle="modal"
+                        data-bs-target="#completeModal"
+                        data-action-url="{{ route('doctor.queue.serve', $entry) }}"
+                        data-patient="{{ $patientName }}"
+                        data-queue="#{{ $entry->queue_number }}">
+                  <i class="bi bi-check2-circle me-1"></i>
+                  Complete
+                </button>
+              @else
+                <span class="btn btn-outline-secondary action-btn disabled">
+                  <i class="bi bi-lock me-1"></i>
+                  Locked
+                </span>
+              @endif
             </div>
 
           </div>
@@ -566,7 +586,7 @@
         <h5 class="complete-modal-title">Mark this patient as completed?</h5>
 
         <p class="complete-modal-text">
-          This will mark the consultation as finished and remove the patient from the active queue.
+          This will mark the consultation as finished and keep the patient visible as completed for today.
         </p>
 
         <div class="complete-patient-box">

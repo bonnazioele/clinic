@@ -110,7 +110,7 @@
                 <input type="text"
                        id="location_search"
                        class="form-control"
-                       placeholder="Type an address or landmark to pin on the map…"
+                       placeholder="Type an address or landmark to pin on the map..."
                        autocomplete="off">
                 <button type="button" class="btn btn-outline-primary" id="searchLocationBtn">
                   <i class="bi bi-search me-1"></i>Find
@@ -619,7 +619,7 @@ function initLocationPicker() {
 
     suggestionsEl.innerHTML =
       '<div class="list-group-item text-muted py-2">' +
-      '<span class="spinner-border spinner-border-sm me-2"></span>Searching…</div>';
+      '<span class="spinner-border spinner-border-sm me-2"></span>Searching...</div>';
     suggestionsEl.style.display = 'block';
 
     fetch(

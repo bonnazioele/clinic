@@ -89,11 +89,15 @@
     .card {
       border: 1px solid var(--admin-border) !important;
       border-radius: 28px !important;
-      background: rgba(255, 255, 255, 0.84) !important;
+      background: rgba(255, 255, 255, 0.94) !important;
       box-shadow: var(--admin-shadow) !important;
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       overflow: hidden;
+    }
+
+    .medical-card {
+      padding: 24px;
     }
 
     .card-header {
@@ -134,7 +138,8 @@
       border: 1px solid rgba(15, 23, 42, 0.12);
       padding: 12px 14px;
       color: var(--admin-text);
-      background-color: #ffffff;
+      background-color: #f8fafc;
+      font-weight: 650;
     }
 
     .form-control:focus,
@@ -199,6 +204,13 @@
     .table tbody td {
       border-color: rgba(15, 23, 42, 0.06);
       padding: 16px 14px;
+      vertical-align: middle;
+    }
+
+    .badge {
+      border-radius: 999px;
+      font-weight: 850;
+      padding: 0.45rem 0.65rem;
     }
 
     .alert {
