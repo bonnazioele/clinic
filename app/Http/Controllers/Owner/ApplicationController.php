@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Mail\ClinicApplicationReceivedMail;
 use App\Models\Clinic;
 use App\Models\User;
+use App\Notifications\ClinicRegistrationSubmitted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -201,6 +203,8 @@ class ApplicationController extends Controller
             ]);
         });
 
+        $this->notifyAdminsOfClinicRegistration($clinic);
+
         return redirect()->route('owner.apply.thanks');
     }
 
@@ -282,5 +286,19 @@ class ApplicationController extends Controller
             ->exists();
 
         return ! $hasActiveOwnedClinic && ! $hasActiveSecretaryClinic;
+    }
+
+    private function notifyAdminsOfClinicRegistration(Clinic $clinic): void
+    {
+        $admins = User::query()
+            ->where('is_admin', true)
+            ->where('is_active', true)
+            ->get();
+
+        if ($admins->isEmpty()) {
+            return;
+        }
+
+        Notification::send($admins, new ClinicRegistrationSubmitted($clinic));
     }
 }

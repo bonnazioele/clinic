@@ -17,35 +17,18 @@ class QueueController extends Controller
 {
     use InteractsWithClinic;
 
+    // Statuses visible in the active queue list
     private array $activeQueueStatuses = [
         'waiting',
-        'called',
         'in_progress',
-        'now_serving',
+        'served',
     ];
 
-    private array $callableStatuses = [
-        'waiting',
-        'called',
-    ];
-
-    private array $completableStatuses = [
-        'in_progress',
-        'now_serving',
-    ];
-
+    // Statuses the secretary can still act on (cancel, reschedule, no-show)
     private array $modifiableStatuses = [
         'waiting',
-        'called',
         'in_progress',
-        'now_serving',
-    ];
-
-    private array $terminalStatuses = [
         'served',
-        'cancelled',
-        'rescheduled',
-        'no_show',
     ];
 
     public function overview(Request $request)
@@ -72,8 +55,8 @@ class QueueController extends Controller
             ->count();
 
         $totalServedToday = QueueEntry::where('clinic_id', $activeClinicId)
-            ->where('status', 'served')
-            ->whereDate('served_at', today())
+            ->where('status', 'completed')
+            ->whereDate('service_ended_at', today())
             ->count();
 
         return view('secretary.queue.overview', compact(
@@ -87,28 +70,33 @@ class QueueController extends Controller
     {
         $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
 
-        $waitingQuery = QueueEntry::with(['user', 'patient', 'appointment.service'])
+        $waiting = QueueEntry::with(['user', 'patient', 'appointment.service'])
             ->where('clinic_id', $activeClinicId)
-            ->whereIn('status', $this->activeQueueStatuses);
-
-        $waitingQuery->orderByScheduledSlot();
-
-        $waiting = $waitingQuery->get();
+            ->whereIn('status', $this->activeQueueStatuses)
+            ->orderByScheduledSlot()
+            ->get();
 
         return view('secretary.queue.index', compact('clinic', 'waiting'));
     }
 
+    /**
+     * Secretary clicks "Call".
+     *
+     * Moves: waiting → in_progress
+     *
+     * Starts the patient's turn. Doctor will see them and click Complete
+     * which moves them to served. Then the secretary clicks Done & Next.
+     */
     public function call(Request $request, Clinic $clinic, QueueEntry $entry)
     {
         $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
         $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
-        $message = null;
-        $messageType = 'status';
+        $message      = null;
+        $messageType  = 'status';
         $updatedEntry = null;
-        $promotedEntry = null;
 
-        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry, &$promotedEntry) {
+        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry) {
             $fresh = QueueEntry::query()
                 ->where('clinic_id', $activeClinicId)
                 ->whereKey($entry->id)
@@ -117,27 +105,25 @@ class QueueController extends Controller
 
             if (! $fresh) {
                 $messageType = 'error';
-                $message = 'Queue entry is invalid for this clinic.';
+                $message     = 'Queue entry is invalid for this clinic.';
                 return;
             }
 
-            if (in_array($fresh->status, ['in_progress', 'now_serving'], true)) {
-                $message = "Queue #{$fresh->queue_number} is already in progress.";
+            if ($fresh->status === 'in_progress') {
+                $message      = "Queue #{$fresh->queue_number} is already in progress.";
                 $updatedEntry = $fresh;
                 return;
             }
 
-            if (! in_array($fresh->status, $this->callableStatuses, true)) {
+            if ($fresh->status !== 'waiting') {
                 $messageType = 'error';
-                $message = $this->invalidActionMessage($fresh->status, 'called');
+                $message     = $this->invalidActionMessage($fresh->status, 'started');
                 return;
             }
 
-            $now = now();
-
             $fresh->update([
-                'status' => 'in_progress',
-                'service_started_at' => $fresh->service_started_at ?? $now,
+                'status'             => 'in_progress',
+                'service_started_at' => $fresh->service_started_at ?? now(),
             ]);
 
             $this->markRelatedRecordInProgress($fresh);
@@ -154,27 +140,34 @@ class QueueController extends Controller
         return back()->with($messageType, $message ?? 'Queue entry updated.');
     }
 
+    /**
+     * Secretary clicks "Done & Next".
+     *
+     * Requirements:
+     *   - Entry status must be 'served' (doctor has already clicked Complete).
+     *
+     * What it does:
+     *   1. Sets current entry → completed  (fully done, out of active queue)
+     *   2. Promotes the next 'waiting' patient → in_progress automatically
+     */
     public function doneNext(Request $request, Clinic $clinic, QueueEntry $entry)
     {
-        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $activeClinicId      = $this->assertRouteClinicMatchesActive($request, $clinic);
         $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
-        $laneId = trim((string) $request->input('lane', ''));
-        $serviceTabId = trim((string) $request->input('service_tab', ''));
+        $laneId              = trim((string) $request->input('lane', ''));
+        $serviceTabId        = trim((string) $request->input('service_tab', ''));
         $redirectToDashboard = $laneId !== '';
-
-        $dashboardQuery = [
-            'lane' => $laneId,
-        ];
+        $dashboardQuery      = ['lane' => $laneId];
 
         if ($serviceTabId !== '') {
             $dashboardQuery['service_tab'] = $serviceTabId;
         }
 
-        $message = null;
-        $messageType = 'status';
+        $message        = null;
+        $messageType    = 'status';
         $completedEntry = null;
-        $promotedEntry = null;
+        $promotedEntry  = null;
 
         DB::transaction(function () use (
             $entry,
@@ -192,43 +185,47 @@ class QueueController extends Controller
 
             if (! $fresh) {
                 $messageType = 'error';
-                $message = 'Queue entry is invalid for this clinic.';
+                $message     = 'Queue entry is invalid for this clinic.';
                 return;
             }
 
-            if ($fresh->status === 'served') {
+            if ($fresh->status === 'completed') {
                 $messageType = 'error';
-                $message = "Queue #{$fresh->queue_number} is already completed.";
+                $message     = "Queue #{$fresh->queue_number} is already completed.";
                 return;
             }
 
-            if (! in_array($fresh->status, $this->completableStatuses, true)) {
+            // Doctor must have clicked Complete first (status must be 'served').
+            if ($fresh->status !== 'served') {
                 $messageType = 'error';
-                $message = $this->invalidActionMessage($fresh->status, 'completed');
+                $message     = $fresh->status === 'in_progress'
+                    ? "Queue #{$fresh->queue_number}: waiting for the doctor to complete the consultation first."
+                    : $this->invalidActionMessage($fresh->status, 'completed');
                 return;
             }
 
             $now = now();
 
             $fresh->update([
-                'status' => 'served',
-                'served_at' => $now,
+                'status'           => 'completed',
                 'service_ended_at' => $now,
             ]);
 
+            // Mark linked appointment as completed.
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-                $fresh->appointment->update([
-                    'status' => 'completed',
-                ]);
+                $fresh->appointment->update(['status' => 'completed']);
 
                 if ($fresh->appointment->user) {
-                    $fresh->appointment->user->notify(new AppointmentStatusChanged($fresh->appointment));
+                    $fresh->appointment->user->notify(
+                        new AppointmentStatusChanged($fresh->appointment)
+                    );
                 }
             }
 
             $completedEntry = $fresh->fresh(['appointment.user', 'patient.user', 'clinic']);
             $this->notifyQueueAction($completedEntry, 'done');
 
+            // Promote the next waiting patient for the same doctor.
             $doctorId = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
 
             $next = $doctorId > 0
@@ -242,11 +239,9 @@ class QueueController extends Controller
                 : null;
 
             if ($next) {
-                $nextStartedAt = now();
-
                 $next->update([
-                    'status' => 'in_progress',
-                    'service_started_at' => $next->service_started_at ?? $nextStartedAt,
+                    'status'             => 'in_progress',
+                    'service_started_at' => $next->service_started_at ?? now(),
                 ]);
 
                 $this->markRelatedRecordInProgress($next);
@@ -258,11 +253,11 @@ class QueueController extends Controller
                 return;
             }
 
-            $message = "Completed queue #{$fresh->queue_number}. No next patient to promote.";
+            $message = "Completed queue #{$fresh->queue_number}. No more patients in queue.";
         });
 
         if ($completedEntry) {
-            event(new QueueUpdated($completedEntry, 'served'));
+            event(new QueueUpdated($completedEntry, 'completed'));
         }
 
         if ($promotedEntry) {
@@ -288,8 +283,8 @@ class QueueController extends Controller
             'new_time' => 'required',
         ]);
 
-        $message = null;
-        $messageType = 'status';
+        $message      = null;
+        $messageType  = 'status';
         $updatedEntry = null;
 
         DB::transaction(function () use ($entry, $data, $activeClinicId, &$message, &$messageType, &$updatedEntry) {
@@ -301,40 +296,33 @@ class QueueController extends Controller
 
             if (! $fresh) {
                 $messageType = 'error';
-                $message = 'Queue entry is invalid for this clinic.';
+                $message     = 'Queue entry is invalid for this clinic.';
                 return;
             }
 
             if (! in_array($fresh->status, $this->modifiableStatuses, true)) {
                 $messageType = 'error';
-                $message = $this->invalidActionMessage($fresh->status, 'rescheduled');
+                $message     = $this->invalidActionMessage($fresh->status, 'rescheduled');
                 return;
             }
 
             if ($fresh->appointment) {
-                $appointment = $fresh->appointment;
-
-                $appointment->update([
+                $fresh->appointment->update([
                     'appointment_date' => $data['new_date'],
                     'appointment_time' => $data['new_time'],
-                    'status' => 'rescheduled',
+                    'status'           => 'rescheduled',
                 ]);
 
-                if ($appointment->user) {
-                    $appointment->user->notify(new AppointmentStatusChanged($appointment));
+                if ($fresh->appointment->user) {
+                    $fresh->appointment->user->notify(
+                        new AppointmentStatusChanged($fresh->appointment)
+                    );
                 }
             }
 
-            $fresh->update([
-                'status' => 'rescheduled',
-            ]);
-
-            if (! $fresh->appointment && $fresh->user) {
-                $fresh->user->notify(new QueueNotification($fresh));
-            }
-
+            $fresh->update(['status' => 'rescheduled']);
             $updatedEntry = $fresh->fresh();
-            $message = "Queue #{$fresh->queue_number} rescheduled.";
+            $message      = "Queue #{$fresh->queue_number} rescheduled.";
         });
 
         if ($updatedEntry) {
@@ -349,12 +337,11 @@ class QueueController extends Controller
         $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
         $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
-        $message = null;
-        $messageType = 'status';
+        $message      = null;
+        $messageType  = 'status';
         $updatedEntry = null;
-        $promotedEntry = null;
 
-        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry, &$promotedEntry) {
+        DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry) {
             $fresh = QueueEntry::query()
                 ->where('clinic_id', $activeClinicId)
                 ->whereKey($entry->id)
@@ -363,34 +350,30 @@ class QueueController extends Controller
 
             if (! $fresh) {
                 $messageType = 'error';
-                $message = 'Queue entry is invalid for this clinic.';
+                $message     = 'Queue entry is invalid for this clinic.';
                 return;
             }
 
             if (! in_array($fresh->status, $this->modifiableStatuses, true)) {
                 $messageType = 'error';
-                $message = $this->invalidActionMessage($fresh->status, 'cancelled');
+                $message     = $this->invalidActionMessage($fresh->status, 'cancelled');
                 return;
             }
 
-            $fresh->update([
-                'status' => 'cancelled',
-            ]);
+            $fresh->update(['status' => 'cancelled']);
 
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-                $appointment = $fresh->appointment;
+                $fresh->appointment->update(['status' => 'cancelled']);
 
-                $appointment->update([
-                    'status' => 'cancelled',
-                ]);
-
-                if ($appointment->user) {
-                    $appointment->user->notify(new AppointmentStatusChanged($appointment));
+                if ($fresh->appointment->user) {
+                    $fresh->appointment->user->notify(
+                        new AppointmentStatusChanged($fresh->appointment)
+                    );
                 }
             }
 
             $updatedEntry = $fresh->fresh();
-            $message = "Cancelled queue #{$fresh->queue_number}.";
+            $message      = "Cancelled queue #{$fresh->queue_number}.";
         });
 
         if ($updatedEntry) {
@@ -405,9 +388,9 @@ class QueueController extends Controller
         $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
         $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
 
-        $message = null;
-        $messageType = 'status';
-        $updatedEntry = null;
+        $message       = null;
+        $messageType   = 'status';
+        $updatedEntry  = null;
         $promotedEntry = null;
 
         DB::transaction(function () use ($entry, $activeClinicId, &$message, &$messageType, &$updatedEntry, &$promotedEntry) {
@@ -420,33 +403,29 @@ class QueueController extends Controller
 
             if (! $fresh) {
                 $messageType = 'error';
-                $message = 'Queue entry is invalid for this clinic.';
+                $message     = 'Queue entry is invalid for this clinic.';
                 return;
             }
 
             if (! in_array($fresh->status, $this->modifiableStatuses, true)) {
                 $messageType = 'error';
-                $message = $this->invalidActionMessage($fresh->status, 'marked as no-show');
+                $message     = $this->invalidActionMessage($fresh->status, 'marked as no-show');
                 return;
             }
 
-            $shouldPromoteNext = in_array($fresh->status, ['called', 'in_progress', 'now_serving'], true);
-            $doctorId = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
+            $shouldPromoteNext = $fresh->status === 'in_progress';
+            $doctorId          = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
 
-            $fresh->update([
-                'status' => 'no_show',
-            ]);
+            $fresh->update(['status' => 'no_show']);
 
             if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-                $appointment = $fresh->appointment;
+                if ($fresh->appointment->status !== 'no_show') {
+                    $fresh->appointment->update(['status' => 'no_show']);
 
-                if ($appointment->status !== 'no_show') {
-                    $appointment->update([
-                        'status' => 'no_show',
-                    ]);
-
-                    if ($appointment->user) {
-                        $appointment->user->notify(new AppointmentStatusChanged($appointment));
+                    if ($fresh->appointment->user) {
+                        $fresh->appointment->user->notify(
+                            new AppointmentStatusChanged($fresh->appointment)
+                        );
                     }
                 }
             }
@@ -464,11 +443,9 @@ class QueueController extends Controller
                 : null;
 
             if ($next) {
-                $nextStartedAt = now();
-
                 $next->update([
-                    'status' => 'in_progress',
-                    'service_started_at' => $next->service_started_at ?? $nextStartedAt,
+                    'status'             => 'in_progress',
+                    'service_started_at' => $next->service_started_at ?? now(),
                 ]);
 
                 $this->markRelatedRecordInProgress($next);
@@ -493,6 +470,8 @@ class QueueController extends Controller
 
         return back()->with($messageType, $message ?? 'Queue entry updated.');
     }
+
+    // ─── Private helpers ──────────────────────────────────────────────────────
 
     private function assertRouteClinicMatchesActive(Request $request, Clinic $clinic): int
     {
@@ -520,9 +499,7 @@ class QueueController extends Controller
             $entry->appointment
             && ! in_array($entry->appointment->status, ['in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'], true)
         ) {
-            $entry->appointment->update([
-                'status' => 'in_progress',
-            ]);
+            $entry->appointment->update(['status' => 'in_progress']);
         }
 
         if ($entry->patient_id) {
@@ -534,9 +511,7 @@ class QueueController extends Controller
                 ->latest('time_in')
                 ->first();
 
-            $visit?->update([
-                'status' => 'In Progress',
-            ]);
+            $visit?->update(['status' => 'In Progress']);
         }
     }
 
@@ -558,13 +533,14 @@ class QueueController extends Controller
         $status = $status ?: 'unknown';
 
         return match ($status) {
-            'waiting' => "Queue is still waiting. Call the patient first before it can be {$action}.",
-            'called' => "Queue is only called. Move it to in progress first before it can be {$action}.",
-            'served' => "Queue is already completed and cannot be {$action} again.",
-            'cancelled' => "Queue is cancelled and cannot be {$action}.",
+            'waiting'     => "Queue is still waiting. Call the patient first before it can be {$action}.",
+            'in_progress' => "Queue is in progress. Wait for the doctor to complete before it can be {$action}.",
+            'served'      => "Queue is served. Use Done & Next to complete it.",
+            'completed'   => "Queue is already completed and cannot be {$action} again.",
+            'cancelled'   => "Queue is cancelled and cannot be {$action}.",
             'rescheduled' => "Queue is rescheduled and cannot be {$action}.",
-            'no_show' => "Queue is marked as no-show and cannot be {$action}.",
-            default => "Queue with status '{$status}' cannot be {$action}.",
+            'no_show'     => "Queue is marked as no-show and cannot be {$action}.",
+            default       => "Queue with status '{$status}' cannot be {$action}.",
         };
     }
 }

@@ -6,9 +6,22 @@
 @php
   $today = now()->toDateString();
 
-  $waiting = $waiting->filter(function ($queueEntry) use ($today) {
+  $activeStatuses = [
+      'waiting',
+      'called',
+      'in_progress',
+      'now_serving',
+      'served',
+  ];
+
+  $waiting = $waiting->filter(function ($queueEntry) use ($today, $activeStatuses) {
+      if (! in_array($queueEntry->status, $activeStatuses, true)) {
+          return false;
+      }
+
       $queueDate = $queueEntry->queue_date
           ?? optional($queueEntry->appointment)->appointment_date
+          ?? $queueEntry->scheduled_slot_date
           ?? $queueEntry->created_at
           ?? null;
 
@@ -20,8 +33,15 @@
   })->values();
 
   $waitingCount = $waiting->count();
+  $servedCount = $waiting->where('status', 'served')->count();
   $nowServingCount = $waiting->whereIn('status', ['in_progress', 'now_serving'])->count();
-  $waitingOnlyCount = $waiting->where('status', 'waiting')->count();
+  $waitingOnlyCount = $waiting->whereIn('status', ['waiting', 'called'])->count();
+
+  $currentServed = $waiting->firstWhere('status', 'served');
+
+  $currentInProgress = $waiting->first(function ($queueEntry) {
+      return in_array($queueEntry->status, ['in_progress', 'now_serving'], true);
+  });
 @endphp
 
 <style>
@@ -102,9 +122,58 @@
     white-space: nowrap;
   }
 
+  .queue-current-alert {
+    border-radius: 22px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    box-shadow: 0 12px 30px rgba(15,23,42,.06);
+  }
+
+  .queue-current-alert.served {
+    border: 1px solid #bbf7d0;
+    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  }
+
+  .queue-current-alert.progress {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  }
+
+  .queue-current-title {
+    font-weight: 900;
+    margin: 0;
+  }
+
+  .queue-current-alert.served .queue-current-title {
+    color: #14532d;
+  }
+
+  .queue-current-alert.progress .queue-current-title {
+    color: #1d4ed8;
+  }
+
+  .queue-current-text {
+    margin: .15rem 0 0;
+    font-size: .88rem;
+    font-weight: 650;
+  }
+
+  .queue-current-alert.served .queue-current-text {
+    color: #166534;
+  }
+
+  .queue-current-alert.progress .queue-current-text {
+    color: #1e40af;
+  }
+
   .queue-stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
   }
@@ -134,6 +203,7 @@
   .queue-stat-blue { background: linear-gradient(135deg, #0866f2, #2993ff); }
   .queue-stat-yellow { background: linear-gradient(135deg, #ffd85a, #ffc107); color: #162033; }
   .queue-stat-green { background: linear-gradient(135deg, #087b3d, #2bbf6a); }
+  .queue-stat-purple { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
 
   .queue-stat-content {
     position: relative;
@@ -345,7 +415,7 @@
 
   @media (max-width: 992px) {
     .queue-stats-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .queue-table-wrap {
@@ -365,6 +435,10 @@
     .queue-hero {
       padding: 1rem;
       border-radius: 22px;
+    }
+
+    .queue-stats-grid {
+      grid-template-columns: 1fr;
     }
 
     .queue-cards {
@@ -409,6 +483,45 @@
     </div>
   </section>
 
+  @if($currentServed)
+    <section class="queue-current-alert served">
+      <div>
+        <h5 class="queue-current-title">
+          <i class="bi bi-check-circle me-1"></i>
+          Patient is served
+        </h5>
+        <p class="queue-current-text">
+          {{ $currentServed->display_name }} is done with the doctor. You can now click Done &amp; Next.
+        </p>
+      </div>
+
+      <form method="POST" action="{{ route('secretary.queue.done_next', [$clinic, $currentServed]) }}">
+        @csrf
+        <button class="btn btn-success fw-bold rounded-pill px-4">
+          <i class="bi bi-check2-circle me-1"></i>
+          Done &amp; Next
+        </button>
+      </form>
+    </section>
+  @elseif($currentInProgress)
+    <section class="queue-current-alert progress">
+      <div>
+        <h5 class="queue-current-title">
+          <i class="bi bi-activity me-1"></i>
+          Patient is with the doctor
+        </h5>
+        <p class="queue-current-text">
+          {{ $currentInProgress->display_name }} is still in progress. Done &amp; Next will be available after the doctor clicks Serve.
+        </p>
+      </div>
+
+      <button type="button" class="btn btn-success fw-bold rounded-pill px-4" disabled>
+        <i class="bi bi-check2-circle me-1"></i>
+        Done &amp; Next
+      </button>
+    </section>
+  @endif
+
   <section class="queue-stats-grid">
     <div class="queue-stat-card queue-stat-blue">
       <div class="queue-stat-content">
@@ -439,12 +552,25 @@
     <div class="queue-stat-card queue-stat-green">
       <div class="queue-stat-content">
         <div class="queue-stat-icon">
-          <i class="bi bi-megaphone"></i>
+          <i class="bi bi-activity"></i>
         </div>
         <div>
           <div class="queue-stat-value">{{ number_format($nowServingCount) }}</div>
-          <div class="queue-stat-label">Now Serving</div>
-          <div class="queue-stat-help">Currently called patients</div>
+          <div class="queue-stat-label">With Doctor</div>
+          <div class="queue-stat-help">Currently in progress</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="queue-stat-card queue-stat-purple">
+      <div class="queue-stat-content">
+        <div class="queue-stat-icon">
+          <i class="bi bi-check2-circle"></i>
+        </div>
+        <div>
+          <div class="queue-stat-value">{{ number_format($servedCount) }}</div>
+          <div class="queue-stat-label">Served</div>
+          <div class="queue-stat-help">Needs Done &amp; Next</div>
         </div>
       </div>
     </div>
@@ -486,6 +612,10 @@
 
           <tbody>
             @foreach($waiting as $queueEntry)
+              @php
+                $status = $queueEntry->status;
+              @endphp
+
               <tr>
                 <td>
                   <div class="queue-number-badge">
@@ -544,42 +674,59 @@
 
                 <td>
                   <div class="queue-action-buttons">
-                    <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
-                      @csrf
-                      <button class="btn btn-sm btn-primary">
-                        <i class="bi bi-megaphone me-1"></i>Call
-                      </button>
-                    </form>
+                    @if(in_array($status, ['waiting', 'called'], true))
+                      <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
+                        @csrf
+                        <button class="btn btn-sm btn-primary">
+                          <i class="bi bi-megaphone me-1"></i>Call
+                        </button>
+                      </form>
+                    @elseif(in_array($status, ['in_progress', 'now_serving'], true))
+                      <span class="badge bg-primary fs-6 px-3 py-2">
+                        <i class="bi bi-activity me-1"></i>With Doctor
+                      </span>
+                    @elseif($status === 'served')
+                      <form method="POST" action="{{ route('secretary.queue.done_next', [$clinic, $queueEntry]) }}">
+                        @csrf
+                        <button class="btn btn-sm btn-success">
+                          <i class="bi bi-check-circle me-1"></i>Done &amp; Next
+                        </button>
+                      </form>
+                    @endif
 
-                    <form method="POST"
-                          action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
-                          data-confirm="Mark this patient as NO-SHOW? They will be removed from the queue."
-                          data-confirm-title="Mark As No-Show"
-                          data-confirm-btn="Mark No-Show">
-                      @csrf
-                      <button class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-person-x me-1"></i>No-Show
-                      </button>
-                    </form>
+                    @if(in_array($status, ['waiting', 'called', 'in_progress', 'now_serving'], true))
+                      <form method="POST"
+                            action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
+                            data-confirm="Mark this patient as NO-SHOW? They will be removed from the queue."
+                            data-confirm-title="Mark As No-Show"
+                            data-confirm-btn="Mark No-Show">
+                        @csrf
+                        <button class="btn btn-sm btn-outline-secondary">
+                          <i class="bi bi-person-x me-1"></i>No-Show
+                        </button>
+                      </form>
+                    @endif
 
-                    <button type="button"
-                            class="btn btn-sm btn-warning"
-                            data-bs-toggle="modal"
-                            data-bs-target="#reschedModal"
-                            data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
-                      <i class="bi bi-calendar-event me-1"></i>Resched
-                    </button>
-
-                    <form method="POST"
-                          action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
-                          data-confirm="Cancel this queue entry? The patient will be notified."
-                          data-confirm-title="Cancel Queue Entry"
-                          data-confirm-btn="Cancel">
-                      @csrf
-                      <button class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    @if(in_array($status, ['waiting', 'called'], true))
+                      <button type="button"
+                              class="btn btn-sm btn-warning"
+                              data-bs-toggle="modal"
+                              data-bs-target="#reschedModal"
+                              data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
+                        <i class="bi bi-calendar-event me-1"></i>Resched
                       </button>
-                    </form>
+
+                      <form method="POST"
+                            action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
+                            data-confirm="Cancel this queue entry? The patient will be notified."
+                            data-confirm-title="Cancel Queue Entry"
+                            data-confirm-btn="Cancel">
+                        @csrf
+                        <button class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-x-circle me-1"></i>Cancel
+                        </button>
+                      </form>
+                    @endif
                   </div>
                 </td>
               </tr>
@@ -590,6 +737,10 @@
 
       <div class="queue-cards">
         @foreach($waiting as $queueEntry)
+          @php
+            $status = $queueEntry->status;
+          @endphp
+
           <article class="queue-card">
             <div class="queue-card-top">
               <div>
@@ -637,42 +788,59 @@
             </div>
 
             <div class="queue-action-buttons">
-              <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
-                @csrf
-                <button class="btn btn-sm btn-primary">
-                  <i class="bi bi-megaphone me-1"></i>Call
-                </button>
-              </form>
+              @if(in_array($status, ['waiting', 'called'], true))
+                <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
+                  @csrf
+                  <button class="btn btn-sm btn-primary">
+                    <i class="bi bi-megaphone me-1"></i>Call
+                  </button>
+                </form>
+              @elseif(in_array($status, ['in_progress', 'now_serving'], true))
+                <span class="badge bg-primary fs-6 px-3 py-2">
+                  <i class="bi bi-activity me-1"></i>With Doctor
+                </span>
+              @elseif($status === 'served')
+                <form method="POST" action="{{ route('secretary.queue.done_next', [$clinic, $queueEntry]) }}">
+                  @csrf
+                  <button class="btn btn-sm btn-success">
+                    <i class="bi bi-check-circle me-1"></i>Done &amp; Next
+                  </button>
+                </form>
+              @endif
 
-              <form method="POST"
-                    action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
-                    data-confirm="Mark this patient as NO-SHOW?"
-                    data-confirm-title="Mark As No-Show"
-                    data-confirm-btn="Mark No-Show">
-                @csrf
-                <button class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-person-x me-1"></i>No-Show
-                </button>
-              </form>
+              @if(in_array($status, ['waiting', 'called', 'in_progress', 'now_serving'], true))
+                <form method="POST"
+                      action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
+                      data-confirm="Mark this patient as NO-SHOW?"
+                      data-confirm-title="Mark As No-Show"
+                      data-confirm-btn="Mark No-Show">
+                  @csrf
+                  <button class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-person-x me-1"></i>No-Show
+                  </button>
+                </form>
+              @endif
 
-              <button type="button"
-                      class="btn btn-sm btn-warning"
-                      data-bs-toggle="modal"
-                      data-bs-target="#reschedModal"
-                      data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
-                <i class="bi bi-calendar-event me-1"></i>Resched
-              </button>
-
-              <form method="POST"
-                    action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
-                    data-confirm="Cancel this queue entry?"
-                    data-confirm-title="Cancel Queue Entry"
-                    data-confirm-btn="Cancel">
-                @csrf
-                <button class="btn btn-sm btn-outline-danger">
-                  <i class="bi bi-x-circle me-1"></i>Cancel
+              @if(in_array($status, ['waiting', 'called'], true))
+                <button type="button"
+                        class="btn btn-sm btn-warning"
+                        data-bs-toggle="modal"
+                        data-bs-target="#reschedModal"
+                        data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
+                  <i class="bi bi-calendar-event me-1"></i>Resched
                 </button>
-              </form>
+
+                <form method="POST"
+                      action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
+                      data-confirm="Cancel this queue entry?"
+                      data-confirm-title="Cancel Queue Entry"
+                      data-confirm-btn="Cancel">
+                  @csrf
+                  <button class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                  </button>
+                </form>
+              @endif
             </div>
           </article>
         @endforeach
@@ -738,6 +906,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-bs-target="#reschedModal"][data-action-url]').forEach(btn => {
     btn.addEventListener('click', () => {
       const url = btn.getAttribute('data-action-url');
+
       if (url) {
         try {
           localStorage.setItem('lastReschedActionUrl', url);
@@ -748,6 +917,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   reschedModalEl.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
+
     if (!button) return;
 
     const actionUrl = button.getAttribute('data-action-url');

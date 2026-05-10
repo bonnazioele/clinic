@@ -7,14 +7,20 @@
   $doctorName = $doctor->name ?: trim(($doctor->first_name ?? '') . ' ' . ($doctor->last_name ?? '')) ?: 'Doctor';
   $serviceName = $serviceName ?? ($service->name ?? 'Service Queue');
   $queueRows = collect($queueRows ?? []);
+
   $dashboardUrl = safe_secretary_route('secretary.dashboard', '/secretary/dashboard');
   $serviceQueueUrl = safe_secretary_route('secretary.services.queue.index', '/secretary/dashboard', [
       'service_id' => $service->id ?? request()->route('service_id'),
   ]);
+
   $cancelTodayUrl = route('secretary.services.doctors.queue.cancel_today', [
       'service_id' => $service->id ?? request()->route('service_id'),
       'doctor_id' => $doctor->id ?? request()->route('doctor_id'),
   ]);
+
+  $nowServingStatus = $nowServing?->status;
+  $canDoneNext = $nowServing && $nowServingStatus === 'served' && $nowServingDoneNextUrl;
+  $canNoShow = $nowServing && in_array($nowServingStatus, ['in_progress', 'now_serving'], true) && $nowServingNoShowUrl;
 @endphp
 
 <style>
@@ -24,6 +30,7 @@
     margin: 0 auto;
     padding: 0.5rem 0 1.5rem;
   }
+
   .doctor-queue-hero {
     border-radius: 24px;
     padding: 1.45rem;
@@ -158,6 +165,18 @@
     font-size: 0.76rem;
     font-weight: 900;
     white-space: nowrap;
+  }
+
+  .queue-pill-served {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+
+  .queue-pill-progress {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
   }
 
   .now-serving-card {
@@ -385,6 +404,10 @@
     background: rgba(13, 110, 253, 0.08);
   }
 
+  .highlight-row-served {
+    background: rgba(34, 197, 94, 0.10);
+  }
+
   .status-badge {
     display: inline-flex;
     align-items: center;
@@ -418,6 +441,15 @@
 
   .status-waiting .dot {
     background: #ffc107;
+  }
+
+  .status-served {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .status-served .dot {
+    background: #16a34a;
   }
 
   .filter-chip {
@@ -488,6 +520,25 @@
     border-color: #ffc107;
     color: #162033;
     text-decoration: none;
+  }
+
+  .row-action-link--success {
+    border-color: #bbf7d0;
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .row-action-link--success:hover {
+    background: #22c55e;
+    border-color: #22c55e;
+    color: #ffffff;
+  }
+
+  .row-action-link--muted {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    cursor: default;
   }
 
   .row-action-link--warning {
@@ -642,10 +693,23 @@
       </div>
 
       <div class="doctor-queue-hero-pills">
+        @if($nowServingStatus === 'served')
+          <span class="doctor-queue-hero-pill">
+            <i class="bi bi-check2-circle"></i>
+            Patient served — Done &amp; Next available
+          </span>
+        @elseif(in_array($nowServingStatus, ['in_progress', 'now_serving'], true))
+          <span class="doctor-queue-hero-pill">
+            <i class="bi bi-activity"></i>
+            Patient with doctor
+          </span>
+        @endif
+
         <button class="btn btn-light text-primary hero-action-btn" type="button">
           <i class="bi bi-slash-circle"></i>
           Block Incoming Appointments
         </button>
+
         <form
           method="POST"
           action="{{ $cancelTodayUrl }}"
@@ -671,8 +735,28 @@
               <i class="bi bi-person-check-fill"></i>
               Now Serving
             </h2>
-            <div class="text-muted fw-semibold small mt-1">Current active encounter</div>
+            <div class="text-muted fw-semibold small mt-1">
+              @if($nowServingStatus === 'served')
+                Doctor has served this patient. Secretary can now finish the queue entry.
+              @elseif(in_array($nowServingStatus, ['in_progress', 'now_serving'], true))
+                Current active encounter
+              @else
+                Current active encounter
+              @endif
+            </div>
           </div>
+
+          @if($nowServingStatus === 'served')
+            <span class="queue-pill queue-pill-served">
+              <i class="bi bi-check-circle"></i>
+              Served
+            </span>
+          @elseif(in_array($nowServingStatus, ['in_progress', 'now_serving'], true))
+            <span class="queue-pill queue-pill-progress">
+              <i class="bi bi-activity"></i>
+              With Doctor
+            </span>
+          @endif
         </div>
 
         <div class="now-serving-main">
@@ -690,7 +774,7 @@
 
         <div class="queue-actions">
           @if ($nowServing)
-            <button class="btn btn-primary queue-pause-action" type="button">
+            <button class="btn btn-primary queue-pause-action" type="button" {{ $nowServingStatus === 'served' ? 'disabled' : '' }}>
               <i class="bi bi-pause-fill"></i>
               Pause Queue
             </button>
@@ -709,7 +793,7 @@
             </button>
           @endif
 
-          @if ($nowServingDoneNextUrl)
+          @if ($canDoneNext)
             <form method="POST" action="{{ $nowServingDoneNextUrl }}" data-keep-enabled>
               @csrf
               <button class="btn btn-done w-100" type="submit">
@@ -724,7 +808,7 @@
             </button>
           @endif
 
-          @if ($nowServingNoShowUrl)
+          @if ($canNoShow)
             <form method="POST" action="{{ $nowServingNoShowUrl }}" data-keep-enabled>
               @csrf
               <button class="btn btn-outline-warning btn-no-show w-100" type="submit">
@@ -825,20 +909,38 @@
               <th class="text-end">Actions</th>
             </tr>
           </thead>
+
           <tbody>
             @forelse ($queueRows as $row)
-              <tr class="{{ $row['active'] ? 'highlight-row' : '' }}">
+              @php
+                $statusKey = $row['status_key'] ?? null;
+                $isServed = $statusKey === 'served';
+                $isWithDoctor = in_array($statusKey, ['in_progress', 'now_serving'], true);
+                $isWaiting = in_array($statusKey, ['waiting', 'called'], true);
+                $rowClass = $isServed ? 'highlight-row-served' : (($row['active'] ?? false) ? 'highlight-row' : '');
+              @endphp
+
+              <tr class="{{ $rowClass }}">
                 <td class="queue-number-text">{{ $row['number'] }}</td>
+
                 <td>
                   <div class="fw-bold">{{ $row['name'] }}</div>
                   <div class="patient-muted">
                     {{ $row['id'] }} | {{ $row['visit'] }}
                   </div>
                 </td>
+
                 <td>{{ $row['visit'] }}</td>
+
                 <td>{{ $row['time'] }}</td>
+
                 <td>
-                  @if (in_array($row['status_key'], ['in_progress', 'now_serving'], true))
+                  @if ($isServed)
+                    <span class="status-badge status-served">
+                      <span class="dot"></span>
+                      {{ $row['status'] }}
+                    </span>
+                  @elseif ($isWithDoctor)
                     <span class="status-badge status-in-progress">
                       <span class="dot"></span>
                       {{ $row['status'] }}
@@ -850,22 +952,45 @@
                     </span>
                   @endif
                 </td>
+
                 <td class="text-end">
                   <div class="row-action-links">
-                    @if (! in_array($row['status_key'], ['in_progress', 'now_serving'], true))
+                    @if ($isWaiting)
                       <form method="POST" action="{{ $row['call_url'] }}" data-keep-enabled>
                         @csrf
                         <button class="row-action-link" type="submit">Call</button>
                       </form>
+
+                      <form method="POST" action="{{ $row['no_show_url'] }}" data-keep-enabled>
+                        @csrf
+                        <button class="row-action-link row-action-link--warning" type="submit">No Show</button>
+                      </form>
+
+                      <form method="POST" action="{{ $row['cancel_url'] }}" data-keep-enabled>
+                        @csrf
+                        <button class="row-action-link row-action-link--danger" type="submit">Cancel</button>
+                      </form>
+                    @elseif ($isWithDoctor)
+                      <span class="row-action-link row-action-link--muted">
+                        With Doctor
+                      </span>
+
+                      <form method="POST" action="{{ $row['no_show_url'] }}" data-keep-enabled>
+                        @csrf
+                        <button class="row-action-link row-action-link--warning" type="submit">No Show</button>
+                      </form>
+                    @elseif ($isServed)
+                      <form method="POST" action="{{ $row['done_next_url'] }}" data-keep-enabled>
+                        @csrf
+                        <button class="row-action-link row-action-link--success" type="submit">
+                          Done &amp; Next
+                        </button>
+                      </form>
+                    @else
+                      <span class="row-action-link row-action-link--muted">
+                        No action
+                      </span>
                     @endif
-                    <form method="POST" action="{{ $row['no_show_url'] }}" data-keep-enabled>
-                      @csrf
-                      <button class="row-action-link row-action-link--warning" type="submit">No Show</button>
-                    </form>
-                    <form method="POST" action="{{ $row['cancel_url'] }}" data-keep-enabled>
-                      @csrf
-                      <button class="row-action-link row-action-link--danger" type="submit">Cancel</button>
-                    </form>
                   </div>
                 </td>
               </tr>
@@ -884,10 +1009,12 @@
         <div class="text-muted small">
           Showing {{ $queueRows->count() }} of {{ $queueRows->count() }} patients in queue
         </div>
+
         <div class="d-flex gap-2">
           <button class="btn btn-outline-secondary btn-sm icon-btn" type="button" disabled aria-label="Previous page">
             <i class="bi bi-chevron-left"></i>
           </button>
+
           <button class="btn btn-outline-secondary btn-sm icon-btn" type="button" aria-label="Next page">
             <i class="bi bi-chevron-right"></i>
           </button>
@@ -916,6 +1043,8 @@
 
     document.querySelectorAll('.queue-pause-action').forEach(function (button) {
       button.addEventListener('click', function () {
+        if (button.disabled) return;
+
         const isPaused = button.getAttribute('aria-pressed') === 'true';
         button.setAttribute('aria-pressed', isPaused ? 'false' : 'true');
         button.innerHTML = isPaused
