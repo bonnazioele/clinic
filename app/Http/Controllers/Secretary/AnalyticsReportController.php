@@ -177,20 +177,20 @@ class AnalyticsReportController extends Controller
     }
 
     private function servedEntriesForAverage($queueQuery)
-    {
-        if (
-            ! Schema::hasColumn('queue_entries', 'service_started_at') ||
-            ! Schema::hasColumn('queue_entries', 'service_ended_at')
-        ) {
-            return collect();
-        }
-
-        return $queueQuery
-            ->where('status', 'served')
-            ->whereNotNull('service_started_at')
-            ->whereNotNull('service_ended_at')
-            ->get(['service_started_at', 'service_ended_at']);
+{
+    if (
+        ! Schema::hasColumn('queue_entries', 'service_started_at') ||
+        ! Schema::hasColumn('queue_entries', 'service_ended_at')
+    ) {
+        return collect();
     }
+
+    return $queueQuery
+        ->whereIn('status', ['served', 'completed'])
+        ->whereNotNull('service_started_at')
+        ->whereNotNull('service_ended_at')
+        ->get(['service_started_at', 'service_ended_at']);
+}
 
     private function downloadCsv(array $reportData): StreamedResponse
     {
@@ -625,31 +625,35 @@ class AnalyticsReportController extends Controller
         ];
     }
 
-    private function averageServiceMinutes($servedEntries): int
-    {
-        if ($servedEntries->isEmpty()) {
-            return 0;
-        }
-
-        $minutes = $servedEntries
-            ->map(function ($entry) {
-                if (! $entry->service_started_at || ! $entry->service_ended_at) {
-                    return null;
-                }
-
-                $startedAt = Carbon::parse($entry->service_started_at);
-                $endedAt = Carbon::parse($entry->service_ended_at);
-
-                return max(0, $startedAt->diffInMinutes($endedAt));
-            })
-            ->filter(fn ($value) => ! is_null($value));
-
-        if ($minutes->isEmpty()) {
-            return 0;
-        }
-
-        return (int) round($minutes->avg());
+    private function averageServiceMinutes($servedEntries): float
+{
+    if ($servedEntries->isEmpty()) {
+        return 0.0;
     }
+
+    $seconds = $servedEntries
+        ->map(function ($entry) {
+            if (! $entry->service_started_at || ! $entry->service_ended_at) {
+                return null;
+            }
+
+            $startedAt = Carbon::parse($entry->service_started_at);
+            $endedAt = Carbon::parse($entry->service_ended_at);
+
+            if ($endedAt->lessThanOrEqualTo($startedAt)) {
+                return null;
+            }
+
+            return $startedAt->diffInSeconds($endedAt);
+        })
+        ->filter(fn ($value) => ! is_null($value) && $value > 0);
+
+    if ($seconds->isEmpty()) {
+        return 0.0;
+    }
+
+    return round($seconds->avg() / 60, 1);
+}
 
     private function dailyAppointmentData($appointments, Carbon $startDate, Carbon $endDate): array
     {
