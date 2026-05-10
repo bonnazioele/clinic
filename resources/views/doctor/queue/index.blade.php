@@ -246,56 +246,56 @@
     margin: 0;
   }
 
-  .complete-modal-content {
+  .serve-modal-content {
     border: 0;
     border-radius: 26px;
     overflow: hidden;
     box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
   }
 
-  .complete-modal-header {
+  .serve-modal-header {
     border-bottom: 0;
-    background: linear-gradient(135deg, #16a34a, #22c55e);
+    background: linear-gradient(135deg, #0d6efd, #2563eb);
     color: #ffffff;
     padding: 20px 22px;
   }
 
-  .complete-modal-header .btn-close {
+  .serve-modal-header .btn-close {
     filter: invert(1);
     opacity: 0.9;
   }
 
-  .complete-modal-body {
+  .serve-modal-body {
     padding: 30px 24px 22px;
     text-align: center;
   }
 
-  .complete-modal-icon {
+  .serve-modal-icon {
     width: 78px;
     height: 78px;
     border-radius: 28px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(34, 197, 94, 0.14);
+    background: rgba(37, 99, 235, 0.14);
     color: #16a34a;
     font-size: 2.3rem;
     margin-bottom: 16px;
   }
 
-  .complete-modal-title {
+  .serve-modal-title {
     font-size: 1.25rem;
     font-weight: 900;
     color: #111827;
     margin-bottom: 6px;
   }
 
-  .complete-modal-text {
+  .serve-modal-text {
     color: #64748b;
     margin-bottom: 0;
   }
 
-  .complete-patient-box {
+  .serve-patient-box {
     margin-top: 18px;
     border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 18px;
@@ -303,26 +303,26 @@
     padding: 14px 16px;
   }
 
-  .complete-patient-name {
+  .serve-patient-name {
     font-weight: 900;
     color: #111827;
     margin-bottom: 3px;
   }
 
-  .complete-queue-number {
+  .serve-queue-number {
     color: #64748b;
     font-size: 0.9rem;
     margin-bottom: 0;
   }
 
-  .complete-modal-footer {
+  .serve-modal-footer {
     border-top: 0;
     padding: 0 24px 24px;
     justify-content: center;
     gap: 10px;
   }
 
-  .complete-modal-btn {
+  .serve-modal-btn {
     border-radius: 16px;
     padding: 11px 18px;
     font-weight: 900;
@@ -440,11 +440,12 @@
           $appointmentTime = $entry->appointment?->appointment_time;
           $slotTime = $entry->formatted_scheduled_slot_time;
           $isInProgress = in_array($entry->status, ['in_progress', 'now_serving'], true);
-          $isCompleted = in_array($entry->status, ['served', 'completed'], true);
-          $canComplete = in_array($entry->status, ['waiting', 'called', 'in_progress', 'now_serving'], true);
+          $isServed = $entry->status === 'served';
+          $isCompleted = $entry->status === 'completed';
+          $canServe = in_array($entry->status, ['in_progress', 'now_serving'], true);
         @endphp
 
-        <div class="queue-row {{ $isInProgress ? 'now-serving' : '' }} {{ $isCompleted ? 'completed' : '' }}">
+        <div class="queue-row {{ $isInProgress ? 'now-serving' : '' }} {{ ($isServed || $isCompleted) ? 'completed' : '' }}">
           <div class="row align-items-center g-3">
 
             <div class="col-12 col-lg-1">
@@ -503,7 +504,7 @@
               <div class="queue-label">Status</div>
 
               <span class="status-pill bg-{{ $entry->status_badge_class }} {{ in_array($entry->status_badge_class, ['warning', 'info']) ? 'text-dark' : 'text-white' }}">
-                <i class="bi {{ $isCompleted ? 'bi-check2-circle' : ($isInProgress ? 'bi-megaphone-fill' : 'bi-clock-history') }}"></i>
+                <i class="bi {{ ($isServed || $isCompleted) ? 'bi-check2-circle' : ($isInProgress ? 'bi-megaphone-fill' : 'bi-clock-history') }}"></i>
                 {{ $entry->status_label }}
               </span>
             </div>
@@ -528,16 +529,21 @@
                   <i class="bi bi-check2-circle me-1"></i>
                   Completed
                 </span>
-              @elseif($canComplete)
+              @elseif($isServed)
+                <span class="btn btn-outline-primary action-btn disabled">
+                  <i class="bi bi-hourglass-split me-1"></i>
+                  Awaiting Secretary
+                </span>
+              @elseif($canServe)
                 <button type="button"
-                        class="btn btn-success action-btn complete-btn"
+                        class="btn btn-primary action-btn serve-btn"
                         data-bs-toggle="modal"
-                        data-bs-target="#completeModal"
+                        data-bs-target="#serveModal"
                         data-action-url="{{ route('doctor.queue.serve', $entry) }}"
                         data-patient="{{ $patientName }}"
                         data-queue="#{{ $entry->queue_number }}">
-                  <i class="bi bi-check2-circle me-1"></i>
-                  Complete
+                  <i class="bi bi-person-check me-1"></i>
+                  Serve
                 </button>
               @else
                 <span class="btn btn-outline-secondary action-btn disabled">
@@ -564,45 +570,45 @@
   </div>
 </div>
 
-<div class="modal fade" id="completeModal" tabindex="-1" aria-labelledby="completeModalLabel" aria-hidden="true">
+<div class="modal fade" id="serveModal" tabindex="-1" aria-labelledby="serveModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <form method="POST" class="modal-content complete-modal-content" id="completeForm">
+    <form method="POST" class="modal-content serve-modal-content" id="serveForm">
       @csrf
 
-      <div class="modal-header complete-modal-header">
-        <h5 class="modal-title fw-bold" id="completeModalLabel">
-          <i class="bi bi-check2-circle me-2"></i>
-          Complete Consultation
+      <div class="modal-header serve-modal-header">
+        <h5 class="modal-title fw-bold" id="serveModalLabel">
+          <i class="bi bi-person-check me-2"></i>
+          Mark Patient as Served
         </h5>
 
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <div class="modal-body complete-modal-body">
-        <div class="complete-modal-icon">
-          <i class="bi bi-check2-circle"></i>
+      <div class="modal-body serve-modal-body">
+        <div class="serve-modal-icon">
+          <i class="bi bi-person-check" style="color:#2563eb;font-size:2.3rem;"></i>
         </div>
 
-        <h5 class="complete-modal-title">Mark this patient as completed?</h5>
+        <h5 class="serve-modal-title">Mark this patient as served?</h5>
 
-        <p class="complete-modal-text">
-          This will mark the consultation as finished and keep the patient visible as completed for today.
+        <p class="serve-modal-text">
+          This will notify the secretary to finalize and advance the queue. The patient will remain visible until the secretary clicks <strong>Done &amp; Next</strong>.
         </p>
 
-        <div class="complete-patient-box">
-          <div class="complete-patient-name" id="completePatientName">Patient</div>
-          <p class="complete-queue-number" id="completeQueueNumber">Queue number</p>
+        <div class="serve-patient-box">
+          <div class="serve-patient-name" id="servePatientName">Patient</div>
+          <p class="serve-queue-number" id="serveQueueNumber">Queue number</p>
         </div>
       </div>
 
-      <div class="modal-footer complete-modal-footer">
-        <button type="button" class="btn btn-outline-secondary complete-modal-btn" data-bs-dismiss="modal">
+      <div class="modal-footer serve-modal-footer">
+        <button type="button" class="btn btn-outline-secondary serve-modal-btn" data-bs-dismiss="modal">
           Cancel
         </button>
 
-        <button type="submit" class="btn btn-success complete-modal-btn">
-          <i class="bi bi-check2-circle me-1"></i>
-          Yes, Complete
+        <button type="submit" class="btn btn-primary serve-modal-btn">
+          <i class="bi bi-person-check me-1"></i>
+          Yes, Mark as Served
         </button>
       </div>
     </form>
@@ -611,19 +617,19 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const completeForm = document.getElementById('completeForm');
-    const completePatientName = document.getElementById('completePatientName');
-    const completeQueueNumber = document.getElementById('completeQueueNumber');
+    const serveForm = document.getElementById('serveForm');
+    const servePatientName = document.getElementById('servePatientName');
+    const serveQueueNumber = document.getElementById('serveQueueNumber');
 
-    document.querySelectorAll('.complete-btn').forEach(function (button) {
+    document.querySelectorAll('.serve-btn').forEach(function (button) {
       button.addEventListener('click', function () {
         const actionUrl = button.getAttribute('data-action-url');
         const patientName = button.getAttribute('data-patient') || 'Patient';
         const queueNumber = button.getAttribute('data-queue') || 'Queue';
 
-        completeForm.setAttribute('action', actionUrl);
-        completePatientName.textContent = patientName;
-        completeQueueNumber.textContent = queueNumber;
+        serveForm.setAttribute('action', actionUrl);
+        servePatientName.textContent = patientName;
+        serveQueueNumber.textContent = queueNumber;
       });
     });
   });

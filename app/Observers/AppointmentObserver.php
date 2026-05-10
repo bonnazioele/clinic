@@ -4,12 +4,9 @@ namespace App\Observers;
 
 use App\Models\Appointment;
 use App\Models\QueueEntry;
-use Illuminate\Support\Facades\DB;
 
 class AppointmentObserver
 {
-    private ?string $completedQueueStatus = null;
-
     /**
      * Handle the Appointment "created" event.
      */
@@ -36,7 +33,14 @@ class AppointmentObserver
         }
 
         if ($appointment->status === 'completed') {
-            $this->syncQueueStatus($appointment, $this->resolveCompletedQueueStatus());
+            // Only push queue entries that are still in an active state to 'completed'.
+            // Entries already at 'served' or 'completed' are managed by the queue
+            // system (secretary's Done & Next) and must NOT be touched here.
+            // This prevents the observer from interfering with the served → completed flow.
+            QueueEntry::query()
+                ->where('appointment_id', $appointment->id)
+                ->whereNotIn('status', ['served', 'completed', 'cancelled', 'no_show', 'rescheduled'])
+                ->update(['status' => 'completed']);
 
             $doctorName = null;
             if ($appointment->doctor) {
@@ -54,33 +58,11 @@ class AppointmentObserver
                 'clinic_name'   => $appointment->clinic->name,
                 'doctor'        => $doctorName,
                 'diagnosis'     => null,
-                'treatment'     => null, // fill in if you have a treatment field on appointments
+                'treatment'     => null,
                 'date_of_visit' => $appointment->appointment_date,
                 'document_path' => $appointment->medical_document,
             ]);
         }
-    }
-
-    private function syncQueueStatus(Appointment $appointment, string $targetStatus): void
-    {
-        QueueEntry::query()
-            ->where('appointment_id', $appointment->id)
-            ->where('status', '!=', $targetStatus)
-            ->update(['status' => $targetStatus]);
-    }
-
-    private function resolveCompletedQueueStatus(): string
-    {
-        if ($this->completedQueueStatus !== null) {
-            return $this->completedQueueStatus;
-        }
-
-        $columnType = DB::selectOne("SELECT COLUMN_TYPE AS column_type FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'queue_entries' AND COLUMN_NAME = 'status'");
-        $type = strtolower((string) ($columnType->column_type ?? ''));
-
-        $this->completedQueueStatus = str_contains($type, "'done'") ? 'done' : 'served';
-
-        return $this->completedQueueStatus;
     }
 
     /**

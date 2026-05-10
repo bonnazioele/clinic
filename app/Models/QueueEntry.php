@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Events\QueueUpdated;
-use App\Notifications\AppointmentStatusChanged;
-use App\Notifications\QueueNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -25,34 +23,88 @@ class QueueEntry extends Model
         'cancelled',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Status Flow
+    |--------------------------------------------------------------------------
+    |
+    | waiting / called
+    |      ↓ Secretary clicks Call
+    | in_progress / now_serving
+    |      ↓ Doctor clicks Serve
+    | served
+    |      ↓ Secretary clicks Done & Next
+    | completed
+    |
+    | IMPORTANT:
+    | "served" is NOT final yet.
+    | It must remain visible on secretary side until Done & Next is clicked.
+    |
+    */
+
     public static function activePatientStatuses(): array
     {
-        return ['waiting', 'called', 'in_progress', 'now_serving'];
+        return [
+            'waiting',
+            'called',
+            'in_progress',
+            'now_serving',
+            'served',
+        ];
     }
 
     public static function finalPatientStatuses(): array
     {
-        return ['served', 'completed', 'rescheduled', 'cancelled', 'no_show'];
+        return [
+            'completed',
+            'rescheduled',
+            'cancelled',
+            'no_show',
+        ];
     }
 
     public static function nextCandidateStatuses(): array
     {
-        return ['waiting', 'called'];
+        return [
+            'waiting',
+            'called',
+        ];
     }
 
     public static function activeLaneStatuses(): array
     {
-        return ['waiting', 'called', 'in_progress', 'now_serving'];
+        return [
+            'waiting',
+            'called',
+            'in_progress',
+            'now_serving',
+            'served',
+        ];
     }
 
     public static function blockingSlotStatuses(): array
     {
-        return ['waiting', 'called', 'in_progress', 'now_serving', 'served', 'completed'];
+        return [
+            'waiting',
+            'called',
+            'in_progress',
+            'now_serving',
+            'served',
+            'completed',
+        ];
     }
 
     public static function doctorQueueVisibleStatuses(): array
     {
-        return ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled', 'served', 'completed'];
+        return [
+            'waiting',
+            'called',
+            'in_progress',
+            'now_serving',
+            'served',
+            'completed',
+            'rescheduled',
+        ];
     }
 
     protected $fillable = [
@@ -65,15 +117,24 @@ class QueueEntry extends Model
         'scheduled_slot_date',
         'scheduled_slot_time',
         'status',
+        'priority_level',
+        'priority_rank',
+        'delay_notice_at',
+        'delay_notice_reason',
         'served_at',
+        'called_at',
         'service_started_at',
+        'doctor_completed_at',
         'service_ended_at',
     ];
 
     protected $casts = [
-        'served_at' => 'datetime',
         'scheduled_slot_date' => 'date',
+        'delay_notice_at' => 'datetime',
+        'served_at' => 'datetime',
+        'called_at' => 'datetime',
         'service_started_at' => 'datetime',
+        'doctor_completed_at' => 'datetime',
         'service_ended_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -150,11 +211,12 @@ class QueueEntry extends Model
     {
         return $query->where(function ($dayQuery) use ($date) {
             $dayQuery->whereDate('scheduled_slot_date', $date)
-            ->orWhereHas('appointment', function ($appointmentQuery) use ($date) {
-                $appointmentQuery->whereDate('appointment_date', $date);
-            })->orWhere(function ($walkInQuery) use ($date) {
-                $walkInQuery->walkIn()->createdOn($date);
-            });
+                ->orWhereHas('appointment', function ($appointmentQuery) use ($date) {
+                    $appointmentQuery->whereDate('appointment_date', $date);
+                })
+                ->orWhere(function ($walkInQuery) use ($date) {
+                    $walkInQuery->walkIn()->createdOn($date);
+                });
         });
     }
 
@@ -279,94 +341,75 @@ class QueueEntry extends Model
         return $counts;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Doctor Serve Action Helper
+    |--------------------------------------------------------------------------
+    |
+    | This method is used by the doctor side.
+    |
+    | It must ONLY change:
+    | in_progress / now_serving -> served
+    |
+    | It must NOT:
+    | - change served -> completed
+    | - set service_ended_at
+    | - complete the appointment
+    | - promote the next patient
+    |
+    | Secretary Done & Next should be the only action that changes:
+    | served -> completed
+    |
+    */
+
     public static function completeNowServingAndPromoteNext(int $clinicId, int $entryId, $date): array
     {
-        return DB::transaction(function () use ($clinicId, $entryId, $date) {
+        return DB::transaction(function () use ($clinicId, $entryId) {
             $currentEntry = self::query()
                 ->with(['appointment.user', 'patient', 'clinic'])
+                ->whereKey($entryId)
+                ->where('clinic_id', $clinicId)
                 ->lockForUpdate()
-                ->find($entryId);
+                ->first();
 
-            if (! $currentEntry || (int) $currentEntry->clinic_id !== $clinicId) {
-                return ['result' => 'invalid'];
+            if (! $currentEntry) {
+                return [
+                    'result' => 'invalid',
+                    'current' => null,
+                    'next' => null,
+                ];
+            }
+
+            if ($currentEntry->status === 'served') {
+                return [
+                    'result' => 'already_served',
+                    'current' => $currentEntry->fresh(['appointment.user', 'patient', 'clinic']),
+                    'next' => null,
+                ];
             }
 
             if (! in_array($currentEntry->status, ['in_progress', 'now_serving'], true)) {
                 return [
                     'result' => 'noop',
-                    'current' => $currentEntry->fresh(),
+                    'current' => $currentEntry->fresh(['appointment.user', 'patient', 'clinic']),
                     'next' => null,
                 ];
             }
 
-            $doctorId = (int) ($currentEntry->doctor_id ?: $currentEntry->appointment?->doctor_id ?: 0);
-
-            $now = now();
-
-            $currentEntry->update([
+            $currentEntry->forceFill([
                 'status' => 'served',
-                'served_at' => $now,
-                'service_ended_at' => $now,
-            ]);
-
-            if (
-                $currentEntry->appointment
-                && ! in_array($currentEntry->appointment->status, ['completed', 'cancelled', 'no_show', 'rescheduled'], true)
-            ) {
-                $appointment = $currentEntry->appointment;
-
-                $appointment->update([
-                    'status' => 'completed',
-                ]);
-
-                if ($appointment->user) {
-                    $appointment->user->notify(new AppointmentStatusChanged($appointment));
-                }
-            }
+                'served_at' => now(),
+                'doctor_completed_at' => now(),
+            ])->save();
 
             $currentEntry = $currentEntry->fresh(['appointment.user', 'patient', 'clinic']);
+
             event(new QueueUpdated($currentEntry, 'served'));
 
-            if ($doctorId <= 0) {
-                return [
-                    'result' => 'served_only',
-                    'current' => $currentEntry,
-                    'next' => null,
-                ];
-            }
-
-            $nextEntry = self::query()
-                ->forLaneCandidates($clinicId, $doctorId, $date)
-                ->whereKeyNot($currentEntry->id)
-                ->withStatuses(self::nextCandidateStatuses())
-                ->orderByScheduledSlot()
-                ->lockForUpdate()
-                ->first();
-
-            if (! $nextEntry) {
-                return [
-                    'result' => 'served_only',
-                    'current' => $currentEntry,
-                    'next' => null,
-                ];
-            }
-
-            $nextEntry->update([
-                'status' => 'in_progress',
-                'service_started_at' => now(),
-            ]);
-
-            if ($nextEntry->user) {
-                $nextEntry->user->notify(new QueueNotification($nextEntry));
-            }
-
-            $nextEntry = $nextEntry->fresh(['appointment.user', 'patient', 'clinic']);
-            event(new QueueUpdated($nextEntry, 'in_progress'));
-
             return [
-                'result' => 'served_and_promoted',
+                'result' => 'served_only',
                 'current' => $currentEntry,
-                'next' => $nextEntry,
+                'next' => null,
             ];
         });
     }
@@ -394,7 +437,12 @@ class QueueEntry extends Model
         $entries = $this->clinic->queueEntries()
             ->whereIn('status', self::activePatientStatuses())
             ->orderByScheduledSlot()
-            ->get(['id', 'queue_number', 'scheduled_slot_date', 'scheduled_slot_time']);
+            ->get([
+                'id',
+                'queue_number',
+                'scheduled_slot_date',
+                'scheduled_slot_time',
+            ]);
 
         $ahead = $entries
             ->takeUntil(fn ($entry) => (int) $entry->id === (int) $this->id)
@@ -428,6 +476,15 @@ class QueueEntry extends Model
         return \Carbon\Carbon::parse($this->served_at)->format('g:i A');
     }
 
+    public function getFormattedCalledTimeAttribute()
+    {
+        if (! $this->called_at) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($this->called_at)->format('g:i A');
+    }
+
     public function getFormattedServiceStartedTimeAttribute()
     {
         if (! $this->service_started_at) {
@@ -435,6 +492,15 @@ class QueueEntry extends Model
         }
 
         return \Carbon\Carbon::parse($this->service_started_at)->format('g:i A');
+    }
+
+    public function getFormattedDoctorCompletedTimeAttribute()
+    {
+        if (! $this->doctor_completed_at) {
+            return null;
+        }
+
+        return \Carbon\Carbon::parse($this->doctor_completed_at)->format('g:i A');
     }
 
     public function getFormattedServiceEndedTimeAttribute()
@@ -466,7 +532,7 @@ class QueueEntry extends Model
             'called' => 'Called',
             'in_progress' => 'In Progress',
             'now_serving' => 'Now Serving',
-            'served' => 'Completed',
+            'served' => 'Served',
             'completed' => 'Completed',
             'rescheduled' => 'Rescheduled',
             'no_show' => 'No Show',

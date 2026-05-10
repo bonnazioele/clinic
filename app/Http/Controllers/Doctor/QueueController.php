@@ -30,22 +30,31 @@ class QueueController extends Controller
         $activeClinic = $this->activeClinic($request);
         $today = now()->toDateString();
 
-        $waitingQuery = QueueEntry::query()
+        $waiting = QueueEntry::query()
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinic->id)
             ->forDoctor($doctor->id)
             ->whereIn('status', QueueEntry::doctorQueueVisibleStatuses())
             ->forDashboardDay($today)
-            ->orderByScheduledSlot();
-
-        $waiting = $waitingQuery->get();
+            ->orderByScheduledSlot()
+            ->get();
 
         return view('doctor.queue.index', compact('waiting'));
     }
 
+    /**
+     * Doctor clicks "Complete".
+     *
+     * Moves: in_progress → served
+     *
+     * This makes the patient visible as "served" on both the doctor
+     * and secretary sides. The secretary then clicks "Done & Next"
+     * to mark the patient as fully completed and promote the next
+     * waiting patient to in_progress.
+     */
     public function serve(Request $request, QueueEntry $entry)
     {
-        $doctor = Auth::user();
+        $doctor       = Auth::user();
         $activeClinic = $this->activeClinic($request);
 
         if ((int) $entry->clinic_id !== (int) $activeClinic->id) {
@@ -60,45 +69,49 @@ class QueueController extends Controller
 
         $data = $request->validate([
             'doctor_notes' => ['nullable', 'string', 'max:2000'],
-            'prescription' => ['nullable', 'string', 'max:2000'],
-            'follow_up_at' => ['nullable', 'date'],
+            'prescription'  => ['nullable', 'string', 'max:2000'],
+            'follow_up_at'  => ['nullable', 'date'],
         ]);
 
-        DB::transaction(function () use ($entry, $data) {
+        $updatedEntry = null;
+
+        DB::transaction(function () use ($entry, $data, &$updatedEntry) {
             $fresh = QueueEntry::with(['appointment.user', 'patient', 'clinic'])
                 ->lockForUpdate()
                 ->find($entry->id);
 
-            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'in_progress', 'now_serving'], true)) {
+            if (! $fresh || $fresh->status !== 'in_progress') {
                 return;
             }
 
+            // Save clinical notes and move to served.
+            // Secretary's Done & Next will promote this to completed
+            // and advance the queue.
             $fresh->update([
-                'status' => 'served',
-                'served_at' => now(),
-                'patient_disposition' => 'completed',
-                'doctor_notes' => $data['doctor_notes'] ?? $fresh->doctor_notes,
-                'prescription' => $data['prescription'] ?? $fresh->prescription,
-                'follow_up_at' => $data['follow_up_at'] ?? $fresh->follow_up_at,
+                'status'               => 'served',
+                'served_at'            => now(),
+                'doctor_notes'         => $data['doctor_notes'] ?? $fresh->doctor_notes,
+                'prescription'         => $data['prescription']  ?? $fresh->prescription,
+                'follow_up_at'         => $data['follow_up_at']  ?? $fresh->follow_up_at,
+                'doctor_completed_at'  => now(),
             ]);
 
-            if ($fresh->appointment && $fresh->appointment->status !== 'completed') {
-                $fresh->appointment->update(['status' => 'completed']);
+            // Notify secretaries so they know to click Done & Next.
+            $secretaries = $fresh->clinic->secretaries()->get();
+
+            foreach ($secretaries as $secretary) {
+                $secretary->notify(
+                    new \App\Notifications\DoctorServedQueue($fresh->appointment ?? $fresh)
+                );
             }
 
-            $clinic = $fresh->clinic;
-
-            if ($clinic && $fresh->appointment) {
-                $secretaries = $clinic->secretaries()->get();
-
-                foreach ($secretaries as $secretary) {
-                    $secretary->notify(new \App\Notifications\DoctorServedQueue($fresh->appointment));
-                }
-            }
-
-            event(new QueueUpdated($fresh->fresh(['appointment.user', 'patient', 'clinic']), 'served'));
+            $updatedEntry = $fresh->fresh(['appointment.user', 'patient', 'clinic']);
         });
 
-        return back()->with('status', 'Processed queue entry #' . $entry->queue_number . '.');
+        if ($updatedEntry) {
+            event(new QueueUpdated($updatedEntry, 'served'));
+        }
+
+        return back()->with('status', 'Patient marked as served. Secretary will advance the queue.');
     }
 }
