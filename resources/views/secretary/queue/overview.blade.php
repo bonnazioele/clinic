@@ -5,15 +5,43 @@
 @section('content')
 @php
   $today = now()->toDateString();
-  $activeStatuses = ['waiting', 'called', 'in_progress', 'now_serving'];
 
-  $isTodayQueueEntry = function ($entry) use ($today, $activeStatuses) {
-      if (! in_array($entry->status, $activeStatuses, true)) {
+  /*
+  |--------------------------------------------------------------------------
+  | Active queue statuses
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANT:
+  | "served" must be active here because after doctor clicks Serve,
+  | the secretary still needs to see the patient and click Done & Next.
+  |
+  */
+  $activeStatuses = [
+      'waiting',
+      'called',
+      'in_progress',
+      'now_serving',
+      'served',
+  ];
+
+  $waitingStatuses = [
+      'waiting',
+      'called',
+  ];
+
+  $withDoctorStatuses = [
+      'in_progress',
+      'now_serving',
+  ];
+
+  $isTodayQueueEntry = function ($entry, array $statuses = null) use ($today) {
+      if ($statuses !== null && ! in_array($entry->status, $statuses, true)) {
           return false;
       }
 
       $queueDate = $entry->queue_date
           ?? optional($entry->appointment)->appointment_date
+          ?? $entry->scheduled_slot_date
           ?? $entry->created_at
           ?? null;
 
@@ -24,19 +52,27 @@
       return \Carbon\Carbon::parse($queueDate)->toDateString() === $today;
   };
 
-  $clinics = $clinics->map(function ($clinic) use ($isTodayQueueEntry) {
+  $clinics = $clinics->map(function ($clinic) use ($isTodayQueueEntry, $activeStatuses, $waitingStatuses, $withDoctorStatuses) {
       $todayQueueEntries = $clinic->queueEntries
-          ->filter(fn($entry) => $isTodayQueueEntry($entry))
+          ->filter(fn($entry) => $isTodayQueueEntry($entry, $activeStatuses))
           ->values();
 
       $clinic->setRelation('queueEntries', $todayQueueEntries);
-      $clinic->waiting_count = $todayQueueEntries->count();
+
+      $clinic->active_count = $todayQueueEntries->count();
+      $clinic->waiting_count = $todayQueueEntries->whereIn('status', $waitingStatuses)->count();
+      $clinic->with_doctor_count = $todayQueueEntries->whereIn('status', $withDoctorStatuses)->count();
+      $clinic->served_pending_count = $todayQueueEntries->where('status', 'served')->count();
 
       return $clinic;
   });
 
-  $activeClinics = $clinics->filter(fn($c) => $c->waiting_count > 0);
-  $totalWaiting = $activeClinics->sum(fn($c) => $c->queueEntries->where('status', 'waiting')->count());
+  $activeClinics = $clinics->filter(fn($c) => $c->active_count > 0);
+
+  $totalActive = $activeClinics->sum(fn($c) => $c->active_count);
+  $totalWaiting = $activeClinics->sum(fn($c) => $c->waiting_count);
+  $totalWithDoctor = $activeClinics->sum(fn($c) => $c->with_doctor_count);
+  $totalServedPending = $activeClinics->sum(fn($c) => $c->served_pending_count);
 @endphp
 
 <style>
@@ -104,7 +140,7 @@
 
   .overview-stats-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
   }
@@ -131,6 +167,10 @@
     transform: rotate(4deg);
   }
 
+  .overview-stat-blue {
+    background: linear-gradient(135deg, #0866f2, #2993ff);
+  }
+
   .overview-stat-yellow {
     background: linear-gradient(135deg, #ffd85a, #ffc107);
     color: #162033;
@@ -138,6 +178,10 @@
 
   .overview-stat-green {
     background: linear-gradient(135deg, #087b3d, #2bbf6a);
+  }
+
+  .overview-stat-purple {
+    background: linear-gradient(135deg, #6d28d9, #8b5cf6);
   }
 
   .overview-stat-content {
@@ -170,6 +214,13 @@
   .overview-stat-label {
     font-size: .9rem;
     font-weight: 900;
+  }
+
+  .overview-stat-help {
+    font-size: .78rem;
+    font-weight: 700;
+    opacity: .85;
+    margin-top: .2rem;
   }
 
   .overview-panel {
@@ -269,6 +320,12 @@
     white-space: nowrap;
   }
 
+  .queue-badge-served {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+
   .queue-preview {
     border-radius: 18px;
     background: #f8fafc;
@@ -301,6 +358,34 @@
     font-weight: 900;
   }
 
+  .queue-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    border-radius: 999px;
+    padding: .25rem .5rem;
+    font-size: .7rem;
+    font-weight: 900;
+    margin-top: .25rem;
+  }
+
+  .queue-status-waiting,
+  .queue-status-called {
+    background: #fff7db;
+    color: #8a6300;
+  }
+
+  .queue-status-in_progress,
+  .queue-status-now_serving {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .queue-status-served {
+    background: #dcfce7;
+    color: #166534;
+  }
+
   .empty-overview {
     text-align: center;
     padding: 3rem 1rem;
@@ -320,6 +405,7 @@
   }
 
   @media (max-width: 1200px) {
+    .overview-stats-grid,
     .clinic-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -357,7 +443,7 @@
         <div>
           <h1 class="overview-title">Queue Overview</h1>
           <p class="overview-subtitle">
-            Monitor only today's active queues across your assigned clinics.
+            Monitor today's active queues across your assigned clinics. Served patients stay visible until Done &amp; Next is clicked.
           </p>
         </div>
       </div>
@@ -371,6 +457,19 @@
   </section>
 
   <section class="overview-stats-grid">
+    <div class="overview-stat-card overview-stat-blue">
+      <div class="overview-stat-content">
+        <div class="overview-stat-icon">
+          <i class="bi bi-list-check"></i>
+        </div>
+        <div>
+          <div class="overview-stat-value">{{ number_format($totalActive) }}</div>
+          <div class="overview-stat-label">Active Today</div>
+          <div class="overview-stat-help">Waiting, with doctor, and served</div>
+        </div>
+      </div>
+    </div>
+
     <div class="overview-stat-card overview-stat-yellow">
       <div class="overview-stat-content">
         <div class="overview-stat-icon">
@@ -378,7 +477,8 @@
         </div>
         <div>
           <div class="overview-stat-value">{{ number_format($totalWaiting) }}</div>
-          <div class="overview-stat-label">Waiting Today</div>
+          <div class="overview-stat-label">Waiting / Called</div>
+          <div class="overview-stat-help">Ready to be processed</div>
         </div>
       </div>
     </div>
@@ -386,11 +486,25 @@
     <div class="overview-stat-card overview-stat-green">
       <div class="overview-stat-content">
         <div class="overview-stat-icon">
+          <i class="bi bi-activity"></i>
+        </div>
+        <div>
+          <div class="overview-stat-value">{{ number_format($totalWithDoctor) }}</div>
+          <div class="overview-stat-label">With Doctor</div>
+          <div class="overview-stat-help">Currently in progress</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overview-stat-card overview-stat-purple">
+      <div class="overview-stat-content">
+        <div class="overview-stat-icon">
           <i class="bi bi-check2-circle"></i>
         </div>
         <div>
-          <div class="overview-stat-value">{{ number_format($totalServedToday) }}</div>
-          <div class="overview-stat-label">Served Today</div>
+          <div class="overview-stat-value">{{ number_format($totalServedPending) }}</div>
+          <div class="overview-stat-label">Served Pending</div>
+          <div class="overview-stat-help">Needs Done &amp; Next</div>
         </div>
       </div>
     </div>
@@ -423,7 +537,7 @@
           <ul class="small mb-0 mt-2">
             @foreach($recent as $n)
               <li>
-                {{ $n->data['message'] }}
+                {{ $n->data['message'] ?? 'A patient was served by the doctor.' }}
                 <span class="text-muted">{{ $n->created_at->diffForHumans() }}</span>
               </li>
             @endforeach
@@ -448,9 +562,17 @@
                 </div>
               </div>
 
-              <span class="queue-badge">
-                {{ $clinic->waiting_count }} waiting
-              </span>
+              <div class="d-flex flex-column gap-2 align-items-end">
+                <span class="queue-badge">
+                  {{ $clinic->active_count }} active
+                </span>
+
+                @if($clinic->served_pending_count > 0)
+                  <span class="queue-badge queue-badge-served">
+                    {{ $clinic->served_pending_count }} served
+                  </span>
+                @endif
+              </div>
             </div>
 
             <div class="queue-preview">
@@ -461,6 +583,12 @@
                   <div>
                     <div class="queue-num">#{{ $entry->queue_number }}</div>
                     <small class="text-muted">{{ $entry->display_name }}</small>
+
+                    <div>
+                      <span class="queue-status-pill queue-status-{{ $entry->status }}">
+                        {{ $entry->status_label ?? ucfirst(str_replace('_', ' ', $entry->status)) }}
+                      </span>
+                    </div>
                   </div>
 
                   <small class="text-muted">
@@ -470,10 +598,10 @@
                 </div>
               @endforeach
 
-              @if($clinic->waiting_count > 3)
+              @if($clinic->active_count > 3)
                 <div class="text-center pt-2">
                   <small class="text-muted">
-                    +{{ $clinic->waiting_count - 3 }} more
+                    +{{ $clinic->active_count - 3 }} more
                   </small>
                 </div>
               @endif
