@@ -8,132 +8,84 @@
     min-height: calc(100vh - 40px);
     display: grid;
     place-items: center;
-    padding: 2rem 1rem;
+    padding: 1.5rem 1rem;
   }
 
   .auth-shell {
     width: min(1180px, 100%);
     display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(420px, 560px);
-    gap: 1rem;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 500px);
+    gap: 2rem;
+    align-items: center;
+    min-height: 650px;
+    padding: 1rem 1.25rem 1rem 3.5rem;
   }
 
-  .auth-hero,
   .auth-card {
-    border: 1px solid rgba(226, 232, 240, 0.96);
-    border-radius: 28px;
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
     overflow: hidden;
   }
 
   .auth-hero {
-    min-height: 660px;
-    padding: 2rem;
-    color: #ffffff;
-    background:
-      radial-gradient(circle at 86% 22%, rgba(255, 255, 255, 0.20), transparent 18%),
-      radial-gradient(circle at 10% 88%, rgba(34, 197, 94, 0.26), transparent 26%),
-      linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%);
+    min-height: 320px;
+    padding: 0;
+    color: #0f172a;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
+    text-align: left;
   }
 
-  .auth-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-weight: 950;
-    font-size: 1.05rem;
-  }
-
-  .auth-brand-icon,
   .auth-title-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 17px;
-    display: grid;
-    place-items: center;
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-    font-size: 1.45rem;
-    flex: 0 0 52px;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    display: inline-flex;
+    place-items: initial;
+    background: transparent;
+    color: #0d6efd;
+    font-size: 0.95rem;
+    flex: 0 0 auto;
   }
 
   .auth-hero-title {
     margin: 0;
     max-width: 620px;
-    font-size: clamp(2rem, 3.6vw, 3.2rem);
-    line-height: 1.03;
+    color: #0d6efd;
+    font-size: clamp(2rem, 3.8vw, 3.1rem);
+    line-height: 1.08;
     font-weight: 950;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.035em;
   }
 
   .auth-hero-copy {
-    max-width: 560px;
+    max-width: 460px;
     margin: 1rem 0 0;
-    color: rgba(255, 255, 255, 0.86);
-    font-weight: 650;
-  }
-
-  .auth-mini-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-  }
-
-  .auth-mini-card {
-    border-radius: 18px;
-    padding: 0.95rem;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(14px);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .auth-mini-card i {
-    font-size: 1.25rem;
-  }
-
-  .auth-mini-card strong {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 900;
-  }
-
-  .auth-mini-card span {
-    display: block;
-    color: rgba(255, 255, 255, 0.78);
-    font-size: 0.78rem;
-    font-weight: 650;
+    color: #475569;
+    font-size: 0.92rem;
+    font-weight: 600;
   }
 
   .auth-card {
-    background: rgba(255, 255, 255, 0.96);
-    padding: 1.5rem;
+    background: #ffffff;
+    padding: 1.4rem;
   }
 
   .auth-card-head {
     display: flex;
     align-items: flex-start;
-    gap: 0.85rem;
-    margin-bottom: 1.35rem;
-  }
-
-  .auth-title-icon {
-    background: #eff6ff;
-    color: #0d6efd;
+    gap: 0.4rem;
+    margin-bottom: 1.15rem;
   }
 
   .auth-card-title {
     margin: 0;
-    color: #0f172a;
-    font-weight: 950;
-    letter-spacing: -0.035em;
+    color: #0d6efd;
+    font-size: 1rem;
+    font-weight: 900;
+    letter-spacing: 0;
   }
 
   .auth-card-subtitle {
@@ -146,7 +98,7 @@
   .auth-form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 0.75rem;
   }
 
   .auth-span-2 {
@@ -155,21 +107,21 @@
 
   .auth-form .form-label {
     color: #334155;
-    font-size: 0.82rem;
-    font-weight: 850;
+    font-size: 0.78rem;
+    font-weight: 800;
   }
 
   .auth-form .form-control {
-    min-height: 48px;
-    border-radius: 15px !important;
-    border-color: #dbe3ef;
-    background: #f8fafc;
-    font-weight: 650;
+    min-height: 40px;
+    border-radius: 4px !important;
+    border-color: #e2e8f0;
+    background: #ffffff;
+    font-weight: 600;
     box-shadow: none;
   }
 
   .auth-form textarea.form-control {
-    min-height: 82px;
+    min-height: 70px;
   }
 
   .auth-form .form-control:focus {
@@ -179,23 +131,23 @@
   }
 
   .auth-form .input-group .btn {
-    border-radius: 0 15px 15px 0;
-    border-color: #dbe3ef;
+    border-radius: 0 4px 4px 0;
+    border-color: #e2e8f0;
     background: #ffffff;
   }
 
   .auth-submit {
-    min-height: 48px;
-    border-radius: 15px;
-    font-weight: 950;
-    box-shadow: 0 12px 24px rgba(13, 110, 253, 0.20);
+    min-height: 40px;
+    border-radius: 999px;
+    font-weight: 900;
+    box-shadow: none;
   }
 
   .auth-link-box {
-    border-radius: 18px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 0.9rem;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    padding: 0.75rem 0 0;
     text-align: center;
   }
 
@@ -206,10 +158,18 @@
   @media (max-width: 991.98px) {
     .auth-shell {
       grid-template-columns: 1fr;
+      padding: 2rem;
     }
 
     .auth-hero {
       min-height: auto;
+      text-align: center;
+    }
+
+    .auth-hero-title,
+    .auth-hero-copy {
+      margin-left: auto;
+      margin-right: auto;
     }
   }
 
@@ -218,9 +178,8 @@
       padding: 1rem 0;
     }
 
-    .auth-hero,
-    .auth-card {
-      border-radius: 22px;
+    .auth-shell {
+      padding: 1.25rem;
     }
 
     .auth-form-grid {
@@ -241,44 +200,11 @@
 <div class="auth-page">
   <div class="auth-shell">
     <section class="auth-hero">
-      <div class="auth-brand">
-        <span class="auth-brand-icon">
-          <i class="bi bi-heart-pulse"></i>
-        </span>
-        <span>CliniQ</span>
-      </div>
-
       <div>
-        <h1 class="auth-hero-title">Start your care journey with CliniQ.</h1>
+        <h1 class="auth-hero-title">Join CliniQ Today!</h1>
         <p class="auth-hero-copy">
-          Create a patient account to book appointments, track queue status, and keep your clinic visits organized.
+          Create your account and start managing your healthcare journey.
         </p>
-      </div>
-
-      <div class="auth-mini-grid">
-        <div class="auth-mini-card">
-          <i class="bi bi-calendar-plus"></i>
-          <div>
-            <strong>Book appointments</strong>
-            <span>Choose available doctor schedules and services.</span>
-          </div>
-        </div>
-
-        <div class="auth-mini-card">
-          <i class="bi bi-activity"></i>
-          <div>
-            <strong>Track your queue</strong>
-            <span>See your visit status after booking.</span>
-          </div>
-        </div>
-
-        <div class="auth-mini-card">
-          <i class="bi bi-file-earmark-medical"></i>
-          <div>
-            <strong>Manage visit details</strong>
-            <span>Keep contact and appointment information ready.</span>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -292,7 +218,6 @@
 
         <div>
           <h2 class="auth-card-title">Create Account</h2>
-          <p class="auth-card-subtitle">Fill in your patient profile details.</p>
         </div>
       </div>
 
@@ -410,7 +335,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary auth-submit w-100 mt-4" data-loading-text="Creating account...">
-          <i class="bi bi-person-check me-2"></i>
           Create Account
         </button>
 
