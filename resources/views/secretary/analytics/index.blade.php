@@ -1,840 +1,736 @@
 @extends('layouts.app')
 
-@section('title', "Queue — {$clinic->name}")
-
 @section('content')
-@php
-  $today = now()->toDateString();
-
-  $waiting = $waiting->filter(function ($queueEntry) use ($today) {
-      $queueDate = $queueEntry->queue_date
-          ?? $queueEntry->scheduled_slot_date
-          ?? optional($queueEntry->appointment)->appointment_date
-          ?? $queueEntry->created_at
-          ?? null;
-
-      if (! $queueDate) {
-          return false;
-      }
-
-      return \Carbon\Carbon::parse($queueDate)->toDateString() === $today;
-  })->values();
-
-  $waitingCount = $waiting->count();
-  $nowServingCount = $waiting->where('status', 'in_progress')->count();
-  $waitingOnlyCount = $waiting->where('status', 'waiting')->count();
-@endphp
-
 <style>
-  .queue-page {
-    width: 96%;
-    max-width: none;
-    margin: 0 auto;
-    padding: 0.5rem 0 1.5rem;
-  }
-
-  .queue-hero {
-    border-radius: 24px;
-    padding: 1.45rem;
-    color: #fff;
-    background:
-      radial-gradient(circle at 90% 25%, rgba(255,255,255,.16), transparent 18%),
-      linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%);
-    box-shadow: 0 18px 45px rgba(37, 99, 235, .22);
-    margin-bottom: 1rem;
-  }
-
-  .queue-hero-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .queue-title-wrap {
-    display: flex;
-    gap: .85rem;
-    align-items: flex-start;
-  }
-
-  .queue-title-icon {
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
-    display: grid;
-    place-items: center;
-    background: rgba(255,255,255,.18);
-    font-size: 1.55rem;
-    flex: 0 0 58px;
-  }
-
-  .queue-title {
-    margin: 0;
-    font-size: clamp(1.5rem, 2.4vw, 2.1rem);
-    font-weight: 900;
-    letter-spacing: -0.045em;
-  }
-
-  .queue-subtitle {
-    margin: .3rem 0 0;
-    font-size: .95rem;
-    font-weight: 650;
-    opacity: .94;
-  }
-
-  .queue-hero-pills {
-    display: flex;
-    gap: .55rem;
-    flex-wrap: wrap;
-  }
-
-  .queue-hero-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    border-radius: 999px;
-    padding: .5rem .75rem;
-    background: rgba(255,255,255,.16);
-    border: 1px solid rgba(255,255,255,.22);
-    color: #fff;
-    font-size: .78rem;
-    font-weight: 900;
-    white-space: nowrap;
-  }
-
-  .queue-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .queue-stat-card {
-    min-height: 140px;
-    border-radius: 22px;
-    padding: 1rem;
-    color: #fff;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 14px 34px rgba(15,23,42,.08);
-  }
-
-  .queue-stat-card::after {
-    content: "";
-    position: absolute;
-    right: -24px;
-    bottom: -24px;
-    width: 112px;
-    height: 112px;
-    border-radius: 36px;
-    background: rgba(255,255,255,.14);
-    transform: rotate(4deg);
-  }
-
-  .queue-stat-blue { background: linear-gradient(135deg, #0866f2, #2993ff); }
-  .queue-stat-yellow { background: linear-gradient(135deg, #ffd85a, #ffc107); color: #162033; }
-  .queue-stat-green { background: linear-gradient(135deg, #087b3d, #2bbf6a); }
-
-  .queue-stat-content {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    gap: .85rem;
-    align-items: flex-start;
-  }
-
-  .queue-stat-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 17px;
-    display: grid;
-    place-items: center;
-    background: rgba(255,255,255,.18);
-    font-size: 1.45rem;
-    flex: 0 0 52px;
-  }
-
-  .queue-stat-value {
-    font-size: 2rem;
-    font-weight: 900;
-    line-height: 1;
-    letter-spacing: -.055em;
-    margin-bottom: .4rem;
-  }
-
-  .queue-stat-label {
-    font-size: .88rem;
-    font-weight: 900;
-  }
-
-  .queue-stat-help {
-    margin-top: .15rem;
-    font-size: .78rem;
-    font-weight: 650;
-    opacity: .9;
-  }
-
-  .queue-panel {
-    border-radius: 24px;
-    border: 1px solid rgba(226,232,240,.96);
-    background: rgba(255,255,255,.94);
-    box-shadow: 0 18px 45px rgba(15,23,42,.08);
-    overflow: hidden;
-  }
-
-  .queue-panel-head {
-    padding: 1rem 1.2rem;
-    border-bottom: 1px solid #edf2f7;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: .75rem;
-    flex-wrap: wrap;
-  }
-
-  .queue-panel-title {
-    margin: 0;
-    font-size: 1.08rem;
-    font-weight: 900;
-    color: #0f172a;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-  }
-
-  .queue-panel-title i {
-    color: #0d6efd;
-  }
-
-  .queue-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    border-radius: 999px;
-    padding: .42rem .72rem;
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-    font-size: .76rem;
-    font-weight: 900;
-  }
-
-  .queue-table {
-    margin: 0;
-  }
-
-  .queue-table thead th {
-    background: #f8fafc !important;
-    color: #475569;
-    font-size: .75rem;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    border-bottom: 1px solid #e2e8f0 !important;
-    padding: 1rem;
-  }
-
-  .queue-table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-  }
-
-  .queue-number-badge {
-    width: 54px;
-    height: 54px;
-    border-radius: 17px;
-    display: grid;
-    place-items: center;
-    background: #eff6ff;
-    color: #0d6efd;
-    font-weight: 900;
-    font-size: 1rem;
-  }
-
-  .queue-patient-name {
-    font-weight: 900;
-    color: #0f172a;
-  }
-
-  .queue-contact {
-    color: #64748b;
-    font-size: .8rem;
-    font-weight: 650;
-    margin-top: .15rem;
-  }
-
-  .queue-type {
-    display: inline-flex;
-    align-items: center;
-    gap: .3rem;
-    border-radius: 999px;
-    padding: .35rem .6rem;
-    background: #ecfdf5;
-    color: #047857;
-    font-size: .72rem;
-    font-weight: 900;
-    margin-top: .4rem;
-  }
-
-  .queue-action-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .45rem;
-  }
-
-  .queue-action-buttons .btn {
-    border-radius: 12px;
-    font-weight: 850;
-  }
-
-  .queue-empty {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #64748b;
-  }
-
-  .queue-empty-icon {
-    width: 76px;
-    height: 76px;
-    margin: 0 auto 1rem;
-    border-radius: 24px;
-    display: grid;
-    place-items: center;
-    background: #ecfdf5;
-    color: #16a34a;
-    font-size: 2.2rem;
-  }
-
-  .queue-cards {
-    display: none;
-    padding: 1rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .queue-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    background: #fff;
-    padding: 1rem;
-    box-shadow: 0 10px 26px rgba(15,23,42,.045);
-  }
-
-  .queue-card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: .75rem;
-    margin-bottom: .85rem;
-  }
-
-  .resched-modal .modal-content {
-    border: 0;
-    border-radius: 22px;
-    overflow: hidden;
-    box-shadow: 0 24px 60px rgba(15,23,42,.18);
-  }
-
-  .resched-modal .modal-header {
-    background: linear-gradient(135deg, #0d6efd, #178bff);
-    color: #fff;
-  }
-
-  .resched-modal .btn-close {
-    filter: invert(1);
-  }
-
-  @media (max-width: 992px) {
-    .queue-stats-grid {
-      grid-template-columns: 1fr;
+    .analytics-page {
+        width: min(1320px, 94%);
+        margin: 0 auto;
+        padding: 1.5rem 0 3rem;
     }
 
-    .queue-table-wrap {
-      display: none;
+    .analytics-hero {
+        border: 1px solid rgba(37, 99, 235, .12);
+        border-radius: 28px;
+        background:
+            radial-gradient(circle at top left, rgba(59, 130, 246, .18), transparent 35%),
+            linear-gradient(135deg, rgba(255,255,255,.96), rgba(239,246,255,.95));
+        box-shadow: 0 18px 50px rgba(15, 23, 42, .08);
+        padding: 1.5rem;
+        overflow: hidden;
+        position: relative;
     }
 
-    .queue-cards {
-      display: grid;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .queue-page {
-      width: 100%;
-    }
-
-    .queue-hero {
-      padding: 1rem;
-      border-radius: 22px;
+    .analytics-hero::after {
+        content: "";
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        border-radius: 999px;
+        right: -90px;
+        top: -90px;
+        background: rgba(37, 99, 235, .12);
     }
 
-    .queue-cards {
-      grid-template-columns: 1fr;
-      padding: .85rem;
+    .analytics-title {
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -.03em;
+        margin-bottom: .35rem;
     }
 
-    .queue-action-buttons,
-    .queue-action-buttons form,
-    .queue-action-buttons .btn {
-      width: 100%;
+    .analytics-subtitle {
+        color: #64748b;
+        margin-bottom: 0;
     }
-  }
+
+    .filter-card,
+    .metric-card,
+    .report-card {
+        border: 1px solid rgba(148, 163, 184, .22);
+        border-radius: 24px;
+        background: rgba(255,255,255,.94);
+        box-shadow: 0 14px 40px rgba(15, 23, 42, .06);
+    }
+
+    .filter-card {
+        padding: 1rem;
+    }
+
+    .metric-card {
+        padding: 1.15rem;
+        height: 100%;
+    }
+
+    .metric-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 1.25rem;
+        flex: 0 0 auto;
+    }
+
+    .metric-label {
+        color: #64748b;
+        font-size: .88rem;
+        margin-bottom: .25rem;
+    }
+
+    .metric-value {
+        color: #0f172a;
+        font-size: 1.75rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .metric-note {
+        color: #94a3b8;
+        font-size: .8rem;
+        margin-top: .35rem;
+    }
+
+    .trend-up {
+        color: #16a34a;
+    }
+
+    .trend-down {
+        color: #dc2626;
+    }
+
+    .report-card {
+        padding: 1.25rem;
+    }
+
+    .report-title {
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: .25rem;
+    }
+
+    .report-description {
+        color: #64748b;
+        font-size: .9rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-pill {
+        border-radius: 999px;
+        padding: .35rem .75rem;
+        font-size: .78rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+
+    .pill-blue {
+        background: #eff6ff;
+        color: #2563eb;
+    }
+
+    .pill-green {
+        background: #ecfdf5;
+        color: #16a34a;
+    }
+
+    .pill-red {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .pill-orange {
+        background: #fff7ed;
+        color: #ea580c;
+    }
+
+    .pill-slate {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .table thead th {
+        color: #64748b;
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        border-bottom-color: #e2e8f0;
+    }
+
+    .table td {
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .empty-state {
+        border: 1px dashed #cbd5e1;
+        border-radius: 18px;
+        padding: 2rem;
+        text-align: center;
+        color: #64748b;
+        background: #f8fafc;
+    }
+
+    .chart-box {
+        min-height: 320px;
+        position: relative;
+    }
+
+    @media (max-width: 768px) {
+        .analytics-page {
+            width: 94%;
+        }
+
+        .analytics-hero {
+            padding: 1.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.45rem;
+        }
+    }
 </style>
 
-<div class="queue-page">
-  <section class="queue-hero">
-    <div class="queue-hero-row">
-      <div class="queue-title-wrap">
-        <div class="queue-title-icon">
-          <i class="bi bi-clock-history"></i>
-        </div>
+<div class="analytics-page">
+    @include('partials.alerts')
 
-        <div>
-          <h1 class="queue-title">Queue Management</h1>
-          <p class="queue-subtitle">
-            {{ $clinic->name }} — {{ $clinic->address }}
-          </p>
-        </div>
-      </div>
-
-      <div class="queue-hero-pills">
-        <span class="queue-hero-pill">
-          <i class="bi bi-building"></i>
-          {{ $clinic->name }}
-        </span>
-        <span class="queue-hero-pill">
-          <i class="bi bi-people"></i>
-          {{ $waitingCount }} active
-        </span>
-      </div>
-    </div>
-  </section>
-
-  <section class="queue-stats-grid">
-    <div class="queue-stat-card queue-stat-blue">
-      <div class="queue-stat-content">
-        <div class="queue-stat-icon">
-          <i class="bi bi-people"></i>
-        </div>
-        <div>
-          <div class="queue-stat-value">{{ number_format($waitingCount) }}</div>
-          <div class="queue-stat-label">Active Entries</div>
-          <div class="queue-stat-help">Today's queue records</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="queue-stat-card queue-stat-yellow">
-      <div class="queue-stat-content">
-        <div class="queue-stat-icon">
-          <i class="bi bi-hourglass-split"></i>
-        </div>
-        <div>
-          <div class="queue-stat-value">{{ number_format($waitingOnlyCount) }}</div>
-          <div class="queue-stat-label">Waiting</div>
-          <div class="queue-stat-help">Ready to be seen</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="queue-stat-card queue-stat-green">
-      <div class="queue-stat-content">
-        <div class="queue-stat-icon">
-          <i class="bi bi-megaphone"></i>
-        </div>
-        <div>
-          <div class="queue-stat-value">{{ number_format($nowServingCount) }}</div>
-          <div class="queue-stat-label">Now Serving</div>
-          <div class="queue-stat-help">Currently with doctor</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="queue-panel">
-    <div class="queue-panel-head">
-      <h2 class="queue-panel-title">
-        <i class="bi bi-list-ol"></i>
-        Today's Active Queue
-      </h2>
-
-      <span class="queue-pill">
-        <i class="bi bi-clock"></i>
-        {{ $waitingCount }} today
-      </span>
-    </div>
-
-    @if($waiting->isEmpty())
-      <div class="queue-empty">
-        <div class="queue-empty-icon">
-          <i class="bi bi-check-circle"></i>
-        </div>
-        <h5 class="fw-bold text-success">Queue is Empty</h5>
-        <p class="mb-0">No queue entries for today.</p>
-      </div>
-    @else
-      <div class="queue-table-wrap table-responsive">
-        <table class="table queue-table table-hover">
-          <thead>
-            <tr>
-              <th>Queue #</th>
-              <th>Patient</th>
-              <th>Appointment</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            @foreach($waiting as $queueEntry)
-              <tr>
-                <td>
-                  <div class="queue-number-badge">
-                    #{{ $queueEntry->queue_number }}
-                  </div>
-                </td>
-
-                <td>
-                  <div class="queue-patient-name">{{ $queueEntry->display_name }}</div>
-
-                  @if($queueEntry->display_email)
-                    <div class="queue-contact">
-                      <i class="bi bi-envelope me-1"></i>{{ $queueEntry->display_email }}
-                    </div>
-                  @endif
-
-                  @if($queueEntry->display_phone)
-                    <div class="queue-contact">
-                      <i class="bi bi-telephone me-1"></i>{{ $queueEntry->display_phone }}
-                    </div>
-                  @endif
-
-                  @if($queueEntry->is_walk_in)
-                    <span class="queue-type">
-                      <i class="bi bi-person-plus"></i>
-                      Walk-In
+    <div class="analytics-hero mb-4">
+        <div class="position-relative" style="z-index: 2;">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                <div>
+                    <span class="status-pill pill-blue mb-3">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        Secretary Analytics
                     </span>
-                  @endif
-                </td>
 
-                <td>
-                  @if($queueEntry->scheduled_slot_date || $queueEntry->formatted_scheduled_slot_time)
-                    <div class="fw-bold">
-                      {{ $queueEntry->scheduledSlotDateString() ? \Carbon\Carbon::parse($queueEntry->scheduledSlotDateString())->format('M j, Y') : 'Today' }}
+                    <h1 class="analytics-title">
+                        Analytics Report
+                    </h1>
+
+                    <p class="analytics-subtitle">
+                        Clinic performance report for <strong>{{ $activeClinic->name }}</strong>.
+                    </p>
+                </div>
+
+                <div class="text-lg-end">
+                    <div class="text-muted small">Current Period</div>
+                    <div class="fw-bold text-primary">
+                        {{ $periodLabel }}
                     </div>
-                    <small class="text-muted">
-                      {{ $queueEntry->formatted_scheduled_slot_time ?? 'Slot pending' }}
-                    </small>
-                  @elseif($queueEntry->appointment)
-                    <div class="fw-bold">
-                      {{ $queueEntry->appointment->appointment_date->format('M j, Y') }}
+                    <div class="text-muted small">
+                        {{ $startDate->format('M d, Y') }} - {{ $endDate->format('M d, Y') }}
                     </div>
-                    <small class="text-muted">
-                      {{ $queueEntry->appointment->appointment_time }}
-                    </small>
-                  @else
-                    <span class="queue-pill">Walk-in</span>
-                  @endif
-                </td>
-
-                <td>
-                  <span class="badge bg-{{ $queueEntry->status_badge_class }}">
-                    {{ $queueEntry->status_label }}
-                  </span>
-                </td>
-
-                <td>
-                  <div class="queue-action-buttons">
-
-                    {{-- WAITING: secretary calls the patient to start --}}
-                    @if($queueEntry->status === 'waiting')
-                      <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
-                        @csrf
-                        <button class="btn btn-sm btn-primary">
-                          <i class="bi bi-megaphone me-1"></i>Call
-                        </button>
-                      </form>
-                    @endif
-
-                    {{-- IN PROGRESS: show status and the Done & Next button --}}
-                    @if($queueEntry->status === 'in_progress')
-                      @if($queueEntry->patient_disposition === 'doctor_done')
-                        {{-- Doctor has completed — secretary can now advance the queue --}}
-                        <form method="POST" action="{{ route('secretary.queue.done_next', [$clinic, $queueEntry]) }}">
-                          @csrf
-                          <button class="btn btn-sm btn-success">
-                            <i class="bi bi-check-circle me-1"></i>Done &amp; Next
-                          </button>
-                        </form>
-                      @else
-                        {{-- Doctor not done yet — show a disabled indicator --}}
-                        <span class="badge bg-primary fs-6 px-3 py-2">
-                          <i class="bi bi-activity me-1"></i>With Doctor
-                        </span>
-                      @endif
-                    @endif
-
-                    <form method="POST"
-                          action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
-                          data-confirm="Mark this patient as NO-SHOW? They will be removed from the queue."
-                          data-confirm-title="Mark As No-Show"
-                          data-confirm-btn="Mark No-Show">
-                      @csrf
-                      <button class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-person-x me-1"></i>No-Show
-                      </button>
-                    </form>
-
-                    <button type="button"
-                            class="btn btn-sm btn-warning"
-                            data-bs-toggle="modal"
-                            data-bs-target="#reschedModal"
-                            data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
-                      <i class="bi bi-calendar-event me-1"></i>Resched
-                    </button>
-
-                    <form method="POST"
-                          action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
-                          data-confirm="Cancel this queue entry? The patient will be notified."
-                          data-confirm-title="Cancel Queue Entry"
-                          data-confirm-btn="Cancel">
-                      @csrf
-                      <button class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-x-circle me-1"></i>Cancel
-                      </button>
-                    </form>
-
-                  </div>
-                </td>
-              </tr>
-            @endforeach
-          </tbody>
-        </table>
-      </div>
-
-      <div class="queue-cards">
-        @foreach($waiting as $queueEntry)
-          <article class="queue-card">
-            <div class="queue-card-top">
-              <div>
-                <div class="queue-number-badge mb-2">
-                  #{{ $queueEntry->queue_number }}
                 </div>
-                <div class="queue-patient-name">{{ $queueEntry->display_name }}</div>
-              </div>
-
-              <span class="badge bg-{{ $queueEntry->status_badge_class }}">
-                {{ $queueEntry->status_label }}
-              </span>
             </div>
-
-            @if($queueEntry->display_email)
-              <div class="queue-contact">
-                <i class="bi bi-envelope me-1"></i>{{ $queueEntry->display_email }}
-              </div>
-            @endif
-
-            @if($queueEntry->display_phone)
-              <div class="queue-contact">
-                <i class="bi bi-telephone me-1"></i>{{ $queueEntry->display_phone }}
-              </div>
-            @endif
-
-            <div class="mt-3 mb-3">
-              @if($queueEntry->scheduled_slot_date || $queueEntry->formatted_scheduled_slot_time)
-                <div class="fw-bold">
-                  {{ $queueEntry->scheduledSlotDateString() ? \Carbon\Carbon::parse($queueEntry->scheduledSlotDateString())->format('M j, Y') : 'Today' }}
-                </div>
-                <small class="text-muted">
-                  {{ $queueEntry->formatted_scheduled_slot_time ?? 'Slot pending' }}
-                </small>
-              @elseif($queueEntry->appointment)
-                <div class="fw-bold">
-                  {{ $queueEntry->appointment->appointment_date->format('M j, Y') }}
-                </div>
-                <small class="text-muted">
-                  {{ $queueEntry->appointment->appointment_time }}
-                </small>
-              @else
-                <span class="queue-pill">Walk-in</span>
-              @endif
-            </div>
-
-            <div class="queue-action-buttons">
-
-              {{-- WAITING: secretary calls the patient to start --}}
-              @if($queueEntry->status === 'waiting')
-                <form method="POST" action="{{ route('secretary.queue.call', [$clinic, $queueEntry]) }}">
-                  @csrf
-                  <button class="btn btn-sm btn-primary">
-                    <i class="bi bi-megaphone me-1"></i>Call
-                  </button>
-                </form>
-              @endif
-
-              {{-- IN PROGRESS: still with the doctor, secretary waits --}}
-@if($queueEntry->status === 'in_progress')
-  <span class="badge bg-primary fs-6 px-3 py-2">
-    <i class="bi bi-activity me-1"></i>With Doctor
-  </span>
-@endif
-
-{{-- SERVED: doctor is done — secretary can now advance the queue --}}
-@if($queueEntry->status === 'served')
-  <form method="POST" action="{{ route('secretary.queue.done_next', [$clinic, $queueEntry]) }}">
-    @csrf
-    <button class="btn btn-sm btn-success">
-      <i class="bi bi-check-circle me-1"></i>Done &amp; Next
-    </button>
-  </form>
-@endif
-
-              <form method="POST"
-                    action="{{ route('secretary.queue.no_show', [$clinic, $queueEntry]) }}"
-                    data-confirm="Mark this patient as NO-SHOW?"
-                    data-confirm-title="Mark As No-Show"
-                    data-confirm-btn="Mark No-Show">
-                @csrf
-                <button class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-person-x me-1"></i>No-Show
-                </button>
-              </form>
-
-              <button type="button"
-                      class="btn btn-sm btn-warning"
-                      data-bs-toggle="modal"
-                      data-bs-target="#reschedModal"
-                      data-action-url="{{ route('secretary.queue.reschedule', [$clinic, $queueEntry]) }}">
-                <i class="bi bi-calendar-event me-1"></i>Resched
-              </button>
-
-              <form method="POST"
-                    action="{{ route('secretary.queue.cancel', [$clinic, $queueEntry]) }}"
-                    data-confirm="Cancel this queue entry?"
-                    data-confirm-title="Cancel Queue Entry"
-                    data-confirm-btn="Cancel">
-                @csrf
-                <button class="btn btn-sm btn-outline-danger">
-                  <i class="bi bi-x-circle me-1"></i>Cancel
-                </button>
-              </form>
-
-            </div>
-          </article>
-        @endforeach
-      </div>
-    @endif
-  </section>
-</div>
-
-<div class="modal fade resched-modal" id="reschedModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form method="POST" action="#" class="modal-content" id="reschedForm">
-      @csrf
-
-      <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="bi bi-calendar-event me-2"></i>
-          Reschedule Appointment
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body p-4">
-        <div class="mb-3">
-          <label class="form-label fw-bold">New Date</label>
-          <input type="date" name="new_date" class="form-control" value="{{ old('new_date') }}" required>
-          @error('new_date')
-            <div class="text-danger small mt-1">{{ $message }}</div>
-          @enderror
         </div>
+    </div>
 
-        <div class="mb-0">
-          <label class="form-label fw-bold">New Time</label>
-          <input type="time" name="new_time" class="form-control" value="{{ old('new_time') }}" required>
-          @error('new_time')
-            <div class="text-danger small mt-1">{{ $message }}</div>
-          @enderror
+    <form method="GET" action="{{ route('secretary.analytics.index') }}" class="filter-card mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Report Period</label>
+                <select name="period" class="form-select" onchange="toggleCustomDates(this.value)">
+                    <option value="today" @selected(request('period') === 'today')>Today</option>
+                    <option value="7days" @selected(request('period') === '7days')>Last 7 Days</option>
+                    <option value="30days" @selected(request('period') === '30days')>Last 30 Days</option>
+                    <option value="month" @selected(request('period', 'month') === 'month')>This Month</option>
+                    <option value="custom" @selected(request('period') === 'custom')>Custom Range</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 custom-date-field">
+                <label class="form-label fw-semibold">Start Date</label>
+                <input type="date"
+                       name="start_date"
+                       value="{{ request('start_date', $startDate->toDateString()) }}"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-3 custom-date-field">
+                <label class="form-label fw-semibold">End Date</label>
+                <input type="date"
+                       name="end_date"
+                       value="{{ request('end_date', $endDate->toDateString()) }}"
+                       class="form-control">
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel me-1"></i>
+                    Apply
+                </button>
+
+                <a href="{{ route('secretary.analytics.index') }}" class="btn btn-light border">
+                    Reset
+                </a>
+            </div>
+
+            <div class="col-md-3">
+                <a href="{{ route('secretary.analytics.index', array_merge(request()->query(), ['export' => 'csv'])) }}"
+                   class="btn btn-success w-100">
+                    <i class="bi bi-download me-1"></i>
+                    Download CSV
+                </a>
+            </div>
         </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-primary">
-          <i class="bi bi-save me-1"></i>
-          Save
-        </button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Cancel
-        </button>
-      </div>
     </form>
-  </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="metric-card">
+                <div class="d-flex gap-3">
+                    <div class="metric-icon">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+
+                    <div>
+                        <div class="metric-label">Total Appointments</div>
+                        <div class="metric-value">{{ number_format($appointmentSummary['total']) }}</div>
+
+                        <div class="metric-note">
+                            @if(! is_null($trends['appointments']))
+                                <span class="{{ $trends['appointments'] >= 0 ? 'trend-up' : 'trend-down' }}">
+                                    <i class="bi {{ $trends['appointments'] >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right' }}"></i>
+                                    {{ abs($trends['appointments']) }}%
+                                </span>
+                                vs previous period
+                            @else
+                                No previous data
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="metric-card">
+                <div class="d-flex gap-3">
+                    <div class="metric-icon">
+                        <i class="bi bi-check2-circle"></i>
+                    </div>
+
+                    <div>
+                        <div class="metric-label">Completed Appointments</div>
+                        <div class="metric-value">{{ number_format($appointmentSummary['completed']) }}</div>
+
+                        <div class="metric-note">
+                            Completion rate: {{ $completionRate }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="metric-card">
+                <div class="d-flex gap-3">
+                    <div class="metric-icon">
+                        <i class="bi bi-person-walking"></i>
+                    </div>
+
+                    <div>
+                        <div class="metric-label">Total Walk-ins</div>
+                        <div class="metric-value">{{ number_format($walkInSummary['total']) }}</div>
+
+                        <div class="metric-note">
+                            @if(! is_null($trends['walk_ins']))
+                                <span class="{{ $trends['walk_ins'] >= 0 ? 'trend-up' : 'trend-down' }}">
+                                    <i class="bi {{ $trends['walk_ins'] >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right' }}"></i>
+                                    {{ abs($trends['walk_ins']) }}%
+                                </span>
+                                vs previous period
+                            @else
+                                No previous data
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="metric-card">
+                <div class="d-flex gap-3">
+                    <div class="metric-icon">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+
+                    <div>
+                        <div class="metric-label">Avg. Service Time</div>
+                        <div class="metric-value">{{ $averageServiceMinutes }}m</div>
+
+                        <div class="metric-note">
+                            Now Serving to Done and Next
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="report-card h-100">
+                <h5 class="report-title">Appointment Activity</h5>
+                <p class="report-description">
+                    Daily appointment trend for the selected report period.
+                </p>
+
+                <div class="chart-box">
+                    <canvas id="appointmentChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="report-card h-100">
+                <h5 class="report-title">Appointment Summary</h5>
+                <p class="report-description">
+                    Report-level appointment outcomes only.
+                </p>
+
+                <div class="d-grid gap-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-blue">
+                            <i class="bi bi-calendar-event"></i>
+                            Total
+                        </span>
+                        <strong>{{ number_format($appointmentSummary['total']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-green">
+                            <i class="bi bi-check-circle"></i>
+                            Completed
+                        </span>
+                        <strong>{{ number_format($appointmentSummary['completed']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-red">
+                            <i class="bi bi-x-circle"></i>
+                            Cancelled
+                        </span>
+                        <strong>{{ number_format($appointmentSummary['cancelled']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-orange">
+                            <i class="bi bi-person-x"></i>
+                            No-show
+                        </span>
+                        <strong>{{ number_format($appointmentSummary['no_show']) }}</strong>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Completion rate</span>
+                    <strong>{{ $completionRate }}%</strong>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">No-show rate</span>
+                    <strong>{{ $appointmentNoShowRate }}%</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="report-card h-100">
+                <h5 class="report-title">Walk-in Activity</h5>
+                <p class="report-description">
+                    Daily walk-in volume, served walk-ins, and not served walk-ins.
+                </p>
+
+                <div class="chart-box">
+                    <canvas id="walkInChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="report-card h-100">
+                <h5 class="report-title">Walk-in Summary</h5>
+                <p class="report-description">
+                    Simplified walk-in performance report.
+                </p>
+
+                <div class="d-grid gap-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-blue">
+                            <i class="bi bi-person-walking"></i>
+                            Total Walk-ins
+                        </span>
+                        <strong>{{ number_format($walkInSummary['total']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-green">
+                            <i class="bi bi-check-circle"></i>
+                            Served Walk-ins
+                        </span>
+                        <strong>{{ number_format($walkInSummary['served']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-slate">
+                            <i class="bi bi-dash-circle"></i>
+                            Not Served
+                        </span>
+                        <strong>{{ number_format($walkInSummary['not_served']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-red">
+                            <i class="bi bi-x-circle"></i>
+                            Cancelled
+                        </span>
+                        <strong>{{ number_format($walkInSummary['cancelled']) }}</strong>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="status-pill pill-orange">
+                            <i class="bi bi-person-x"></i>
+                            No-show
+                        </span>
+                        <strong>{{ number_format($walkInSummary['no_show']) }}</strong>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Walk-in served rate</span>
+                    <strong>{{ $walkInServedRate }}%</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="report-card h-100">
+                <h5 class="report-title">Services Report</h5>
+                <p class="report-description">
+                    Shows which clinic services receive the most appointments.
+                </p>
+
+                @if($serviceReport->isEmpty())
+                    <div class="empty-state">
+                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                        No service data found for this period.
+                    </div>
+                @else
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Completed</th>
+                                    <th class="text-end">No-show</th>
+                                    <th class="text-end">Rate</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach($serviceReport as $service)
+                                    <tr>
+                                        <td class="fw-semibold">{{ $service['name'] }}</td>
+                                        <td class="text-end">{{ number_format($service['total']) }}</td>
+                                        <td class="text-end">{{ number_format($service['completed']) }}</td>
+                                        <td class="text-end">{{ number_format($service['no_show']) }}</td>
+                                        <td class="text-end">
+                                            <span class="status-pill pill-green">
+                                                {{ $service['completion_rate'] }}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="report-card h-100">
+                <h5 class="report-title">Doctor Workload</h5>
+                <p class="report-description">
+                    Appointment distribution per doctor in this clinic.
+                </p>
+
+                @if($doctorReport->isEmpty())
+                    <div class="empty-state">
+                        <i class="bi bi-person-badge fs-2 d-block mb-2"></i>
+                        No doctor appointment data found for this period.
+                    </div>
+                @else
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Doctor</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Completed</th>
+                                    <th class="text-end">No-show</th>
+                                    <th class="text-end">Rate</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach($doctorReport as $doctor)
+                                    <tr>
+                                        <td class="fw-semibold">Dr. {{ $doctor['name'] }}</td>
+                                        <td class="text-end">{{ number_format($doctor['total']) }}</td>
+                                        <td class="text-end">{{ number_format($doctor['completed']) }}</td>
+                                        <td class="text-end">{{ number_format($doctor['no_show']) }}</td>
+                                        <td class="text-end">
+                                            <span class="status-pill pill-blue">
+                                                {{ $doctor['completion_rate'] }}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
-@endsection
 
-@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const reschedModalEl = document.getElementById('reschedModal');
+    function toggleCustomDates(value) {
+        const fields = document.querySelectorAll('.custom-date-field');
 
-  if (!reschedModalEl) return;
-
-  const reschedModal = new bootstrap.Modal(reschedModalEl);
-
-  document.querySelectorAll('[data-bs-target="#reschedModal"][data-action-url]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const url = btn.getAttribute('data-action-url');
-      if (url) {
-        try {
-          localStorage.setItem('lastReschedActionUrl', url);
-        } catch(e) {}
-      }
-    });
-  });
-
-  reschedModalEl.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    if (!button) return;
-
-    const actionUrl = button.getAttribute('data-action-url');
-    const form = reschedModalEl.querySelector('form');
-
-    if (form && actionUrl) {
-      form.setAttribute('action', actionUrl);
-    }
-  });
-
-  const hasErrors = reschedModalEl.querySelector('.text-danger');
-
-  if (hasErrors) {
-    let stored = null;
-
-    try {
-      stored = localStorage.getItem('lastReschedActionUrl');
-    } catch(e) {}
-
-    const form = reschedModalEl.querySelector('form');
-
-    if (stored && form) {
-      form.setAttribute('action', stored);
+        fields.forEach(function(field) {
+            field.style.display = value === 'custom' ? 'block' : 'none';
+        });
     }
 
-    reschedModal.show();
-  }
+    toggleCustomDates(@json(request('period', 'month')));
 
-  if (typeof Echo !== 'undefined' && typeof Swal !== 'undefined') {
-    Echo.private('user.notifications.{{ auth()->id() }}')
-      .listen('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (e) => {
-        if(e.notification.role === 'secretary') {
-          Swal.fire({
-            title: 'Update',
-            text: e.notification.message,
-            icon: 'info',
-            confirmButtonText: 'OK'
-          });
-        }
-      });
-  }
-});
+    const appointmentData = @json($dailyAppointmentData);
+    const walkInData = @json($dailyWalkInData);
+
+    const appointmentCanvas = document.getElementById('appointmentChart');
+
+    if (appointmentCanvas) {
+        new Chart(appointmentCanvas, {
+            type: 'line',
+            data: {
+                labels: appointmentData.labels,
+                datasets: [
+                    {
+                        label: 'Total Appointments',
+                        data: appointmentData.total,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        fill: false
+                    },
+                    {
+                        label: 'Completed',
+                        data: appointmentData.completed,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        fill: false
+                    },
+                    {
+                        label: 'Cancelled',
+                        data: appointmentData.cancelled,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        fill: false
+                    },
+                    {
+                        label: 'No-show',
+                        data: appointmentData.no_show,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const walkInCanvas = document.getElementById('walkInChart');
+
+    if (walkInCanvas) {
+        new Chart(walkInCanvas, {
+            type: 'bar',
+            data: {
+                labels: walkInData.labels,
+                datasets: [
+                    {
+                        label: 'Total Walk-ins',
+                        data: walkInData.total,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Served Walk-ins',
+                        data: walkInData.served,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Not Served Walk-ins',
+                        data: walkInData.not_served,
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
 </script>
-@endpush
+@endsection

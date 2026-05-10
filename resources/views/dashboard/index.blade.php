@@ -133,7 +133,7 @@
             {{ ucfirst($appointment->status ?? 'Confirmed') }}
           </span>
 
-          <a href="{{ Route::has('appointments.show') ? route('appointments.show', $appointment) : (Route::has('appointments.edit') ? route('appointments.edit', $appointment) : '#') }}"
+          <a href="{{ Route::has('appointments.show') ? route('appointments.show', $appointment) : (Route::has('appointments.show') ? route('appointments.edit', $appointment) : '#') }}"
              class="btn btn-outline-primary">
             View Details
             <i class="bi bi-chevron-right ms-2"></i>

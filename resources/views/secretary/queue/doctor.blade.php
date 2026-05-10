@@ -18,9 +18,25 @@
       'doctor_id' => $doctor->id ?? request()->route('doctor_id'),
   ]);
 
-  $nowServingStatus = $nowServing?->status;
-  $canDoneNext = $nowServing && $nowServingStatus === 'served' && $nowServingDoneNextUrl;
-  $canNoShow = $nowServing && in_array($nowServingStatus, ['in_progress', 'now_serving'], true) && $nowServingNoShowUrl;
+  $nowServingStatus = strtolower(trim((string) ($nowServing?->status ?? '')));
+
+  $canDoneNext = $nowServing
+      && $nowServingStatus === 'served'
+      && $nowServingDoneNextUrl;
+
+  $canNoShow = $nowServing
+      && in_array($nowServingStatus, ['in_progress', 'now_serving'], true)
+      && $nowServingNoShowUrl;
+
+  $canReschedule = $nowServing
+      && in_array($nowServingStatus, ['in_progress', 'now_serving'], true);
+
+  $nowServingRescheduleUrl = $canReschedule
+      ? route('secretary.queue.reschedule', [
+          'clinic' => $clinicId,
+          'entry' => $nowServing->id,
+      ])
+      : null;
 @endphp
 
 <style>
@@ -452,20 +468,6 @@
     background: #16a34a;
   }
 
-  .filter-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 999px;
-    padding: 0.42rem 0.72rem;
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-    font-size: 0.76rem;
-    font-weight: 900;
-    white-space: nowrap;
-  }
-
   .queue-search {
     position: relative;
     width: min(100%, 320px);
@@ -522,18 +524,6 @@
     text-decoration: none;
   }
 
-  .row-action-link--success {
-    border-color: #bbf7d0;
-    background: #dcfce7;
-    color: #166534;
-  }
-
-  .row-action-link--success:hover {
-    background: #22c55e;
-    border-color: #22c55e;
-    color: #ffffff;
-  }
-
   .row-action-link--muted {
     border-color: #e2e8f0;
     background: #f8fafc;
@@ -541,16 +531,10 @@
     cursor: default;
   }
 
-  .row-action-link--warning {
-    border-color: #fde68a;
-    background: #fff7d6;
-    color: #8a5a00;
-  }
-
-  .row-action-link--warning:hover {
-    background: #ffc107;
-    border-color: #ffc107;
-    color: #162033;
+  .row-action-link--muted:hover {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
   }
 
   .row-action-link--danger {
@@ -626,6 +610,22 @@
   .fab:hover .fab-tooltip {
     opacity: 1;
     transform: translateY(0);
+  }
+
+  .resched-modal .modal-content {
+    border: 0;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  }
+
+  .resched-modal .modal-header {
+    background: linear-gradient(135deg, #0d6efd, #178bff);
+    color: #ffffff;
+  }
+
+  .resched-modal .btn-close {
+    filter: invert(1);
   }
 
   @media (max-width: 1200px) {
@@ -823,10 +823,22 @@
             </button>
           @endif
 
-          <button class="btn btn-outline-secondary" type="button" disabled>
-            <i class="bi bi-calendar2-week"></i>
-            Reschedule
-          </button>
+          @if ($canReschedule && $nowServingRescheduleUrl)
+            <button
+              class="btn btn-outline-secondary"
+              type="button"
+              data-bs-toggle="modal"
+              data-bs-target="#reschedModal"
+              data-action-url="{{ $nowServingRescheduleUrl }}">
+              <i class="bi bi-calendar2-week"></i>
+              Reschedule
+            </button>
+          @else
+            <button class="btn btn-outline-secondary" type="button" disabled>
+              <i class="bi bi-calendar2-week"></i>
+              Reschedule
+            </button>
+          @endif
         </div>
       </div>
     </section>
@@ -913,11 +925,15 @@
           <tbody>
             @forelse ($queueRows as $row)
               @php
-                $statusKey = $row['status_key'] ?? null;
-                $isServed = $statusKey === 'served';
-                $isWithDoctor = in_array($statusKey, ['in_progress', 'now_serving'], true);
+                $statusKey = strtolower(trim((string) ($row['status_key'] ?? '')));
+
                 $isWaiting = in_array($statusKey, ['waiting', 'called'], true);
-                $rowClass = $isServed ? 'highlight-row-served' : (($row['active'] ?? false) ? 'highlight-row' : '');
+                $isWithDoctor = in_array($statusKey, ['in_progress', 'now_serving'], true);
+                $isServed = $statusKey === 'served';
+
+                $rowClass = $isServed
+                    ? 'highlight-row-served'
+                    : ($isWithDoctor ? 'highlight-row' : '');
               @endphp
 
               <tr class="{{ $rowClass }}">
@@ -955,40 +971,19 @@
 
                 <td class="text-end">
                   <div class="row-action-links">
-                    @if ($isWaiting)
+                    @if ($isWaiting || $isWithDoctor)
                       <form method="POST" action="{{ $row['call_url'] }}" data-keep-enabled>
                         @csrf
                         <button class="row-action-link" type="submit">Call</button>
-                      </form>
-
-                      <form method="POST" action="{{ $row['no_show_url'] }}" data-keep-enabled>
-                        @csrf
-                        <button class="row-action-link row-action-link--warning" type="submit">No Show</button>
                       </form>
 
                       <form method="POST" action="{{ $row['cancel_url'] }}" data-keep-enabled>
                         @csrf
                         <button class="row-action-link row-action-link--danger" type="submit">Cancel</button>
                       </form>
-                    @elseif ($isWithDoctor)
-                      <span class="row-action-link row-action-link--muted">
-                        With Doctor
-                      </span>
-
-                      <form method="POST" action="{{ $row['no_show_url'] }}" data-keep-enabled>
-                        @csrf
-                        <button class="row-action-link row-action-link--warning" type="submit">No Show</button>
-                      </form>
-                    @elseif ($isServed)
-                      <form method="POST" action="{{ $row['done_next_url'] }}" data-keep-enabled>
-                        @csrf
-                        <button class="row-action-link row-action-link--success" type="submit">
-                          Done &amp; Next
-                        </button>
-                      </form>
                     @else
                       <span class="row-action-link row-action-link--muted">
-                        No action
+                        —
                       </span>
                     @endif
                   </div>
@@ -1024,6 +1019,50 @@
   </section>
 </div>
 
+<div class="modal fade resched-modal" id="reschedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="POST" action="#" class="modal-content" id="reschedForm">
+      @csrf
+
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-calendar-event me-2"></i>
+          Reschedule Appointment
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label fw-bold">New Date</label>
+          <input type="date" name="new_date" class="form-control" value="{{ old('new_date') }}" required>
+          @error('new_date')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+          @enderror
+        </div>
+
+        <div class="mb-0">
+          <label class="form-label fw-bold">New Time</label>
+          <input type="time" name="new_time" class="form-control" value="{{ old('new_time') }}" required>
+          @error('new_time')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+          @enderror
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary">
+          <i class="bi bi-save me-1"></i>
+          Save
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <button class="fab" type="button" aria-label="Add Patient to Queue">
   <i class="bi bi-person-plus"></i>
   <span class="fab-tooltip">Add Patient to Queue</span>
@@ -1046,12 +1085,28 @@
         if (button.disabled) return;
 
         const isPaused = button.getAttribute('aria-pressed') === 'true';
+
         button.setAttribute('aria-pressed', isPaused ? 'false' : 'true');
+
         button.innerHTML = isPaused
           ? '<i class="bi bi-pause-fill"></i> Pause Queue'
           : '<i class="bi bi-play-fill"></i> Resume Queue';
       });
     });
+
+    const reschedModalEl = document.getElementById('reschedModal');
+
+    if (reschedModalEl) {
+      reschedModalEl.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const actionUrl = button ? button.getAttribute('data-action-url') : null;
+        const form = reschedModalEl.querySelector('form');
+
+        if (form && actionUrl) {
+          form.setAttribute('action', actionUrl);
+        }
+      });
+    }
   });
 </script>
 @endsection

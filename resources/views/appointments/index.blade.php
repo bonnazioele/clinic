@@ -8,7 +8,7 @@
     $upcomingAppointments = $upcomingAppointments ?? collect();
     $pastAppointments = $pastAppointments ?? collect();
 
-    $activeQueueStatuses = ['waiting', 'called', 'in_progress', 'now_serving'];
+    $activeQueueStatuses = ['waiting', 'called', 'in_progress', 'now_serving', 'served'];
 
     $totalActive = $todayAppointments->count() + $upcomingAppointments->count();
     $totalHistory = $pastAppointments->count();
@@ -56,7 +56,7 @@
             'waiting' => 'Waiting',
             'called' => 'Called',
             'now_serving' => 'Now Serving',
-            'served' => 'Completed',
+            'served' => 'Served',
             'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'no_show' => 'No Show',
@@ -193,10 +193,10 @@
                     </a>
                 @endif
 
-                @if(Route::has('appointments.edit'))
-                    <a href="{{ route('appointments.edit', $appointment) }}" class="btn action-light">
-                        <i class="bi bi-pencil-square"></i>
-                        Edit
+                @if(Route::has('appointments.reschedule.edit'))
+                    <a href="{{ route('appointments.reschedule.edit', $appointment) }}" class="btn action-light">
+                        <i class="bi bi-arrow-repeat"></i>
+                        Reschedule
                     </a>
                 @endif
 
@@ -856,7 +856,7 @@
                     <h2>Manage your clinic visits clearly.</h2>
 
                     <p>
-                        Today’s appointments, future schedules, and appointment history are separated
+                        Today’s appointments, future schedules, reschedule actions, and appointment history are separated
                         so queue status and past records are easier to track.
                     </p>
                 </div>

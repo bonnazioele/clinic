@@ -41,4 +41,10 @@ return [
     'from'  => env('TWILIO_FROM'),
 ],
 
+'mocean' => [
+    'api_token' => env('MOCEAN_API_TOKEN'),
+    'sender' => env('MOCEAN_SENDER', 'Cliniq'),
+    'enabled' => env('MOCEAN_ENABLED', false),
+],
+
 ];

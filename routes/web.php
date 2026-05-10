@@ -225,13 +225,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/appointments', [AppointmentController::class, 'store'])
         ->name('appointments.store');
 
-    Route::get('/appointments/{appointment}/edit', [AppointmentController::class, 'edit'])
+    Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])
         ->whereNumber('appointment')
-        ->name('appointments.edit');
+        ->name('appointments.show');
 
-    Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])
+    Route::get('/appointments/{appointment}/reschedule', [AppointmentController::class, 'editReschedule'])
         ->whereNumber('appointment')
-        ->name('appointments.update');
+        ->name('appointments.reschedule.edit');
+
+    Route::put('/appointments/{appointment}/reschedule', [AppointmentController::class, 'updateReschedule'])
+        ->whereNumber('appointment')
+        ->name('appointments.reschedule.update');
 
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])
         ->whereNumber('appointment')
@@ -664,3 +668,13 @@ Route::get('/permits/{permit}', function (\App\Models\ClinicPermit $permit) {
 
     return Storage::disk('public')->response($permit->attachment_path);
 })->name('permits.download');
+
+use App\Services\MoceanSmsService;
+
+Route::get('/test-mocean-sms', function (MoceanSmsService $sms) {
+    $sent = $sms->send('09289839549', 'CliniQ: This is a test SMS using Mocean.');
+
+    return $sent
+        ? 'Mocean SMS request sent.'
+        : 'Mocean SMS failed. Check storage/logs/laravel.log.';
+});
