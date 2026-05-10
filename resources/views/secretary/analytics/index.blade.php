@@ -288,7 +288,7 @@
 
                     <div>
                         <div class="metric-label">Total Appointments</div>
-                        <div class="metric-value">{{ number_format($averageServiceMinutes, 1) }}m</div>
+                            <div class="metric-value">{{ number_format($appointmentSummary['total']) }}</div>
 
                         <div class="metric-note">
                             @if(! is_null($trends['appointments']))
@@ -361,7 +361,7 @@
 
                     <div>
                         <div class="metric-label">Avg. Service Time</div>
-                        <div class="metric-value">{{ $averageServiceMinutes }}m</div>
+                        <div class="metric-value">{{ number_format($averageServiceMinutes, 1) }}m</div>
 
                         <div class="metric-note">
                             Now Serving to Done and Next

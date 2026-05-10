@@ -652,7 +652,7 @@ class AnalyticsReportController extends Controller
         return 0.0;
     }
 
-    return round($seconds->avg() / 60, 1);
+    return $seconds->avg() / 60;
 }
 
     private function dailyAppointmentData($appointments, Carbon $startDate, Carbon $endDate): array
