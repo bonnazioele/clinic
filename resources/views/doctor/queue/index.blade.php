@@ -148,7 +148,6 @@
 
   .queue-row.completed {
     background: rgba(34, 197, 94, 0.06);
-    opacity: 0.88;
   }
 
   .queue-number {
@@ -386,9 +385,9 @@
             </div>
 
             <div>
-              <h1 class="queue-hero-title">Today’s Queue</h1>
+              <h1 class="queue-hero-title">Today's Queue</h1>
               <p class="queue-hero-text">
-                View appointment patients and guest walk-ins assigned to you. Called patients stay visible as <strong>In Progress</strong> until the consultation is completed.
+                View appointment patients and guest walk-ins assigned to you. Click <strong>Complete</strong> only after the consultation is finished.
               </p>
             </div>
           </div>
@@ -398,7 +397,7 @@
           <div class="queue-summary-card">
             <div class="d-flex align-items-center justify-content-between gap-3">
               <div>
-                <div class="queue-summary-label">Queue Patients</div>
+                <div class="queue-summary-label">Today's Patients</div>
                 <h2 class="queue-summary-value">{{ $waiting->count() }}</h2>
               </div>
 
@@ -417,10 +416,10 @@
           <div>
             <h3 class="queue-board-title">
               <i class="bi bi-activity"></i>
-              Active Queue Board
+              Queue Board
             </h3>
             <p class="queue-board-subtitle">
-              Patients waiting, in consultation, or completed today.
+              Patients waiting, called, currently in consultation, or completed today.
             </p>
           </div>
 
@@ -504,7 +503,7 @@
 
               <span class="status-pill bg-{{ $entry->status_badge_class }} {{ in_array($entry->status_badge_class, ['warning', 'info']) ? 'text-dark' : 'text-white' }}">
                 <i class="bi {{ $isCompleted ? 'bi-check2-circle' : ($isInProgress ? 'bi-megaphone-fill' : 'bi-clock-history') }}"></i>
-                {{ $entry->status_label }}
+                {{ $isCompleted ? 'Completed' : $entry->status_label }}
               </span>
             </div>
 
@@ -518,14 +517,14 @@
                   <i class="bi bi-file-earmark-medical"></i>
                 </a>
               @else
-                <span class="text-muted fw-bold">—</span>
+                <span class="text-muted fw-bold">N/A</span>
               @endif
             </div>
 
             <div class="col-6 col-lg-2 text-lg-end">
               @if($isCompleted)
-                <span class="btn btn-outline-success action-btn disabled">
-                  <i class="bi bi-check2-circle me-1"></i>
+                <span class="status-pill bg-success text-white">
+                  <i class="bi bi-check2-circle"></i>
                   Completed
                 </span>
               @elseif($canComplete)
@@ -586,7 +585,7 @@
         <h5 class="complete-modal-title">Mark this patient as completed?</h5>
 
         <p class="complete-modal-text">
-          This will mark the consultation as finished and keep the patient visible as completed for today.
+          This will mark the consultation as finished and keep the patient visible as completed in today's queue.
         </p>
 
         <div class="complete-patient-box">

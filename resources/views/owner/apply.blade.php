@@ -1,14 +1,285 @@
 @extends('layouts.app')
 
+@section('title', 'Register Clinic')
+
 @section('content')
 @php
   $permitTypes = $permitTypes ?? config('clinic_permits.types', []);
 @endphp
 
-<div class="container py-4">
+<style>
+  .clinic-apply-page {
+    width: 96%;
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 1rem 0 2rem;
+  }
+
+  .clinic-apply-hero {
+    border-radius: 30px;
+    padding: 1.45rem;
+    color: #ffffff;
+    background:
+      radial-gradient(circle at 90% 28%, rgba(255, 255, 255, 0.18), transparent 18%),
+      radial-gradient(circle at 12% 88%, rgba(34, 197, 94, 0.24), transparent 26%),
+      linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%);
+    box-shadow: 0 18px 45px rgba(37, 99, 235, 0.22);
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+
+  .clinic-apply-hero-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .clinic-apply-title-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .clinic-apply-title-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-size: 1.55rem;
+    flex: 0 0 58px;
+  }
+
+  .clinic-apply-title {
+    margin: 0;
+    font-size: clamp(1.7rem, 3vw, 2.4rem);
+    font-weight: 950;
+    letter-spacing: -0.045em;
+  }
+
+  .clinic-apply-subtitle {
+    margin: 0.35rem 0 0;
+    max-width: 720px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 650;
+  }
+
+  .clinic-apply-hero-badges {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .clinic-apply-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    padding: 0.55rem 0.78rem;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .clinic-apply-card {
+    border: 1px solid rgba(226, 232, 240, 0.96) !important;
+    border-radius: 28px !important;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+    overflow: hidden;
+  }
+
+  .clinic-apply-card .card-header {
+    border: 0;
+    padding: 1.15rem 1.35rem;
+    background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+    color: #0f172a !important;
+    border-bottom: 1px solid #edf2f7;
+  }
+
+  .clinic-apply-card .card-header i {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-grid;
+    place-items: center;
+    background: #eff6ff;
+    color: #0d6efd;
+    margin-right: 0.65rem !important;
+  }
+
+  .clinic-apply-card .card-header h5 {
+    font-weight: 950;
+    letter-spacing: -0.025em;
+  }
+
+  .clinic-apply-card .card-body {
+    padding: 1.35rem;
+  }
+
+  .clinic-apply-card h6 {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #0f172a !important;
+    font-size: 0.95rem;
+    font-weight: 950;
+    letter-spacing: -0.015em;
+  }
+
+  .clinic-apply-card h6::before {
+    content: "";
+    width: 8px;
+    height: 28px;
+    border-radius: 999px;
+    background: #0d6efd;
+  }
+
+  .clinic-apply-card .alert {
+    border: 0;
+    border-radius: 18px;
+  }
+
+  .clinic-apply-card .form-label {
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .clinic-apply-card .form-control,
+  .clinic-apply-card .form-select,
+  .clinic-apply-card .input-group-text,
+  .clinic-apply-card .dropdown-toggle {
+    min-height: 46px;
+    border-radius: 14px !important;
+    border-color: #dbe3ef !important;
+    background-color: #f8fafc;
+    font-weight: 650;
+    box-shadow: none !important;
+  }
+
+  .clinic-apply-card textarea.form-control {
+    min-height: 92px;
+  }
+
+  .clinic-apply-card .input-group .form-control {
+    border-radius: 0 14px 14px 0 !important;
+  }
+
+  .clinic-apply-card .input-group .input-group-text {
+    border-radius: 14px 0 0 14px !important;
+  }
+
+  .clinic-apply-card .form-control:focus,
+  .clinic-apply-card .form-select:focus {
+    border-color: rgba(13, 110, 253, 0.55) !important;
+    background: #ffffff;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.10) !important;
+  }
+
+  .clinic-apply-card .form-text,
+  .clinic-apply-card small.text-muted {
+    color: #64748b !important;
+    font-weight: 650;
+  }
+
+  #mapPicker {
+    border: 1px solid #dbe3ef !important;
+    border-radius: 20px !important;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+  }
+
+  .clinic-apply-card .dropdown-menu {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+  }
+
+  .clinic-apply-card .dropdown-item {
+    border-radius: 12px;
+    font-weight: 700;
+  }
+
+  #selected-services .badge {
+    border-radius: 999px;
+    padding: 0.5rem 0.7rem;
+    font-weight: 850;
+    background: #0d6efd !important;
+  }
+
+  .clinic-apply-card .border.rounded.p-3 {
+    border-color: #e2e8f0 !important;
+    border-radius: 20px !important;
+    background: #f8fafc;
+    box-shadow: none !important;
+  }
+
+  .clinic-apply-card .btn {
+    border-radius: 14px;
+    font-weight: 900;
+  }
+
+  .clinic-apply-card button[type="submit"] {
+    min-height: 46px;
+    box-shadow: 0 12px 24px rgba(13, 110, 253, 0.20);
+  }
+
+  @media (max-width: 768px) {
+    .clinic-apply-page {
+      width: 100%;
+      padding-top: 0;
+    }
+
+    .clinic-apply-hero,
+    .clinic-apply-card {
+      border-radius: 22px !important;
+    }
+
+    .clinic-apply-card .card-body {
+      padding: 1rem;
+    }
+  }
+</style>
+
+<div class="container py-4 clinic-apply-page">
+  <section class="clinic-apply-hero">
+    <div class="clinic-apply-hero-row">
+      <div class="clinic-apply-title-wrap">
+        <div class="clinic-apply-title-icon">
+          <i class="bi bi-building-add"></i>
+        </div>
+
+        <div>
+          <h1 class="clinic-apply-title">Register Your Clinic</h1>
+          <p class="clinic-apply-subtitle">
+            Submit your clinic profile, services, location, and permit documents for admin review.
+          </p>
+        </div>
+      </div>
+
+      <div class="clinic-apply-hero-badges">
+        <span class="clinic-apply-hero-badge">
+          <i class="bi bi-shield-check"></i>
+          Admin reviewed
+        </span>
+        <span class="clinic-apply-hero-badge">
+          <i class="bi bi-geo-alt"></i>
+          Map verified
+        </span>
+      </div>
+    </div>
+  </section>
+
   <div class="row justify-content-center">
-    <div class="col-lg-9">
-      <div class="card medical-card shadow-sm border-0 float-once">
+    <div class="col-12">
+      <div class="card medical-card shadow-sm border-0 float-once clinic-apply-card">
         <div class="card-header bg-primary text-white d-flex align-items-center">
           <i class="bi bi-building-add me-2"></i>
           <h5 class="mb-0">Apply to Register Your Clinic</h5>

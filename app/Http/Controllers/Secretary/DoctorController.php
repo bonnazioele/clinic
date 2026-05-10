@@ -12,6 +12,7 @@ use App\Models\DoctorSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class DoctorController extends Controller
 {
@@ -26,23 +27,50 @@ class DoctorController extends Controller
     {
         $activeClinicId = $this->activeClinicId($request);
 
-        $doctors = User::query()
+        $baseDoctorQuery = User::query()
             ->where('is_doctor', true)
             ->whereHas('clinics', function ($q) use ($activeClinicId) {
                 $q->where('clinics.id', $activeClinicId);
-            })
+            });
+
+        $doctorStats = [
+            'total' => (clone $baseDoctorQuery)->count(),
+            'with_services' => (clone $baseDoctorQuery)
+                ->whereHas('services', function ($q) use ($activeClinicId) {
+                    $q->where('doctor_service.clinic_id', $activeClinicId);
+                })
+                ->count(),
+        ];
+        $doctorStats['without_services'] = max(0, $doctorStats['total'] - $doctorStats['with_services']);
+
+        $serviceScope = (string) $request->input('service_scope', '');
+
+        if ($serviceScope === 'with_services') {
+            $baseDoctorQuery->whereHas('services', function ($q) use ($activeClinicId) {
+                $q->where('doctor_service.clinic_id', $activeClinicId);
+            });
+        }
+
+        if ($serviceScope === 'needs_setup') {
+            $baseDoctorQuery->whereDoesntHave('services', function ($q) use ($activeClinicId) {
+                $q->where('doctor_service.clinic_id', $activeClinicId);
+            });
+        }
+
+        $doctors = $baseDoctorQuery
             ->with([
                 'clinics' => function ($q) use ($activeClinicId) {
                     $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
                 },
                 'services' => function ($q) use ($activeClinicId) {
-                    $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+                    $q->where('doctor_service.clinic_id', $activeClinicId)->select('services.id', 'services.name');
                 },
             ])
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate(15)
+            ->appends($request->except('page'));
 
-        return view('secretary.doctors.index', compact('doctors'));
+        return view('secretary.doctors.index', compact('doctors', 'doctorStats'));
     }
 
     public function create(Request $request)
@@ -60,35 +88,70 @@ class DoctorController extends Controller
         $data = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+            'email' => 'required|email',
+            'password' => 'nullable|string|min:6|confirmed',
             'service_ids' => 'array',
             'service_ids.*' => 'exists:services,id',
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
         ]);
 
-        $doctor = User::create([
-            'name' => trim($data['first_name'] . ' ' . $data['last_name']),
-            'first_name' => $data['first_name'],
-            'last_name' => $data['last_name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'phone' => $data['phone'] ?? null,
-            'address' => $data['address'] ?? null,
-            'is_doctor' => true,
-        ]);
+        $existingUser = User::where('email', $data['email'])->first();
+
+        if ($existingUser && ! $existingUser->is_doctor) {
+            Validator::make([], [])->after(function ($validator) {
+                $validator->errors()->add('email', 'This email belongs to an existing non-doctor account.');
+            })->validate();
+        }
+
+        if ($existingUser && $existingUser->clinics()->where('clinics.id', $activeClinicId)->exists()) {
+            Validator::make([], [])->after(function ($validator) {
+                $validator->errors()->add('email', 'This doctor is already assigned to the active clinic.');
+            })->validate();
+        }
+
+        if (! $existingUser && empty($data['password'])) {
+            Validator::make([], [])->after(function ($validator) {
+                $validator->errors()->add('password', 'The password field is required for new doctor accounts.');
+            })->validate();
+        }
 
         $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
         $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
 
-        DB::transaction(function () use ($doctor, $activeClinicId, $chosen) {
-            $doctor->clinics()->sync([$activeClinicId]);
+        $doctor = DB::transaction(function () use ($existingUser, $data, $activeClinicId, $chosen) {
+            $doctor = $existingUser ?: User::create([
+                'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'phone' => $data['phone'] ?? null,
+                'address' => $data['address'] ?? null,
+                'is_doctor' => true,
+                'is_active' => true,
+            ]);
+
+            if ($existingUser) {
+                $doctor->update([
+                    'first_name' => $doctor->first_name ?: $data['first_name'],
+                    'last_name' => $doctor->last_name ?: $data['last_name'],
+                    'name' => $doctor->name ?: trim($data['first_name'] . ' ' . $data['last_name']),
+                    'phone' => $doctor->phone ?: ($data['phone'] ?? null),
+                    'address' => $doctor->address ?: ($data['address'] ?? null),
+                    'is_doctor' => true,
+                    'is_active' => true,
+                ]);
+            }
+
+            $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
             $doctor->syncServicesForClinic($activeClinicId, $chosen);
+
+            return $doctor;
         });
 
         return redirect()->route('secretary.doctors.index')
-            ->with('status', 'Doctor added.');
+            ->with('status', $existingUser ? 'Existing doctor assigned to this clinic.' : 'Doctor added.');
     }
 
     public function edit(Request $request, User $doctor)
@@ -96,7 +159,7 @@ class DoctorController extends Controller
         $activeClinicId = $this->activeClinicId($request);
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
         $doctor->load(['services' => function ($q) use ($activeClinicId) {
-            $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+            $q->where('doctor_service.clinic_id', $activeClinicId)->select('services.id', 'services.name');
         }]);
         $services = $this->servicesForActiveClinic($activeClinicId);
 
@@ -150,26 +213,24 @@ class DoctorController extends Controller
         $activeClinicId = $this->activeClinicId($request);
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
 
-        if ($doctor->clinics()->count() > 1) {
-            DB::transaction(function () use ($doctor, $activeClinicId) {
-                DoctorSchedule::where('doctor_id', $doctor->id)
-                    ->where('clinic_id', $activeClinicId)
-                    ->delete();
+        DB::transaction(function () use ($doctor, $activeClinicId) {
+            DoctorSchedule::where('doctor_id', $doctor->id)
+                ->where('clinic_id', $activeClinicId)
+                ->delete();
 
-                DB::table('doctor_service')
-                    ->where('doctor_id', $doctor->id)
-                    ->where('clinic_id', $activeClinicId)
-                    ->delete();
+            DB::table('doctor_service')
+                ->where('doctor_id', $doctor->id)
+                ->where('clinic_id', $activeClinicId)
+                ->delete();
 
-                $doctor->clinics()->detach($activeClinicId);
-            });
+            $doctor->clinics()->detach($activeClinicId);
 
-            return back()->with('status', 'Doctor unassigned from active clinic.');
-        }
+            if (! $doctor->clinics()->exists()) {
+                $doctor->update(['is_active' => false]);
+            }
+        });
 
-        $doctor->delete();
-
-        return back()->with('status', 'Doctor removed.');
+        return back()->with('status', 'Doctor unassigned from active clinic.');
     }
 
     public function show(Request $request, User $doctor)
@@ -181,7 +242,7 @@ class DoctorController extends Controller
                 $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
             },
             'services' => function ($q) use ($activeClinicId) {
-                $q->wherePivot('clinic_id', $activeClinicId)->select('services.id', 'services.name');
+                $q->where('doctor_service.clinic_id', $activeClinicId)->select('services.id', 'services.name');
             },
             'doctorSchedules' => function ($q) use ($activeClinicId) {
                 $q->where('clinic_id', $activeClinicId)->with('clinic:id,name');
@@ -192,7 +253,15 @@ class DoctorController extends Controller
             ->sortBy(fn ($s) => [$s->day_of_week, $s->start_time])
             ->groupBy('day_of_week');
 
-        return view('secretary.doctors.show', compact('doctor', 'scheduleByDay'));
+        $recent = \App\Models\Appointment::with('user', 'clinic', 'service')
+            ->where('doctor_id', $doctor->id)
+            ->where('clinic_id', $activeClinicId)
+            ->latest('appointment_date')
+            ->latest('appointment_time')
+            ->take(10)
+            ->get();
+
+        return view('secretary.doctors.show', compact('doctor', 'scheduleByDay', 'recent'));
     }
 
     private function doctorInActiveClinicOrAbort(User $doctor, int $activeClinicId): User

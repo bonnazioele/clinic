@@ -369,6 +369,9 @@ Route::prefix('secretary')
         Route::get('/appointments', [SecretaryAppointmentController::class, 'index'])
             ->name('appointments.index');
 
+        Route::get('/appointments/export', [SecretaryAppointmentController::class, 'export'])
+            ->name('appointments.export');
+
         Route::get('/appointments/create', [SecretaryAppointmentController::class, 'create'])
             ->name('appointments.create');
 
@@ -382,6 +385,14 @@ Route::prefix('secretary')
         Route::put('/appointments/{appointment}', [SecretaryAppointmentController::class, 'update'])
             ->whereNumber('appointment')
             ->name('appointments.update');
+
+        Route::patch('/appointments/{appointment}/reschedule', [SecretaryAppointmentController::class, 'reschedule'])
+            ->whereNumber('appointment')
+            ->name('appointments.reschedule');
+
+        Route::patch('/appointments/{appointment}/cancel', [SecretaryAppointmentController::class, 'cancel'])
+            ->whereNumber('appointment')
+            ->name('appointments.cancel');
 
         Route::delete('/appointments/{appointment}', [SecretaryAppointmentController::class, 'destroy'])
             ->whereNumber('appointment')

@@ -27,7 +27,7 @@
 
     $formatTime = function ($time) {
         if (!$time) {
-            return '—';
+            return 'N/A';
         }
 
         try {
@@ -38,15 +38,15 @@
     };
 
     $todayAppointmentsCount = $appointments->count();
-    $queuePatientCount = $queue->count();
     $activeQueueCount = $queue->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])->count();
-    $completedQueueCount = $queue->whereIn('status', ['served', 'completed'])->count();
+    $todayQueueCount = $queue->count();
 
     $nowServingCount = $queue->whereIn('status', ['in_progress', 'now_serving'])->count();
-    $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'pending', 'rescheduled'])->count();
+    $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'rescheduled'])->count();
+    $completedQueueCount = $queue->whereIn('status', ['served', 'completed'])->count();
 
-    if ($waitingCount === 0 && $nowServingCount === 0 && $completedQueueCount === 0 && $queuePatientCount > 0) {
-        $waitingCount = $queuePatientCount;
+    if ($waitingCount === 0 && $nowServingCount === 0 && $activeQueueCount > 0) {
+        $waitingCount = $activeQueueCount;
     }
 
     $todayAppointments = $appointments->sortBy('appointment_time')->take(6);
@@ -416,6 +416,11 @@
     background: rgba(16, 185, 129, 0.18);
   }
 
+  .doctor-status.completed {
+    color: #166534;
+    background: rgba(34, 197, 94, 0.16);
+  }
+
   .doctor-status.default {
     color: #475569;
     background: rgba(148, 163, 184, 0.18);
@@ -607,7 +612,7 @@
               <h1 class="doctor-hero-title">Good day, {{ $doctorName }}!</h1>
 
               <p class="doctor-hero-text">
-                Here’s your quick view of <strong>today’s queue</strong>, <strong>today’s appointments</strong>, and your assigned clinic so you can work faster without switching pages.
+                Here's your quick view of <strong>today's queue</strong>, <strong>today's appointments</strong>, and your assigned clinic so you can work faster without switching pages.
               </p>
 
               <div class="d-flex flex-wrap gap-2 mt-4">
@@ -653,7 +658,7 @@
         <div class="overview-card glass-panel overview-blue">
           <div class="overview-top">
             <div>
-              <div class="overview-label">Today’s Appointments</div>
+              <div class="overview-label">Today's Appointments</div>
               <h2 class="overview-value">{{ $todayAppointmentsCount }}</h2>
             </div>
             <span class="overview-icon">
@@ -668,14 +673,14 @@
         <div class="overview-card glass-panel overview-yellow">
           <div class="overview-top">
             <div>
-              <div class="overview-label">Today’s Queue</div>
-              <h2 class="overview-value">{{ $activeQueueCount }}</h2>
+              <div class="overview-label">Today's Queue</div>
+              <h2 class="overview-value">{{ $todayQueueCount }}</h2>
             </div>
             <span class="overview-icon">
               <i class="bi bi-people"></i>
             </span>
           </div>
-          <p class="overview-desc">Patients currently waiting or being served.</p>
+          <p class="overview-desc">Waiting, serving, and completed patients.</p>
         </div>
       </div>
 
@@ -718,12 +723,12 @@
               <div>
                 <h3 class="section-title">
                   <i class="bi bi-list-ol"></i>
-                  Today’s Queue
+                  Today's Queue
                 </h3>
-                <p class="section-subtitle">See who is waiting, in consultation, or completed today.</p>
+                <p class="section-subtitle">See who is waiting, being served, or completed today.</p>
               </div>
 
-              <span class="section-count yellow">{{ $queuePatientCount }}</span>
+              <span class="section-count yellow">{{ $todayQueueCount }}</span>
             </div>
           </div>
 
@@ -740,14 +745,14 @@
                         $statusClass = 'serving';
                         $statusLabel = 'In Progress';
                     } elseif (in_array($status, ['served', 'completed'], true)) {
-                        $statusClass = 'serving';
+                        $statusClass = 'completed';
                         $statusLabel = 'Completed';
-                    } elseif (in_array($status, ['waiting', 'called', 'pending'])) {
+                    } elseif (in_array($status, ['waiting', 'called', 'rescheduled'])) {
                         $statusClass = 'waiting';
-                        $statusLabel = $status === 'called' ? 'Called' : 'Waiting';
+                        $statusLabel = $status === 'called' ? 'Called' : ($status === 'rescheduled' ? 'Rescheduled' : 'Waiting');
                     }
 
-                    $queueNumber = $q->queue_number ?? $q->number ?? '—';
+                    $queueNumber = $q->queue_number ?? $q->number ?? 'N/A';
 
                     $queuePatientName =
                         $q->appointment?->user?->name
@@ -779,7 +784,7 @@
                 @endforeach
               </div>
 
-              @if($queuePatientCount > 6)
+              @if($todayQueueCount > 6)
                 <div class="text-center mt-3">
                   <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-outline-warning doctor-quick-btn">
                     View Full Queue
@@ -806,7 +811,7 @@
               <div>
                 <h3 class="section-title">
                   <i class="bi bi-calendar-day"></i>
-                  Today’s Appointments
+                  Today's Appointments
                 </h3>
                 <p class="section-subtitle">Your scheduled consultations for today.</p>
               </div>
@@ -897,7 +902,7 @@
             <div class="mini-info">
               <div class="mini-info-title">Queue Summary</div>
               <p class="mini-info-value">{{ $waitingCount }} waiting · {{ $nowServingCount }} serving · {{ $completedQueueCount }} completed</p>
-              <p class="mini-info-text">Helpful for checking today’s actual workload quickly.</p>
+              <p class="mini-info-text">Helpful for checking today's actual workload quickly.</p>
             </div>
 
             <div>

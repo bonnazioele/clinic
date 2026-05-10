@@ -405,6 +405,19 @@
     padding: 0 !important;
   }
 
+  .fc .fc-timegrid-event,
+  .fc .fc-timegrid-more-link {
+    border: 0 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .fc .fc-timegrid-event .fc-event-main {
+    height: 100%;
+  }
+
   .fc-month-clean-event {
     display: inline-flex;
     align-items: center;
@@ -412,8 +425,8 @@
     max-width: 100%;
     padding: 4px 7px;
     border-radius: 999px;
-    background: rgba(37, 99, 235, 0.08);
-    color: #1d4ed8;
+    background: var(--schedule-soft, rgba(37, 99, 235, 0.08));
+    color: var(--schedule-color, #1d4ed8);
     font-weight: 900;
     font-size: 0.72rem;
     line-height: 1;
@@ -424,7 +437,7 @@
     width: 7px;
     height: 7px;
     border-radius: 999px;
-    background: #2563eb;
+    background: var(--schedule-color, #2563eb);
     flex-shrink: 0;
   }
 
@@ -432,13 +445,18 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    height: 100%;
+    min-height: 100%;
     border-radius: 10px;
     padding: 6px 8px;
-    background: #2563eb;
-    color: #ffffff;
+    border: 1px solid var(--schedule-border, rgba(37, 99, 235, 0.42));
+    border-left: 5px solid var(--schedule-color, #2563eb);
+    background: var(--schedule-soft, rgba(37, 99, 235, 0.12));
+    color: var(--schedule-ink, #1e3a8a);
     font-size: 0.78rem;
     line-height: 1.2;
     overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.48);
   }
 
   .fc-week-clean-event strong {
@@ -454,7 +472,7 @@
   }
 
   .fc-week-clean-event small {
-    opacity: 0.9;
+    opacity: 0.78;
     font-size: 0.68rem;
     font-weight: 700;
   }
@@ -706,20 +724,6 @@
 
 <div class="doctor-schedule-page">
   <div class="doctor-schedule-shell">
-
-    @if (session('status'))
-      <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">
-        <i class="bi bi-check2-circle me-2"></i>
-        {{ session('status') }}
-      </div>
-    @endif
-
-    @if (session('success'))
-      <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">
-        <i class="bi bi-check2-circle me-2"></i>
-        {{ session('success') }}
-      </div>
-    @endif
 
     @if ($errors->any())
       <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">
@@ -1023,6 +1027,7 @@
                   <div class="saved-schedule-card"
                        data-id="{{ $schedule->id }}"
                        data-service-id="{{ $schedule->service_id }}"
+                       data-schedule-type="{{ $schedule->schedule_type ?? 'recurring' }}"
                        data-day="{{ $schedule->day_of_week }}"
                        data-start-date="{{ optional($schedule->start_date)->format('Y-m-d') }}"
                        data-end-date="{{ optional($schedule->end_date)->format('Y-m-d') }}"
@@ -1208,6 +1213,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('scheduleForm');
   const formMethod = document.getElementById('formMethod');
   const scheduleId = document.getElementById('schedule_id');
+  const scheduleType = document.getElementById('schedule_type');
   const submitLabel = document.getElementById('submitLabel');
   const cancelEdit = document.getElementById('cancelEdit');
   const messageBox = document.getElementById('scheduleFormMessage');
@@ -1370,6 +1376,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.setAttribute('action', storeAction);
     formMethod.value = 'POST';
     scheduleId.value = '';
+    scheduleType.value = 'recurring';
     submitLabel.textContent = 'Save schedule';
     cancelEdit.classList.add('d-none');
     hideMessage();
@@ -1405,8 +1412,40 @@ document.addEventListener('DOMContentLoaded', function () {
     return `${hour}:${minute} ${suffix}`;
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function nextDayIndex(dayIndex) {
     return (parseInt(dayIndex, 10) + 1) % 7;
+  }
+
+  const schedulePalette = [
+    { color: '#2563eb', soft: '#dbeafe', border: '#93c5fd', ink: '#1e3a8a' },
+    { color: '#16a34a', soft: '#dcfce7', border: '#86efac', ink: '#14532d' },
+    { color: '#f59e0b', soft: '#fef3c7', border: '#fcd34d', ink: '#78350f' },
+    { color: '#dc2626', soft: '#fee2e2', border: '#fca5a5', ink: '#7f1d1d' },
+    { color: '#7c3aed', soft: '#ede9fe', border: '#c4b5fd', ink: '#4c1d95' },
+    { color: '#0891b2', soft: '#cffafe', border: '#67e8f9', ink: '#164e63' },
+    { color: '#db2777', soft: '#fce7f3', border: '#f9a8d4', ink: '#831843' },
+    { color: '#475569', soft: '#f1f5f9', border: '#cbd5e1', ink: '#0f172a' }
+  ];
+
+  function eventColors(schedule) {
+    const seed = Number(schedule.service_id || schedule.id || 0);
+    const palette = schedulePalette[Math.abs(seed) % schedulePalette.length];
+
+    return {
+      scheduleColor: palette.color,
+      scheduleSoft: palette.soft,
+      scheduleBorder: palette.border,
+      scheduleInk: palette.ink
+    };
   }
 
   days.forEach(day => {
@@ -1482,6 +1521,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const id = item.dataset.id;
       const serviceId = item.dataset.serviceId;
+      const type = item.dataset.scheduleType || 'recurring';
       const day = item.dataset.day;
       const start = item.dataset.startTime;
       const end = item.dataset.endTime;
@@ -1490,6 +1530,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const activeValue = item.dataset.active === '1';
 
       scheduleId.value = id;
+      scheduleType.value = type;
       formMethod.value = 'PUT';
       submitLabel.textContent = 'Update schedule';
       cancelEdit.classList.remove('d-none');
@@ -1553,7 +1594,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!schedule.is_active) return;
 
       const isOvernight = schedule.start_time > schedule.end_time;
-      const fullTitle = `${schedule.service} • ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`;
+      const fullTitle = `${schedule.service} - ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`;
+      const colors = eventColors(schedule);
       const timeLabel = `${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`;
 
       if (!isOvernight) {
@@ -1566,12 +1608,14 @@ document.addEventListener('DOMContentLoaded', function () {
           endRecur: schedule.end_date || undefined,
           extendedProps: {
             serviceLabel: schedule.service,
-            timeLabel: timeLabel
+            timeLabel: timeLabel,
+            scheduleId: schedule.id,
+            ...colors
           }
         });
       } else {
         calendarEvents.push({
-          title: `${schedule.service} • ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)} overnight`,
+          title: `${schedule.service} - ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)} overnight`,
           daysOfWeek: [String(schedule.day_of_week)],
           startTime: schedule.start_time,
           endTime: '23:59',
@@ -1580,12 +1624,14 @@ document.addEventListener('DOMContentLoaded', function () {
           extendedProps: {
             serviceLabel: schedule.service,
             timeLabel: `${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`,
-            overnightLabel: 'Continues overnight'
+            overnightLabel: 'Continues overnight',
+            scheduleId: schedule.id,
+            ...colors
           }
         });
 
         calendarEvents.push({
-          title: `${schedule.service} • ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)} overnight`,
+          title: `${schedule.service} - ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)} overnight`,
           daysOfWeek: [String(nextDayIndex(schedule.day_of_week))],
           startTime: '00:00',
           endTime: schedule.end_time,
@@ -1594,7 +1640,9 @@ document.addEventListener('DOMContentLoaded', function () {
           extendedProps: {
             serviceLabel: schedule.service,
             timeLabel: `${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`,
-            overnightLabel: 'Continues from previous day'
+            overnightLabel: 'Continues from previous day',
+            scheduleId: schedule.id,
+            ...colors
           }
         });
       }
@@ -1605,10 +1653,16 @@ document.addEventListener('DOMContentLoaded', function () {
       height: 'auto',
       events: calendarEvents,
 
+      allDaySlot: false,
       dayMaxEvents: 1,
       dayMaxEventRows: 1,
       displayEventTime: false,
       eventDisplay: 'block',
+      slotMinTime: '00:00:00',
+      slotMaxTime: '24:00:00',
+      slotDuration: '00:30:00',
+      snapDuration: '00:15:00',
+      nowIndicator: true,
 
       moreLinkText: function (num) {
         return '+' + num + ' more';
@@ -1633,11 +1687,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
       eventContent: function (arg) {
         const isMonthView = arg.view.type === 'dayGridMonth';
+        const serviceLabel = escapeHtml(arg.event.extendedProps.serviceLabel || arg.event.title);
+        const timeLabel = escapeHtml(arg.event.extendedProps.timeLabel || '');
+        const overnightLabel = escapeHtml(arg.event.extendedProps.overnightLabel || '');
+        const title = escapeHtml(arg.event.title);
 
         if (isMonthView) {
           return {
             html: `
-              <div class="fc-month-clean-event" title="${arg.event.title}">
+              <div class="fc-month-clean-event" title="${title}">
                 <span class="fc-month-dot"></span>
                 <span>Available</span>
               </div>
@@ -1647,17 +1705,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return {
           html: `
-            <div class="fc-week-clean-event" title="${arg.event.title}">
-              <strong>${arg.event.extendedProps.timeLabel || ''}</strong>
-              <span>${arg.event.extendedProps.serviceLabel || arg.event.title}</span>
+            <div class="fc-week-clean-event" title="${title}">
+              <strong>${timeLabel}</strong>
+              <span>${serviceLabel}</span>
               ${
-                arg.event.extendedProps.overnightLabel
-                  ? `<small>${arg.event.extendedProps.overnightLabel}</small>`
+                overnightLabel
+                  ? `<small>${overnightLabel}</small>`
                   : ''
               }
             </div>
           `
         };
+      },
+
+      eventDidMount: function (info) {
+        const props = info.event.extendedProps;
+
+        info.el.style.setProperty('--schedule-color', props.scheduleColor || '#2563eb');
+        info.el.style.setProperty('--schedule-soft', props.scheduleSoft || '#dbeafe');
+        info.el.style.setProperty('--schedule-border', props.scheduleBorder || '#93c5fd');
+        info.el.style.setProperty('--schedule-ink', props.scheduleInk || '#1e3a8a');
       }
     });
 

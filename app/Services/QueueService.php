@@ -53,7 +53,12 @@ class QueueService
         $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
 
         return app(DoctorScheduleAvailability::class)
-            ->schedulesForAppointmentDate($doctorId, $clinicId, $serviceId, $date);
+            ->schedulesForAppointmentDate($doctorId, $clinicId, $serviceId, $date)
+            ->sortBy([
+                ['day_of_week', 'asc'],
+                ['start_time', 'asc'],
+            ])
+            ->values();
     }
 
     public function buildSlotGrid(int $clinicId, int $doctorId, ?int $serviceId, Carbon|string $date): Collection
@@ -63,6 +68,7 @@ class QueueService
         $slots = collect();
 
         $scheduleAvailability = app(DoctorScheduleAvailability::class);
+        $dateString = $date->toDateString();
 
         foreach ($this->schedulesForDate($clinicId, $doctorId, $date, $serviceId) as $schedule) {
             [$start, $end] = $scheduleAvailability->scheduleDateTimes($schedule, $date);
@@ -75,27 +81,25 @@ class QueueService
                     break;
                 }
 
-                if ($cursor->toDateString() !== $date->toDateString()) {
-                    $cursor->addMinutes($slotMinutes);
-                    continue;
+                if ($cursor->toDateString() === $dateString) {
+                    $slots->push([
+                        'date' => $cursor->toDateString(),
+                        'time' => $cursor->format('H:i'),
+                        'time_with_seconds' => $cursor->format('H:i:s'),
+                        'start_at' => $cursor->copy(),
+                        'end_at' => $slotEnd->copy(),
+                        'display' => $cursor->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
+                        'end_time' => $slotEnd->format('H:i'),
+                    ]);
                 }
-
-                $slots->push([
-                    'time' => $cursor->format('H:i'),
-                    'time_with_seconds' => $cursor->format('H:i:s'),
-                    'start_at' => $cursor->copy(),
-                    'end_at' => $slotEnd->copy(),
-                    'display' => $cursor->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
-                    'end_time' => $slotEnd->format('H:i'),
-                ]);
 
                 $cursor->addMinutes($slotMinutes);
             }
         }
 
         return $slots
-            ->unique('time')
-            ->sortBy('time')
+            ->unique(fn (array $slot) => $slot['date'] . ' ' . $slot['time'])
+            ->sortBy(['date', 'time'])
             ->values();
     }
 
@@ -108,8 +112,8 @@ class QueueService
             ->where('clinic_id', $clinicId)
             ->where('doctor_id', $doctorId)
             ->whereDate('scheduled_slot_date', $dateString)
-            ->whereIn('status', QueueEntry::blockingSlotStatuses())
             ->whereNotNull('scheduled_slot_time')
+            ->whereIn('status', QueueEntry::blockingSlotStatuses())
             ->pluck('scheduled_slot_time')
             ->map(fn ($time) => $this->normalizeTimeLabel($time));
 
@@ -140,9 +144,6 @@ class QueueService
         $cutoff = $date->isToday() ? now()->addMinutes($bufferMinutes) : null;
 
         return $this->buildSlotGrid($clinicId, $doctorId, $serviceId, $date)
-            ->filter(function (array $slot) use ($cutoff) {
-                return ! $cutoff || ! $slot['start_at']->lt($cutoff);
-            })
             ->map(function (array $slot) use ($occupied, $cutoff) {
                 $expired = $cutoff ? $slot['start_at']->lt($cutoff) : false;
 

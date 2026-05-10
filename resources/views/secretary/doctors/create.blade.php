@@ -388,8 +388,7 @@
                 <input type="password"
                        id="doctor_password"
                        name="password"
-                       class="form-control @error('password') is-invalid @enderror"
-                       required>
+                       class="form-control @error('password') is-invalid @enderror">
                 <button type="button"
                         class="btn btn-outline-secondary password-toggle"
                         data-target="#doctor_password"
@@ -397,6 +396,7 @@
                   <i class="bi bi-eye"></i>
                 </button>
               </div>
+              <div class="field-help">Required for new doctor accounts. Leave blank when assigning an existing doctor account.</div>
               @error('password')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             </div>
 
@@ -406,8 +406,7 @@
                 <input type="password"
                        id="doctor_password_confirmation"
                        name="password_confirmation"
-                       class="form-control"
-                       required>
+                       class="form-control">
                 <button type="button"
                         class="btn btn-outline-secondary password-toggle"
                         data-target="#doctor_password_confirmation"
@@ -456,7 +455,7 @@
 
       <div class="side-title">Doctor Setup Guide</div>
       <div class="side-text">
-        Add the doctor’s information, then assign services so patients can book appointments properly.
+        Add the doctor's information, then assign services so patients can book appointments properly.
       </div>
 
       <div class="side-list">
@@ -472,7 +471,7 @@
 
         <div class="side-item">
           <i class="bi bi-shield-lock"></i>
-          <span>Create a secure password for the doctor's account access.</span>
+          <span>Create a secure password only for new doctor accounts.</span>
         </div>
       </div>
     </aside>

@@ -49,12 +49,7 @@
       }
   };
 
-  $recent = \App\Models\Appointment::with('user', 'clinic', 'service')
-      ->where('doctor_id', $doctor->id)
-      ->latest('appointment_date')
-      ->latest('appointment_time')
-      ->take(10)
-      ->get();
+  $recent = $recent ?? collect();
 @endphp
 
 <style>
@@ -442,8 +437,8 @@
                   <td>{{ \Carbon\Carbon::parse($a->appointment_date)->format('M d, Y') }}</td>
                   <td>{{ time12($a->appointment_time) }}</td>
                   <td class="fw-bold">{{ $a->user->name ?? 'Unknown patient' }}</td>
-                  <td>{{ $a->clinic->name ?? '—' }}</td>
-                  <td>{{ $a->service->name ?? '—' }}</td>
+                  <td>{{ $a->clinic->name ?? 'N/A' }}</td>
+                  <td>{{ $a->service->name ?? 'N/A' }}</td>
                   <td>
                     @php
                       $status = strtolower($a->status ?? 'scheduled');

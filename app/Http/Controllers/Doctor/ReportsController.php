@@ -9,6 +9,7 @@ use App\Models\QueueEntry;
 use App\Models\PatientVisit;
 use App\Models\DoctorSchedule;
 use App\Models\Service;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,14 +33,19 @@ class ReportsController extends Controller
     public function index(Request $request)
     {
         $doctorId = auth()->id();
+        $activeClinic = $this->activeClinic($request);
         $clinicId = $this->activeClinicId($request);
 
-        // Date range filter
-        $startDate = $request->get('start_date', Carbon::now()->toDateString());
-        $endDate = $request->get('end_date', Carbon::now()->toDateString());
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'period' => ['nullable', 'string', 'in:today,last_7_days,this_month,last_month,this_year'],
+            'service_id' => ['nullable', 'integer', 'exists:services,id'],
+        ]);
 
-        if (is_string($startDate)) $startDate = Carbon::parse($startDate);
-        if (is_string($endDate)) $endDate = Carbon::parse($endDate);
+        // Date range filter
+        $startDate = Carbon::parse($validated['start_date'] ?? now()->toDateString())->startOfDay();
+        $endDate = Carbon::parse($validated['end_date'] ?? now()->toDateString())->endOfDay();
 
         if ($endDate->lt($startDate)) {
             [$startDate, $endDate] = [$endDate->copy()->startOfDay(), $startDate->copy()->endOfDay()];
@@ -49,12 +55,11 @@ class ReportsController extends Controller
         $showComparisons = ! ($startDate->isSameDay(now()) && $endDate->isSameDay(now()));
 
         $rangeDays = max(1, $startDate->copy()->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1);
-        $previousEndDate = $startDate->copy()->subDay();
-        $previousStartDate = $previousEndDate->copy()->subDays($rangeDays - 1);
+        $previousEndDate = $startDate->copy()->subDay()->endOfDay();
+        $previousStartDate = $previousEndDate->copy()->subDays($rangeDays - 1)->startOfDay();
 
-        $serviceFilter = $request->get('service_id');
+        $serviceFilter = $validated['service_id'] ?? null;
 
-        // services list for filter (clinic scope is stored via pivot)
         $servicesList = ServiceModel::forClinics([$clinicId])->get();
 
         // KPIs
@@ -68,13 +73,19 @@ class ReportsController extends Controller
 
         $appointments = $appointmentsQuery->get();
 
-        $queueEntries = QueueEntry::where('doctor_id', $doctorId)
-            ->where('clinic_id', $clinicId)
-            ->whereBetween('created_at', [$startDate, $endDate])
+        $queueEntries = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $startDate, $endDate)
+            ->with(['appointment:id,appointment_date,appointment_time'])
             ->get();
+
+        $doctorPatientIds = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $startDate, $endDate)
+            ->whereNotNull('patient_id')
+            ->pluck('patient_id')
+            ->unique()
+            ->values();
 
         $patientVisits = PatientVisit::where('clinic_id', $clinicId)
             ->whereBetween('date_of_visit', [$startDate, $endDate])
+            ->whereIn('patient_id', $doctorPatientIds)
             ->get();
 
         // Appointment Statistics
@@ -110,12 +121,12 @@ class ReportsController extends Controller
             'served' => $queueEntries->where('status', 'served')->count(),
             'no_show' => $queueEntries->where('status', 'no_show')->count(),
             'waiting' => $queueEntries->where('status', 'waiting')->count(),
+            'cancelled' => $queueEntries->where('status', 'cancelled')->count(),
             'average_wait_time' => $this->calculateAverageWaitTime($queueEntries),
         ];
 
-        $previousQueueEntries = QueueEntry::where('doctor_id', $doctorId)
-            ->where('clinic_id', $clinicId)
-            ->whereBetween('created_at', [$previousStartDate, $previousEndDate])
+        $previousQueueEntries = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $previousStartDate, $previousEndDate)
+            ->with(['appointment:id,appointment_date,appointment_time'])
             ->get();
 
         $previousQueueStats = [
@@ -123,42 +134,39 @@ class ReportsController extends Controller
             'served' => $previousQueueEntries->where('status', 'served')->count(),
             'no_show' => $previousQueueEntries->where('status', 'no_show')->count(),
             'waiting' => $previousQueueEntries->where('status', 'waiting')->count(),
+            'cancelled' => $previousQueueEntries->where('status', 'cancelled')->count(),
             'average_wait_time' => $this->calculateAverageWaitTime($previousQueueEntries),
         ];
 
         // Patient Insights
-        $uniquePatients = $patientVisits->pluck('patient_id')->unique()->count();
-        $repeatPatients = $patientVisits->groupBy('patient_id')->filter(function ($visits) {
-            return $visits->count() > 1;
-        })->count();
+        $patientStats = $this->patientStats($appointments, $patientVisits);
 
-        $patientStats = [
-            'unique_patients' => $uniquePatients,
-            'repeat_patients' => $repeatPatients,
-            'total_visits' => $patientVisits->count(),
-        ];
+        $previousDoctorPatientIds = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $previousStartDate, $previousEndDate)
+            ->whereNotNull('patient_id')
+            ->pluck('patient_id')
+            ->unique()
+            ->values();
 
         $previousPatientVisits = PatientVisit::where('clinic_id', $clinicId)
             ->whereBetween('date_of_visit', [$previousStartDate, $previousEndDate])
+            ->whereIn('patient_id', $previousDoctorPatientIds)
             ->get();
 
-        $previousPatientStats = [
-            'unique_patients' => $previousPatientVisits->pluck('patient_id')->unique()->count(),
-            'repeat_patients' => $previousPatientVisits->groupBy('patient_id')->filter(function ($visits) {
-                return $visits->count() > 1;
-            })->count(),
-            'total_visits' => $previousPatientVisits->count(),
-        ];
+        $previousPatientStats = $this->patientStats($previousAppointments, $previousPatientVisits);
 
-        // Schedule Utilization: count available slots from schedules (30-min slots)
+        // Schedule <Utilization></Utilization>
         $schedules = DoctorSchedule::where('doctor_id', $doctorId)
+            ->where('clinic_id', $clinicId)
             ->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('start_date', [$startDate, $endDate])
-                  ->orWhereBetween('end_date', [$startDate, $endDate])
-                  ->orWhere(function ($q2) use ($startDate, $endDate) {
-                      $q2->where('start_date', '<=', $startDate)->where('end_date', '>=', $endDate);
-                  });
-            })->get();
+                $q->where(function ($dateQuery) use ($endDate) {
+                    $dateQuery->whereNull('start_date')
+                        ->orWhereDate('start_date', '<=', $endDate);
+                })->where(function ($dateQuery) use ($startDate) {
+                    $dateQuery->whereNull('end_date')
+                        ->orWhereDate('end_date', '>=', $startDate);
+                });
+            })
+            ->get();
 
         $slotLengthMinutes = 30;
         $totalSlots = 0;
@@ -180,7 +188,9 @@ class ReportsController extends Controller
                 $dates = [ Carbon::parse($schedule->start_date) ];
             } else {
                 $dates = [];
-                $cursor = $effectiveStart->copy()->nextOrSame($schedule->day_of_week);
+                $scheduleDay = (int) $schedule->day_of_week;
+                $daysUntilScheduleDay = ($scheduleDay - (int) $effectiveStart->dayOfWeek + 7) % 7;
+                $cursor = $effectiveStart->copy()->addDays($daysUntilScheduleDay);
                 while ($cursor->lte($effectiveEnd)) {
                     $dates[] = $cursor->copy();
                     $cursor->addWeek();
@@ -189,9 +199,7 @@ class ReportsController extends Controller
 
             foreach ($dates as $d) {
                 if (empty($schedule->start_time) || empty($schedule->end_time)) continue;
-                $start = Carbon::parse($schedule->start_time);
-                $end = Carbon::parse($schedule->end_time);
-                $minutes = $end->diffInMinutes($start);
+                $minutes = $this->scheduleDurationMinutes($schedule->start_time, $schedule->end_time);
                 if ($minutes <= 0) continue;
                 $totalSlots += max(0, floor($minutes / $slotLengthMinutes));
             }
@@ -201,13 +209,17 @@ class ReportsController extends Controller
         $utilizationRate = $totalSlots > 0 ? round(($bookedSlots / $totalSlots) * 100, 2) : 0;
 
         $previousSchedules = DoctorSchedule::where('doctor_id', $doctorId)
+            ->where('clinic_id', $clinicId)
             ->where(function ($q) use ($previousStartDate, $previousEndDate) {
-                $q->whereBetween('start_date', [$previousStartDate, $previousEndDate])
-                  ->orWhereBetween('end_date', [$previousStartDate, $previousEndDate])
-                  ->orWhere(function ($q2) use ($previousStartDate, $previousEndDate) {
-                      $q2->where('start_date', '<=', $previousStartDate)->where('end_date', '>=', $previousEndDate);
-                  });
-            })->get();
+                $q->where(function ($dateQuery) use ($previousEndDate) {
+                    $dateQuery->whereNull('start_date')
+                        ->orWhereDate('start_date', '<=', $previousEndDate);
+                })->where(function ($dateQuery) use ($previousStartDate) {
+                    $dateQuery->whereNull('end_date')
+                        ->orWhereDate('end_date', '>=', $previousStartDate);
+                });
+            })
+            ->get();
 
         $previousTotalSlots = 0;
         foreach ($previousSchedules as $schedule) {
@@ -227,7 +239,9 @@ class ReportsController extends Controller
                 $dates = [ Carbon::parse($schedule->start_date) ];
             } else {
                 $dates = [];
-                $cursor = $effectiveStart->copy()->nextOrSame($schedule->day_of_week);
+                $scheduleDay = (int) $schedule->day_of_week;
+                $daysUntilScheduleDay = ($scheduleDay - (int) $effectiveStart->dayOfWeek + 7) % 7;
+                $cursor = $effectiveStart->copy()->addDays($daysUntilScheduleDay);
                 while ($cursor->lte($effectiveEnd)) {
                     $dates[] = $cursor->copy();
                     $cursor->addWeek();
@@ -236,9 +250,7 @@ class ReportsController extends Controller
 
             foreach ($dates as $d) {
                 if (empty($schedule->start_time) || empty($schedule->end_time)) continue;
-                $start = Carbon::parse($schedule->start_time);
-                $end = Carbon::parse($schedule->end_time);
-                $minutes = $end->diffInMinutes($start);
+                $minutes = $this->scheduleDurationMinutes($schedule->start_time, $schedule->end_time);
                 if ($minutes <= 0) continue;
                 $previousTotalSlots += max(0, floor($minutes / $slotLengthMinutes));
             }
@@ -258,21 +270,40 @@ class ReportsController extends Controller
         ];
 
         // Appointments by Service
-        $serviceStats = $appointments->groupBy('service_id')->map(function ($apps, $serviceId) {
-            $service = Service::find($serviceId);
+        $serviceCounts = $appointments->groupBy('service_id')->map->count();
+        $serviceChartSource = $serviceFilter
+            ? $servicesList->where('id', (int) $serviceFilter)->values()
+            : $servicesList;
+
+        $serviceStats = $serviceChartSource->map(function ($service) use ($serviceCounts) {
             return [
-                'name' => $service ? $service->name : 'Unknown',
-                'count' => $apps->count(),
+                'name' => $service->name,
+                'count' => (int) ($serviceCounts[$service->id] ?? 0),
             ];
         })->values();
 
+        if ($serviceStats->isEmpty() && $appointments->isNotEmpty()) {
+            $serviceNames = Service::query()
+                ->whereIn('id', $appointments->pluck('service_id')->filter()->unique()->values())
+                ->pluck('name', 'id');
+
+            $serviceStats = $serviceCounts->map(function ($count, $serviceId) use ($serviceNames) {
+                return [
+                    'name' => $serviceNames[$serviceId] ?? 'Unassigned Service',
+                    'count' => (int) $count,
+                ];
+            })->values();
+        }
+
         // Appointments Over Time (daily for the period)
-        $dailyAppointments = $appointments->groupBy(function ($appointment) {
+        $appointmentCountsByDate = $appointments->groupBy(function ($appointment) {
             return $appointment->appointment_date->format('Y-m-d');
-        })->map(function ($apps, $date) {
+        })->map->count();
+
+        $dailyAppointments = $this->dateSeries($startDate, $endDate)->map(function ($date) use ($appointmentCountsByDate) {
             return [
                 'date' => $date,
-                'count' => $apps->count(),
+                'count' => (int) ($appointmentCountsByDate[$date] ?? 0),
             ];
         })->values();
 
@@ -286,14 +317,18 @@ class ReportsController extends Controller
         })->map(fn($apps, $month) => ['month' => $month, 'count' => $apps->count()])->values();
 
         // Peak Hours
-        $hourlyStats = $appointments->groupBy(function ($appointment) {
+        $appointmentCountsByHour = $appointments->groupBy(function ($appointment) {
             return $appointment->appointment_time ? Carbon::parse($appointment->appointment_time)->format('H') : '00';
-        })->map(function ($apps, $hour) {
+        })->map->count();
+
+        $hourlyStats = collect(range(0, 23))->map(function ($hour) use ($appointmentCountsByHour) {
+            $hourKey = str_pad((string) $hour, 2, '0', STR_PAD_LEFT);
+
             return [
-                'hour' => $hour . ':00',
-                'count' => $apps->count(),
+                'hour' => $hourKey . ':00',
+                'count' => (int) ($appointmentCountsByHour[$hourKey] ?? 0),
             ];
-        })->sortBy('hour')->values();
+        })->values();
 
         // No-show analysis (trend by day)
         $noShowTrend = $appointments->where('status', 'no_show')->groupBy(function ($a) {
@@ -301,7 +336,15 @@ class ReportsController extends Controller
         })->map(fn($apps, $d) => ['date' => $d, 'no_shows' => $apps->count()])->values();
 
         // Patient demographics for those visits
-        $patientIds = $patientVisits->pluck('patient_id')->unique()->filter()->values();
+        $appointmentPatientIds = Patient::query()
+            ->whereIn('user_id', $appointments->pluck('user_id')->filter()->unique()->values())
+            ->pluck('id');
+
+        $patientIds = $patientVisits->pluck('patient_id')
+            ->merge($appointmentPatientIds)
+            ->unique()
+            ->filter()
+            ->values();
         $patientAges = [];
         if ($patientIds->isNotEmpty()) {
             $patients = Patient::whereIn('id', $patientIds)->get();
@@ -322,7 +365,18 @@ class ReportsController extends Controller
             $patientAges = $ageGroups;
         }
 
+        // Services Report
+        $serviceReport = $this->serviceReport($appointments);
+
+        // Patient Appointments Report
+        $patientReport = $this->patientReport($appointments);
+
+        $reportPeriod = $this->resolveReportPeriod($startDate, $endDate, $validated['period'] ?? null);
+        $periodLabel = $reportPeriod['label'];
+        $periodKey = $reportPeriod['key'];
+
         return view('doctor.reports.index', compact(
+            'activeClinic',
             'appointmentStats',
             'queueStats',
             'patientStats',
@@ -340,7 +394,11 @@ class ReportsController extends Controller
             'showComparisons',
             'isTodayRange',
             'startDate',
-            'endDate'
+            'endDate',
+            'periodLabel',
+            'periodKey',
+            'serviceReport',
+            'patientReport'
         ));
     }
 
@@ -348,19 +406,27 @@ class ReportsController extends Controller
     {
         $doctorId = auth()->id();
         $clinicId = $this->activeClinicId($request);
-        $startDate = $request->get('start_date', Carbon::now()->startOfMonth());
-        $endDate = $request->get('end_date', Carbon::now()->endOfMonth());
-        if (is_string($startDate)) $startDate = Carbon::parse($startDate);
-        if (is_string($endDate)) $endDate = Carbon::parse($endDate);
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'service_id' => ['nullable', 'integer', 'exists:services,id'],
+        ]);
 
-        $serviceFilter = $request->get('service_id');
+        $startDate = Carbon::parse($validated['start_date'] ?? now()->startOfMonth()->toDateString())->startOfDay();
+        $endDate = Carbon::parse($validated['end_date'] ?? now()->endOfMonth()->toDateString())->endOfDay();
+
+        if ($endDate->lt($startDate)) {
+            [$startDate, $endDate] = [$endDate->copy()->startOfDay(), $startDate->copy()->endOfDay()];
+        }
+
+        $serviceFilter = $validated['service_id'] ?? null;
 
         $q = Appointment::where('doctor_id', $doctorId)
             ->where('clinic_id', $clinicId)
             ->whereBetween('appointment_date', [$startDate, $endDate]);
         if ($serviceFilter) $q->where('service_id', $serviceFilter);
 
-        $appointments = $q->with(['patient', 'service'])->orderBy('appointment_date')->get();
+        $appointments = $q->with(['user', 'service'])->orderBy('appointment_date')->get();
 
         $filename = 'appointments-'.$doctorId.'-'.$startDate->format('Ymd').'-'.$endDate->format('Ymd').'.csv';
 
@@ -377,8 +443,8 @@ class ReportsController extends Controller
                     $a->id,
                     $a->appointment_date->format('Y-m-d'),
                     $a->appointment_time,
-                    $a->patient?->full_name ?? '—',
-                    $a->service?->name ?? '—',
+                    $a->user?->name ?? 'N/A',
+                    $a->service?->name ?? 'N/A',
                     $a->status,
                 ]);
             }
@@ -388,19 +454,201 @@ class ReportsController extends Controller
         return Response::stream($callback, 200, $headers);
     }
 
+    private function serviceReport($appointments)
+    {
+        $serviceIds = $appointments
+            ->pluck('service_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $serviceNames = Service::query()
+            ->whereIn('id', $serviceIds)
+            ->pluck('name', 'id');
+
+        return $appointments
+            ->groupBy('service_id')
+            ->map(function ($items, $serviceId) use ($serviceNames) {
+                $total = $items->count();
+                $completed = $items->where('status', 'completed')->count();
+                $cancelled = $items->where('status', 'cancelled')->count();
+                $noShow = $items->where('status', 'no_show')->count();
+
+                return [
+                    'service_id' => $serviceId,
+                    'name' => $serviceNames[$serviceId] ?? 'Unassigned Service',
+                    'total' => $total,
+                    'completed' => $completed,
+                    'cancelled' => $cancelled,
+                    'no_show' => $noShow,
+                    'completion_rate' => $this->percent($completed, $total),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+    }
+
+    private function patientReport($appointments)
+    {
+        $userIds = $appointments
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $patients = User::query()
+            ->whereIn('id', $userIds)
+            ->get();
+
+        $patientNames = $patients->pluck('name', 'id');
+
+        return $appointments
+            ->filter(fn ($appointment) => ! empty($appointment->user_id))
+            ->groupBy('user_id')
+            ->map(function ($items, $userId) use ($patientNames) {
+                $total = $items->count();
+                $completed = $items->where('status', 'completed')->count();
+                $cancelled = $items->where('status', 'cancelled')->count();
+                $noShow = $items->where('status', 'no_show')->count();
+
+                return [
+                    'user_id' => $userId,
+                    'name' => $patientNames[$userId] ?? 'Unknown Patient',
+                    'total' => $total,
+                    'completed' => $completed,
+                    'cancelled' => $cancelled,
+                    'no_show' => $noShow,
+                    'completion_rate' => $this->percent($completed, $total),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+    }
+
+    private function patientStats($appointments, $patientVisits): array
+    {
+        $appointmentPatientKeys = $appointments
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn ($id) => 'user:' . (int) $id);
+
+        $walkInPatientKeys = $patientVisits
+            ->pluck('patient_id')
+            ->filter()
+            ->map(fn ($id) => 'patient:' . (int) $id);
+
+        $patientEncounters = $appointments
+            ->map(fn ($appointment) => $appointment->user_id ? 'user:' . (int) $appointment->user_id : null)
+            ->filter()
+            ->merge(
+                $patientVisits
+                    ->map(fn ($visit) => $visit->patient_id ? 'patient:' . (int) $visit->patient_id : null)
+                    ->filter()
+            );
+
+        return [
+            'unique_patients' => $appointmentPatientKeys
+                ->merge($walkInPatientKeys)
+                ->unique()
+                ->count(),
+            'repeat_patients' => $patientEncounters
+                ->countBy()
+                ->filter(fn ($count) => $count > 1)
+                ->count(),
+            'total_visits' => $appointments->count() + $patientVisits->count(),
+        ];
+    }
+
+    private function percent($value, $total): int
+    {
+        if ($total <= 0) return 0;
+        return (int) round(($value / $total) * 100);
+    }
+
+    private function dateSeries(Carbon $startDate, Carbon $endDate)
+    {
+        $dates = collect();
+        $cursor = $startDate->copy()->startOfDay();
+        $lastDate = $endDate->copy()->startOfDay();
+
+        while ($cursor->lte($lastDate)) {
+            $dates->push($cursor->toDateString());
+            $cursor->addDay();
+        }
+
+        return $dates;
+    }
+
+    private function scheduleDurationMinutes($startTime, $endTime): int
+    {
+        $start = $this->timeToMinutes((string) $startTime);
+        $end = $this->timeToMinutes((string) $endTime);
+
+        if ($end <= $start) {
+            $end += 24 * 60;
+        }
+
+        return $end - $start;
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        [$hour, $minute] = array_map('intval', explode(':', substr($time, 0, 5)));
+
+        return ($hour * 60) + $minute;
+    }
+
     private function calculateAverageWaitTime($queueEntries)
     {
-        $servedEntries = $queueEntries->where('status', 'served')->whereNotNull('served_at');
+        $servedEntries = $queueEntries
+            ->where('status', 'served')
+            ->whereNotNull('served_at')
+            ->whereNotNull('called_at')
+            ->filter(function ($entry) {
+                $called = $this->queueCalledAt($entry);
+                $served = Carbon::parse($entry->served_at);
+
+                return $called && $served->greaterThanOrEqualTo($called);
+            });
 
         if ($servedEntries->isEmpty()) return 0;
 
         $totalWaitTime = $servedEntries->sum(function ($entry) {
-            $created = Carbon::parse($entry->created_at);
+            $called = $this->queueCalledAt($entry);
             $served = Carbon::parse($entry->served_at);
-            return $served->diffInMinutes($created);
+
+            return $called->diffInMinutes($served);
         });
 
         return round($totalWaitTime / $servedEntries->count(), 2);
+    }
+
+    private function doctorQueueEntriesForPeriod(int $doctorId, int $clinicId, Carbon $startDate, Carbon $endDate)
+    {
+        return QueueEntry::query()
+            ->forDoctor($doctorId)
+            ->where('clinic_id', $clinicId)
+            ->where(function ($periodQuery) use ($startDate, $endDate) {
+                $periodQuery->where(function ($appointmentQueue) use ($startDate, $endDate) {
+                    $appointmentQueue->whereNotNull('appointment_id')
+                        ->whereHas('appointment', function ($appointmentQuery) use ($startDate, $endDate) {
+                            $appointmentQuery->whereBetween('appointment_date', [$startDate, $endDate]);
+                        });
+                })->orWhere(function ($walkInQueue) use ($startDate, $endDate) {
+                    $walkInQueue->whereNull('appointment_id')
+                        ->whereNotNull('patient_id')
+                        ->whereBetween('created_at', [$startDate, $endDate]);
+                });
+            });
+    }
+
+    private function queueCalledAt($entry): ?Carbon
+    {
+        if ($entry->called_at) {
+            return Carbon::parse($entry->called_at);
+        }
+
+        return null;
     }
 
     private function calculateDelta($current, $previous): array
@@ -416,6 +664,63 @@ class ReportsController extends Controller
             'difference' => $difference,
             'percent' => $percent,
             'direction' => $difference > 0 ? 'up' : ($difference < 0 ? 'down' : 'flat'),
+        ];
+    }
+
+    private function resolveReportPeriod(Carbon $startDate, Carbon $endDate, ?string $requestedPeriod = null): array
+    {
+        $today = now();
+        $periods = [
+            'today' => [
+                'label' => 'Today',
+                'start' => $today->copy()->startOfDay(),
+                'end' => $today->copy()->endOfDay(),
+            ],
+            'last_7_days' => [
+                'label' => 'Last 7 Days',
+                'start' => $today->copy()->subDays(6)->startOfDay(),
+                'end' => $today->copy()->endOfDay(),
+            ],
+            'this_month' => [
+                'label' => 'This Month',
+                'start' => $today->copy()->startOfMonth()->startOfDay(),
+                'end' => $today->copy()->endOfMonth()->endOfDay(),
+            ],
+            'last_month' => [
+                'label' => 'Last Month',
+                'start' => $today->copy()->subMonthNoOverflow()->startOfMonth()->startOfDay(),
+                'end' => $today->copy()->subMonthNoOverflow()->endOfMonth()->endOfDay(),
+            ],
+            'this_year' => [
+                'label' => 'This Year',
+                'start' => $today->copy()->startOfYear()->startOfDay(),
+                'end' => $today->copy()->endOfYear()->endOfDay(),
+            ],
+        ];
+
+        if ($requestedPeriod && isset($periods[$requestedPeriod])) {
+            $period = $periods[$requestedPeriod];
+
+            if ($startDate->isSameDay($period['start']) && $endDate->isSameDay($period['end'])) {
+                return [
+                    'key' => $requestedPeriod,
+                    'label' => $period['label'],
+                ];
+            }
+        }
+
+        foreach ($periods as $key => $period) {
+            if ($startDate->isSameDay($period['start']) && $endDate->isSameDay($period['end'])) {
+                return [
+                    'key' => $key,
+                    'label' => $period['label'],
+                ];
+            }
+        }
+
+        return [
+            'key' => 'custom',
+            'label' => 'Custom Range',
         ];
     }
 }

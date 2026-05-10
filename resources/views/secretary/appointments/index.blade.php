@@ -49,21 +49,44 @@
       }
   };
 
-  $appointmentCollection = $appointments ?? collect();
-
   $totalAppointments = $totalAppointments
-      ?? (method_exists($appointmentCollection, 'total')
-          ? $appointmentCollection->total()
-          : $appointmentCollection->count());
+      ?? (int) ($summary->total ?? 0);
 
   $scheduledCount = $scheduledCount
-      ?? collect($appointmentCollection)->where('status', 'scheduled')->count();
+      ?? (int) ($summary->scheduled ?? 0);
 
   $completedCount = $completedCount
-      ?? collect($appointmentCollection)->where('status', 'completed')->count();
+      ?? (int) ($summary->completed ?? 0);
 
   $cancelledCount = $cancelledCount
-      ?? collect($appointmentCollection)->where('status', 'cancelled')->count();
+      ?? (int) ($summary->cancelled ?? 0);
+
+  $matchingAppointments = method_exists($appointments, 'total')
+      ? $appointments->total()
+      : collect($appointments)->count();
+
+  $activePeriod = ($period ?? request('period')) === 'upcoming' ? 'upcoming' : 'today';
+  $periodLabel = $activePeriod === 'upcoming' ? 'Upcoming Appointments' : "Today's Queue";
+
+  $activeStatusFilter = request('status');
+  $statusCardUrl = function (?string $status) use ($secUrl) {
+      $query = request()->except(['page', 'export']);
+
+      if ($status) {
+          $query['status'] = $status;
+      } else {
+          unset($query['status']);
+      }
+
+      return $secUrl('secretary.appointments.index') . (count($query) ? '?' . http_build_query($query) : '');
+  };
+
+  $periodUrl = function (string $period) use ($secUrl) {
+      $query = request()->except(['page', 'export']);
+      $query['period'] = $period === 'upcoming' ? 'upcoming' : 'today';
+
+      return $secUrl('secretary.appointments.index') . (count($query) ? '?' . http_build_query($query) : '');
+  };
 @endphp
 
 <style>
@@ -152,6 +175,24 @@
     position: relative;
     overflow: hidden;
     box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+    display: block;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, outline-color 0.18s ease;
+  }
+
+  .sec-stat-card:hover {
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  }
+
+  .sec-stat-yellow:hover {
+    color: #162033;
+  }
+
+  .sec-stat-card.active {
+    outline: 4px solid rgba(13, 110, 253, 0.28);
+    outline-offset: 3px;
   }
 
   .sec-stat-card::after {
@@ -299,7 +340,7 @@
 
   .sec-filter-grid {
     display: grid;
-    grid-template-columns: 1.4fr 0.8fr 0.8fr auto;
+    grid-template-columns: 1.4fr 0.9fr 0.9fr auto;
     gap: 0.85rem;
     align-items: end;
   }
@@ -368,6 +409,40 @@
     color: #ffffff;
   }
 
+  .sec-period-toggle {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.25rem;
+    border-radius: 16px;
+    border: 1px solid #dbe3ef;
+    background: #f8fafc;
+  }
+
+  .sec-period-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 36px;
+    padding: 0.48rem 0.76rem;
+    border-radius: 13px;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 900;
+    text-decoration: none;
+    transition: 0.18s ease;
+  }
+
+  .sec-period-link:hover {
+    color: #0d6efd;
+    background: #eff6ff;
+  }
+
+  .sec-period-link.active {
+    color: #ffffff;
+    background: #0d6efd;
+    box-shadow: 0 10px 22px rgba(13, 110, 253, 0.2);
+  }
+
   .sec-table {
     margin: 0;
   }
@@ -430,6 +505,20 @@
     color: #0d6efd;
   }
 
+  .sec-doctor-detail {
+    display: grid;
+    gap: 0.25rem;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 650;
+  }
+
+  .sec-status-badge {
+    border-radius: 999px;
+    padding: 0.42rem 0.68rem;
+    font-weight: 900;
+  }
+
   .sec-empty {
     text-align: center;
     padding: 2.4rem 1rem;
@@ -444,7 +533,43 @@
   .pagination-wrap {
     display: flex;
     justify-content: center;
+    padding: 1rem 1.2rem 1.2rem;
     margin-top: 1rem;
+  }
+
+  .pagination-wrap nav {
+    width: 100%;
+  }
+
+  .pagination-wrap .pagination {
+    justify-content: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+  }
+
+  .pagination-wrap .page-link {
+    border-radius: 12px;
+    min-width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-color: #dbe3ef;
+    color: #0d6efd;
+    font-weight: 800;
+    box-shadow: none;
+  }
+
+  .pagination-wrap .page-item.active .page-link {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #ffffff;
+  }
+
+  .pagination-wrap .page-item.disabled .page-link {
+    color: #94a3b8;
+    background: #f8fafc;
   }
 
   @media (max-width: 1200px) {
@@ -521,7 +646,9 @@
     </div>
 
     <div class="sec-stats-grid">
-      <div class="sec-stat-card sec-stat-blue">
+      <a href="{{ $statusCardUrl(null) }}"
+         class="sec-stat-card sec-stat-blue {{ empty($activeStatusFilter) ? 'active' : '' }}"
+         aria-label="Show all appointments">
         <div class="sec-stat-content">
           <div class="sec-stat-icon">
             <i class="bi bi-calendar-week"></i>
@@ -532,9 +659,11 @@
             <div class="sec-stat-help">All matching appointments</div>
           </div>
         </div>
-      </div>
+      </a>
 
-      <div class="sec-stat-card sec-stat-yellow">
+      <a href="{{ $statusCardUrl('scheduled') }}"
+         class="sec-stat-card sec-stat-yellow {{ $activeStatusFilter === 'scheduled' ? 'active' : '' }}"
+         aria-label="Show scheduled appointments">
         <div class="sec-stat-content">
           <div class="sec-stat-icon">
             <i class="bi bi-clock-history"></i>
@@ -545,9 +674,11 @@
             <div class="sec-stat-help">Upcoming or active</div>
           </div>
         </div>
-      </div>
+      </a>
 
-      <div class="sec-stat-card sec-stat-green">
+      <a href="{{ $statusCardUrl('completed') }}"
+         class="sec-stat-card sec-stat-green {{ $activeStatusFilter === 'completed' ? 'active' : '' }}"
+         aria-label="Show completed appointments">
         <div class="sec-stat-content">
           <div class="sec-stat-icon">
             <i class="bi bi-check2-circle"></i>
@@ -558,9 +689,11 @@
             <div class="sec-stat-help">Finished visits</div>
           </div>
         </div>
-      </div>
+      </a>
 
-      <div class="sec-stat-card sec-stat-gray">
+      <a href="{{ $statusCardUrl('cancelled') }}"
+         class="sec-stat-card sec-stat-gray {{ $activeStatusFilter === 'cancelled' ? 'active' : '' }}"
+         aria-label="Show cancelled appointments">
         <div class="sec-stat-content">
           <div class="sec-stat-icon">
             <i class="bi bi-x-circle"></i>
@@ -571,7 +704,7 @@
             <div class="sec-stat-help">Cancelled records</div>
           </div>
         </div>
-      </div>
+      </a>
     </div>
   </section>
 
@@ -635,31 +768,42 @@
       <form method="GET"
             action="{{ $secUrl('secretary.appointments.index', [], '/secretary/dashboard') }}"
             class="sec-filter-grid">
+        <input type="hidden" name="period" value="{{ $activePeriod }}">
+        @if($activeStatusFilter)
+          <input type="hidden" name="status" value="{{ $activeStatusFilter }}">
+        @endif
+
         <div>
-          <label class="form-label">Patient Name</label>
+          <label class="form-label">Patient Search</label>
           <input type="text"
                  name="patient"
                  class="form-control"
-                 placeholder="Search by patient name..."
+                 placeholder="Name, email, or phone..."
                  value="{{ request('patient') }}">
         </div>
 
         <div>
-          <label class="form-label">Status</label>
-          <select name="status" class="form-select">
-            <option value="">All Status</option>
-            <option value="scheduled" @selected(request('status') == 'scheduled')>Scheduled</option>
-            <option value="completed" @selected(request('status') == 'completed')>Completed</option>
-            <option value="cancelled" @selected(request('status') == 'cancelled')>Cancelled</option>
+          <label class="form-label">Doctor</label>
+          <select name="doctor_id" class="form-select">
+            <option value="">All doctors</option>
+            @foreach($doctors as $doctor)
+              <option value="{{ $doctor->id }}" @selected((string) request('doctor_id') === (string) $doctor->id)>
+                Dr. {{ $doctor->name }}
+              </option>
+            @endforeach
           </select>
         </div>
 
         <div>
-          <label class="form-label">Date</label>
-          <input type="date"
-                 name="date"
-                 class="form-control"
-                 value="{{ request('date') }}">
+          <label class="form-label">Service</label>
+          <select name="service_id" class="form-select">
+            <option value="">All services</option>
+            @foreach($services as $service)
+              <option value="{{ $service->id }}" @selected((string) request('service_id') === (string) $service->id)>
+                {{ $service->name }}
+              </option>
+            @endforeach
+          </select>
         </div>
 
         <div class="d-grid">
@@ -676,14 +820,36 @@
     <div class="sec-card-head">
       <h2 class="sec-card-title">
         <i class="bi bi-calendar-week"></i>
-        Appointments List
+        {{ $periodLabel }}
       </h2>
 
       <div class="sec-list-toolbar">
+        <div class="sec-period-toggle" aria-label="Appointment period">
+          <a href="{{ $periodUrl('today') }}"
+             class="sec-period-link {{ $activePeriod === 'today' ? 'active' : '' }}">
+            <i class="bi bi-calendar-day"></i>
+            Today's Queue
+          </a>
+
+          <a href="{{ $periodUrl('upcoming') }}"
+             class="sec-period-link {{ $activePeriod === 'upcoming' ? 'active' : '' }}">
+            <i class="bi bi-calendar-event"></i>
+            Upcoming
+          </a>
+        </div>
+
         <span class="sec-pill">
           <i class="bi bi-check2-circle"></i>
-          {{ number_format($totalAppointments) }} appointments
+          {{ number_format($matchingAppointments) }} {{ $activePeriod === 'today' ? 'queue appointments' : 'future appointments' }}
         </span>
+
+        @if($activeStatusFilter)
+          <a href="{{ $statusCardUrl(null) }}" class="sec-pill text-decoration-none">
+            <i class="bi bi-funnel"></i>
+            {{ ucfirst(str_replace('_', ' ', $activeStatusFilter)) }}
+            <i class="bi bi-x-lg"></i>
+          </a>
+        @endif
 
         <div class="sec-view-toggle">
           <button type="button" id="tableView" class="active" title="Table view">
@@ -739,13 +905,19 @@
 
               <td class="px-4 py-3">
                 <span class="sec-pill">
-                  {{ $appointment->service->name ?? '—' }}
+                  {{ $appointment->service->name ?? 'N/A' }}
                 </span>
               </td>
 
               <td class="px-4 py-3">
                 @if($appointment->doctor)
-                  <span class="fw-bold">Dr. {{ $appointment->doctor->name }}</span>
+                  <div class="fw-bold text-dark">Dr. {{ $appointment->doctor->name }}</div>
+                  <div class="sec-doctor-detail">
+                    <span>{{ $appointment->doctor->email ?? 'No email' }}</span>
+                    @if($appointment->doctor->phone)
+                      <span>{{ $appointment->doctor->phone }}</span>
+                    @endif
+                  </div>
                 @else
                   <span class="badge bg-warning text-dark">Unassigned</span>
                 @endif
@@ -753,11 +925,11 @@
 
               <td class="px-4 py-3">
                 <div class="fw-bold">
-                  {{ optional($appointment->appointment_date)->format('M d, Y') ?? '—' }}
+                  {{ optional($appointment->appointment_date)->format('M d, Y') ?? 'N/A' }}
                 </div>
 
                 <small class="text-muted">
-                  {{ $appointment->appointment_time ? \Carbon\Carbon::parse($appointment->appointment_time)->format('g:i A') : '—' }}
+                  {{ $appointment->appointment_time ? \Carbon\Carbon::parse($appointment->appointment_time)->format('g:i A') : 'N/A' }}
                 </small>
               </td>
 
@@ -780,7 +952,7 @@
                   }
                 @endphp
 
-                <span class="badge {{ $badgeClass }}">
+                <span class="badge sec-status-badge {{ $badgeClass }}">
                   {{ ucfirst(str_replace('_', ' ', $status)) }}
                 </span>
               </td>
@@ -802,19 +974,24 @@
                 <div class="d-flex gap-2 flex-wrap sec-action-buttons">
                   <a href="{{ $secUrl('secretary.appointments.edit', ['appointment' => $appointment->id]) }}"
                      class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-pencil-square"></i>
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Edit
                   </a>
 
-                  @if($appointment->status === 'scheduled')
-                    <form method="POST"
-                          action="{{ $secUrl('secretary.appointments.complete', ['appointment' => $appointment->id]) }}">
-                      @csrf
-                      @method('PATCH')
-
-                      <button type="submit" class="btn btn-sm btn-outline-success">
-                        <i class="bi bi-check2-circle"></i>
-                      </button>
-                    </form>
+                  @if(! in_array($appointment->status, ['completed', 'cancelled'], true))
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary reschedule-btn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#rescheduleAppointmentModal"
+                            data-action="{{ $secUrl('secretary.appointments.reschedule', ['appointment' => $appointment->id]) }}"
+                            data-service-id="{{ $appointment->service_id }}"
+                            data-doctor-id="{{ $appointment->doctor_id }}"
+                            data-date="{{ optional($appointment->appointment_date)->format('Y-m-d') }}"
+                            data-time="{{ $appointment->appointment_time ? substr($appointment->getRawOriginal('appointment_time'), 0, 5) : '' }}"
+                            data-patient="{{ $appointment->user->name ?? 'Patient' }}">
+                      <i class="bi bi-calendar2-week me-1"></i>
+                      Reschedule
+                    </button>
 
                     <form method="POST"
                           action="{{ $secUrl('secretary.appointments.cancel', ['appointment' => $appointment->id]) }}"
@@ -825,7 +1002,8 @@
                       @method('PATCH')
 
                       <button type="submit" class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-x-circle"></i>
+                        <i class="bi bi-x-circle me-1"></i>
+                        Cancel
                       </button>
                     </form>
                   @endif
@@ -870,15 +1048,20 @@
 
               <div class="sec-meta-item">
                 <i class="bi bi-person-badge"></i>
-                <span>{{ $appointment->doctor ? 'Dr. ' . $appointment->doctor->name : 'Unassigned doctor' }}</span>
+                <span>
+                  {{ $appointment->doctor ? 'Dr. ' . $appointment->doctor->name : 'Unassigned doctor' }}
+                  @if($appointment->doctor?->email)
+                    <br><small>{{ $appointment->doctor->email }}</small>
+                  @endif
+                </span>
               </div>
 
               <div class="sec-meta-item">
                 <i class="bi bi-calendar-event"></i>
                 <span>
-                  {{ optional($appointment->appointment_date)->format('M d, Y') ?? '—' }}
+                  {{ optional($appointment->appointment_date)->format('M d, Y') ?? 'N/A' }}
                   at
-                  {{ $appointment->appointment_time ? \Carbon\Carbon::parse($appointment->appointment_time)->format('g:i A') : '—' }}
+                  {{ $appointment->appointment_time ? \Carbon\Carbon::parse($appointment->appointment_time)->format('g:i A') : 'N/A' }}
                 </span>
               </div>
             </div>
@@ -888,11 +1071,43 @@
                 {{ ucfirst(str_replace('_', ' ', $appointment->status ?? 'scheduled')) }}
               </span>
 
-              <a href="{{ $secUrl('secretary.appointments.edit', ['appointment' => $appointment->id]) }}"
-                 class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-pencil-square me-1"></i>
-                Edit
-              </a>
+              <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ $secUrl('secretary.appointments.edit', ['appointment' => $appointment->id]) }}"
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-pencil-square me-1"></i>
+                  Edit
+                </a>
+
+                @if(! in_array($appointment->status, ['completed', 'cancelled'], true))
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary reschedule-btn"
+                          data-bs-toggle="modal"
+                          data-bs-target="#rescheduleAppointmentModal"
+                          data-action="{{ $secUrl('secretary.appointments.reschedule', ['appointment' => $appointment->id]) }}"
+                          data-service-id="{{ $appointment->service_id }}"
+                          data-doctor-id="{{ $appointment->doctor_id }}"
+                          data-date="{{ optional($appointment->appointment_date)->format('Y-m-d') }}"
+                          data-time="{{ $appointment->appointment_time ? substr($appointment->getRawOriginal('appointment_time'), 0, 5) : '' }}"
+                          data-patient="{{ $appointment->user->name ?? 'Patient' }}">
+                    <i class="bi bi-calendar2-week me-1"></i>
+                    Reschedule
+                  </button>
+
+                  <form method="POST"
+                        action="{{ $secUrl('secretary.appointments.cancel', ['appointment' => $appointment->id]) }}"
+                        data-confirm="Cancel this appointment?"
+                        data-confirm-title="Cancel Appointment"
+                        data-confirm-btn="Cancel Appointment">
+                    @csrf
+                    @method('PATCH')
+
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-x-circle me-1"></i>
+                      Cancel
+                    </button>
+                  </form>
+                @endif
+              </div>
             </div>
           </article>
         @empty
@@ -907,10 +1122,72 @@
 
     @if(method_exists($appointments, 'hasPages') && $appointments->hasPages())
       <div class="pagination-wrap">
-        {{ $appointments->withQueryString()->links() }}
+        {{ $appointments->appends(request()->except(['page', 'export']))->links() }}
       </div>
     @endif
   </section>
+</div>
+
+<div class="modal fade" id="rescheduleAppointmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="POST" action="#" class="modal-content" id="rescheduleAppointmentForm">
+      @csrf
+      @method('PATCH')
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold">Reschedule Appointment</h5>
+          <div class="text-muted small" id="reschedulePatientLabel">Update appointment details.</div>
+        </div>
+
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Service</label>
+            <select name="service_id" id="rescheduleService" class="form-select" required>
+              @foreach($services as $service)
+                <option value="{{ $service->id }}">{{ $service->name }}</option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Doctor</label>
+            <select name="doctor_id" id="rescheduleDoctor" class="form-select" required>
+              @foreach($doctors as $doctor)
+                <option value="{{ $doctor->id }}">Dr. {{ $doctor->name }}</option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Date</label>
+            <input type="date" name="appointment_date" id="rescheduleDate" class="form-control" min="{{ date('Y-m-d') }}" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Time</label>
+            <input type="time" name="appointment_time" id="rescheduleTime" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="alert alert-info rounded-4 mt-3 mb-0">
+          The system will verify the doctor's clinic schedule and existing bookings before saving.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary rounded-4 fw-bold" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary rounded-4 fw-bold">
+          <i class="bi bi-calendar2-check me-1"></i>
+          Save Reschedule
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 @endsection
 
@@ -918,15 +1195,58 @@
 <script>
   function exportAppointments() {
     const query = new URLSearchParams(window.location.search);
-    query.set('export', '1');
-    window.location.href = window.location.pathname + '?' + query.toString();
+    query.delete('page');
+    query.delete('export');
+    const exportUrl = @json($secUrl('secretary.appointments.export', [], '/secretary/appointments/export'));
+
+    let exportFrame = document.getElementById('appointmentsExportFrame');
+
+    if (!exportFrame) {
+      exportFrame = document.createElement('iframe');
+      exportFrame.id = 'appointmentsExportFrame';
+      exportFrame.name = 'appointmentsExportFrame';
+      exportFrame.style.display = 'none';
+      document.body.appendChild(exportFrame);
+    }
+
+    exportFrame.src = exportUrl + (query.toString() ? '?' + query.toString() : '');
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has('export')) {
+      currentUrl.searchParams.delete('export');
+      window.history.replaceState({}, '', currentUrl.toString());
+    }
+
     const tableView = document.getElementById('tableView');
     const cardView = document.getElementById('cardView');
     const tableViewContent = document.getElementById('tableViewContent');
     const cardViewContent = document.getElementById('cardViewContent');
+    const rescheduleModal = document.getElementById('rescheduleAppointmentModal');
+    const rescheduleForm = document.getElementById('rescheduleAppointmentForm');
+    const reschedulePatientLabel = document.getElementById('reschedulePatientLabel');
+    const rescheduleService = document.getElementById('rescheduleService');
+    const rescheduleDoctor = document.getElementById('rescheduleDoctor');
+    const rescheduleDate = document.getElementById('rescheduleDate');
+    const rescheduleTime = document.getElementById('rescheduleTime');
+
+    if (rescheduleModal && rescheduleForm) {
+      rescheduleModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        if (!button) {
+          return;
+        }
+
+        rescheduleForm.action = button.dataset.action || '#';
+        reschedulePatientLabel.textContent = `Patient: ${button.dataset.patient || 'Patient'}`;
+        rescheduleService.value = button.dataset.serviceId || '';
+        rescheduleDoctor.value = button.dataset.doctorId || '';
+        rescheduleDate.value = button.dataset.date || '';
+        rescheduleTime.value = button.dataset.time || '';
+      });
+    }
 
     if (!tableView || !cardView || !tableViewContent || !cardViewContent) {
       return;

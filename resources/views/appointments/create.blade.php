@@ -382,6 +382,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return `<div class="schedule-muted">${data.message}</div>`;
     }
 
+    const slots = data.slots || [];
+    const availableCount = slots.filter(s => s.available).length;
+    const expiredCount = slots.filter(s => s.expired).length;
+    const bookedCount = slots.filter(s => s.occupied && !s.expired).length;
+
     let html = `
       <div class="schedule-grid">
         <div class="schedule-pill">
@@ -398,10 +403,20 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="schedule-pill">
           <span>Available Slots</span>
-          <strong>${(data.slots || []).filter(s => s.available).length}</strong>
+          <strong>${availableCount}</strong>
         </div>
       </div>
     `;
+
+    if (slots.length && availableCount === 0) {
+      html += `
+        <div class="schedule-muted mt-2">
+          ${expiredCount === slots.length
+            ? 'All generated slots for this date are already past. Try the next matching schedule date.'
+            : `${bookedCount} slot${bookedCount === 1 ? '' : 's'} booked and ${expiredCount} past.`}
+        </div>
+      `;
+    }
 
     if (data.schedule && data.schedule.length) {
       const blocks = data.schedule.map(r => `
@@ -417,6 +432,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return html;
+  }
+
+  function slotPlaceholder(slots) {
+    slots = slots || [];
+
+    if (!slots.length) {
+      return 'No schedule slots';
+    }
+
+    if (!slots.some(s => s.available)) {
+      return 'No available slots';
+    }
+
+    return 'Select a time slot';
   }
 
   async function fetchAvailability() {
@@ -452,10 +481,10 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleWrap.style.display = 'block';
       scheduleInfo.innerHTML = renderSchedule(data);
 
-      resetSelect(slotSelect, (data.slots && data.slots.length) ? 'Select a time slot' : 'No slots');
+      resetSelect(slotSelect, slotPlaceholder(data.slots));
 
       (data.slots || []).forEach(s => {
-        const label = s.display + (s.available ? '' : ' – BOOKED');
+        const label = s.display + (s.available ? '' : (s.expired ? ' - PAST' : ' - BOOKED'));
         const opt = new Option(label, s.time);
         if (!s.available) {
           opt.disabled = true;
@@ -568,9 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const stillAvailable = (data.slots || []).some(s => s.available && s.time === chosen);
 
       if (!stillAvailable) {
-        resetSelect(slotSelect, data.slots.length ? 'Select a time slot' : 'No slots');
+        resetSelect(slotSelect, slotPlaceholder(data.slots));
         (data.slots || []).forEach(s => {
-          const opt = new Option(s.display + (s.available ? '' : ' – BOOKED'), s.time);
+          const opt = new Option(s.display + (s.available ? '' : (s.expired ? ' - PAST' : ' - BOOKED')), s.time);
           if (!s.available) opt.disabled = true;
           slotSelect.add(opt);
         });

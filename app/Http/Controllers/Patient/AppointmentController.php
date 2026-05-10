@@ -13,6 +13,7 @@ use Illuminate\Database\QueryException;
 use App\Notifications\PatientAppointmentBooked;
 use App\Notifications\SecretaryAppointmentBooked;
 use App\Notifications\DoctorAppointmentBooked;
+use App\Services\DoctorScheduleAvailability;
 use App\Services\QueueService;
 
 class AppointmentController extends Controller
@@ -160,6 +161,11 @@ class AppointmentController extends Controller
             $date
         );
 
+        $slots = collect($slots)
+            ->unique(fn ($slot) => $slot['date'].' '.$slot['time'])
+            ->sortBy(['date', 'time'])
+            ->values();
+
         return response()->json([
             'date' => $date->toDateString(),
             'weekday' => $date->format('l'),
@@ -204,15 +210,13 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $hasSchedule = app(\App\Services\DoctorScheduleAvailability::class)->doctorHasScheduleAt(
+        if (! app(DoctorScheduleAvailability::class)->doctorHasScheduleAt(
             (int) $data['doctor_id'],
             (int) $data['clinic_id'],
             (int) $data['service_id'],
             $appointmentDate,
             $time
-        );
-
-        if (! $hasSchedule) {
+        )) {
             return back()->withInput()->withErrors([
                 'appointment_time' => 'Selected doctor is not available at that time for this clinic.',
             ]);
@@ -315,16 +319,24 @@ class AppointmentController extends Controller
             $time
         );
 
-        QueueEntry::create([
-            'clinic_id'           => $data['clinic_id'],
-            'user_id'             => Auth::id(),
-            'appointment_id'      => $appointment->id,
-            'doctor_id'           => $data['doctor_id'],
-            'queue_number'        => $queueNumber,
-            'scheduled_slot_date' => $appointmentDate,
-            'scheduled_slot_time' => $time,
-            'status'              => 'waiting',
-        ]);
+        QueueEntry::updateOrCreate(
+            [
+                'clinic_id' => $data['clinic_id'],
+                'doctor_id' => $data['doctor_id'],
+                'scheduled_slot_date' => $appointmentDate,
+                'scheduled_slot_time' => $time,
+            ],
+            [
+                'user_id' => Auth::id(),
+                'appointment_id' => $appointment->id,
+                'patient_id' => null,
+                'queue_number' => $queueNumber,
+                'status' => 'waiting',
+                'served_at' => null,
+                'service_started_at' => null,
+                'service_ended_at' => null,
+            ]
+        );
 
         Auth::user()->notify(new PatientAppointmentBooked($appointment));
 
@@ -399,15 +411,13 @@ class AppointmentController extends Controller
             ]);
         }
 
-        $hasSchedule = app(\App\Services\DoctorScheduleAvailability::class)->doctorHasScheduleAt(
+        if (! app(DoctorScheduleAvailability::class)->doctorHasScheduleAt(
             (int) $data['doctor_id'],
             (int) $clinicId,
             (int) $data['service_id'],
             $appointmentDate,
             $time
-        );
-
-        if (! $hasSchedule) {
+        )) {
             return back()->withInput()->withErrors([
                 'appointment_time' => 'Doctor not available at that time.',
             ]);

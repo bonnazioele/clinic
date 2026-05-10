@@ -35,6 +35,11 @@ class QueueEntry extends Model
         return ['served', 'completed', 'rescheduled', 'cancelled', 'no_show'];
     }
 
+    public static function blockingSlotStatuses(): array
+    {
+        return ['waiting', 'called', 'in_progress', 'now_serving', 'served', 'completed'];
+    }
+
     public static function nextCandidateStatuses(): array
     {
         return ['waiting', 'called'];
@@ -43,11 +48,6 @@ class QueueEntry extends Model
     public static function activeLaneStatuses(): array
     {
         return ['waiting', 'called', 'in_progress', 'now_serving'];
-    }
-
-    public static function blockingSlotStatuses(): array
-    {
-        return ['waiting', 'called', 'in_progress', 'now_serving', 'served', 'completed'];
     }
 
     public static function doctorQueueVisibleStatuses(): array

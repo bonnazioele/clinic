@@ -18,7 +18,7 @@
   $schedulesUrl = $safeDoctorRoute('doctor.schedules.index', '/doctor/schedules');
   $reportsUrl = $safeDoctorRoute('doctor.reports.index', '/doctor/dashboard');
   $appointmentsUrl = $safeDoctorRoute('doctor.appointments.index', '/doctor/dashboard');
-  $profileUrl = Route::has('profile.edit') ? route('profile.edit') : '#';
+  $profileUrl = Route::has('doctor.profile.edit') ? route('doctor.profile.edit') : (Route::has('profile.edit') ? route('profile.edit') : '#');
 @endphp
 
 <style>
@@ -247,7 +247,7 @@
     <a href="{{ $reportsUrl }}"
        class="doctor-sidebar-link {{ request()->routeIs('doctor.reports.*') ? 'active' : '' }}">
       <i class="bi bi-bar-chart-line"></i>
-      <span>Reports</span>
+      <span>Analytics Report</span>
     </a>
 
     @if(Route::has('doctor.appointments.index'))
@@ -261,7 +261,7 @@
     <div class="doctor-sidebar-section-label">Account</div>
 
     <a href="{{ $profileUrl }}"
-       class="doctor-sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+       class="doctor-sidebar-link {{ request()->routeIs('doctor.profile.*') || request()->routeIs('profile.*') ? 'active' : '' }}">
       <i class="bi bi-person-gear"></i>
       <span>Profile Settings</span>
     </a>

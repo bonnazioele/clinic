@@ -35,8 +35,53 @@ class QueueController extends Controller
             ->where('clinic_id', $activeClinic->id)
             ->forDoctor($doctor->id)
             ->whereIn('status', QueueEntry::doctorQueueVisibleStatuses())
-            ->forDashboardDay($today)
-            ->orderByScheduledSlot();
+            ->where(function ($query) use ($today) {
+                $query->where(function ($appointmentQueue) use ($today) {
+                    $appointmentQueue->whereNotNull('appointment_id')
+                        ->whereHas('appointment', function ($appointmentQuery) use ($today) {
+                            $appointmentQuery->whereDate('appointment_date', $today);
+                        });
+                })->orWhere(function ($walkInQueue) use ($today) {
+                    $walkInQueue->whereNull('appointment_id')
+                        ->whereNotNull('patient_id')
+                        ->whereDate('created_at', $today);
+                });
+            });
+
+        if ($activeClinic->queue_mode === 'priority') {
+            $waitingQuery
+                ->leftJoin('appointments', 'queue_entries.appointment_id', '=', 'appointments.id')
+                ->select('queue_entries.*')
+                ->orderByRaw("
+                    CASE
+                        WHEN queue_entries.status = 'now_serving' THEN 0
+                        WHEN queue_entries.status = 'in_progress' THEN 0
+                        WHEN queue_entries.status = 'called' THEN 1
+                        WHEN queue_entries.status = 'waiting' THEN 2
+                        WHEN queue_entries.status = 'rescheduled' THEN 3
+                        WHEN queue_entries.status IN ('served', 'completed') THEN 4
+                        ELSE 5
+                    END
+                ")
+                ->orderByRaw('appointments.appointment_date IS NULL')
+                ->orderBy('appointments.appointment_date')
+                ->orderBy('appointments.appointment_time')
+                ->orderBy('queue_entries.queue_number');
+        } else {
+            $waitingQuery
+                ->orderByRaw("
+                    CASE
+                        WHEN status = 'now_serving' THEN 0
+                        WHEN status = 'in_progress' THEN 0
+                        WHEN status = 'called' THEN 1
+                        WHEN status = 'waiting' THEN 2
+                        WHEN status = 'rescheduled' THEN 3
+                        WHEN status IN ('served', 'completed') THEN 4
+                        ELSE 5
+                    END
+                ")
+                ->orderBy('queue_number');
+        }
 
         $waiting = $waitingQuery->get();
 
@@ -64,17 +109,28 @@ class QueueController extends Controller
             'follow_up_at' => ['nullable', 'date'],
         ]);
 
-        DB::transaction(function () use ($entry, $data) {
+        DB::transaction(function () use ($entry, $doctor, $activeClinic, $data) {
             $fresh = QueueEntry::with(['appointment.user', 'patient', 'clinic'])
                 ->lockForUpdate()
                 ->find($entry->id);
 
-            if (! $fresh || ! in_array($fresh->status, ['waiting', 'called', 'in_progress', 'now_serving'], true)) {
+            if (! $fresh || (int) $fresh->clinic_id !== (int) $activeClinic->id) {
+                abort(403);
+            }
+
+            $freshAssignedDoctorId = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
+
+            if ($freshAssignedDoctorId !== (int) $doctor->id) {
+                abort(403, 'You can only process queue entries assigned to you.');
+            }
+
+            if (! in_array($fresh->status, ['waiting', 'called', 'in_progress', 'now_serving'], true)) {
                 return;
             }
 
             $fresh->update([
                 'status' => 'served',
+                'called_at' => $fresh->called_at ?? now(),
                 'served_at' => now(),
                 'patient_disposition' => 'completed',
                 'doctor_notes' => $data['doctor_notes'] ?? $fresh->doctor_notes,

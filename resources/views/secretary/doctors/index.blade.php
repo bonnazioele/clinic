@@ -65,23 +65,32 @@
       return is_object($doctor);
   })->values();
 
-  $doctorCount = isset($doctors) && method_exists($doctors, 'total')
+  $doctorCount = (int) ($doctorStats['total'] ?? (
+      isset($doctors) && method_exists($doctors, 'total') ? $doctors->total() : $doctorItems->count()
+  ));
+
+  $withServicesCount = (int) ($doctorStats['with_services'] ?? $doctorItems->filter(function ($doctor) {
+      return isset($doctor->services) && $doctor->services && method_exists($doctor->services, 'count') && $doctor->services->count() > 0;
+  })->count());
+
+  $withoutServicesCount = (int) ($doctorStats['without_services'] ?? max(0, $doctorCount - $withServicesCount));
+
+  $matchingDoctorCount = isset($doctors) && method_exists($doctors, 'total')
       ? $doctors->total()
       : $doctorItems->count();
 
-  $withServicesCount = $doctorItems->filter(function ($doctor) {
-      return isset($doctor->services)
-          && $doctor->services
-          && method_exists($doctor->services, 'count')
-          && $doctor->services->count() > 0;
-  })->count();
+  $activeServiceScope = request('service_scope');
+  $doctorScopeUrl = function (?string $scope) use ($secUrl) {
+      $query = request()->except('page');
 
-  $withoutServicesCount = $doctorItems->filter(function ($doctor) {
-      return !isset($doctor->services)
-          || !$doctor->services
-          || !method_exists($doctor->services, 'count')
-          || $doctor->services->count() === 0;
-  })->count();
+      if ($scope) {
+          $query['service_scope'] = $scope;
+      } else {
+          unset($query['service_scope']);
+      }
+
+      return $secUrl('secretary.doctors.index') . (count($query) ? '?' . http_build_query($query) : '');
+  };
 @endphp
 
 <style>
@@ -162,6 +171,24 @@
     position: relative;
     overflow: hidden;
     box-shadow: 0 14px 34px rgba(15,23,42,.08);
+    display: block;
+    text-decoration: none;
+    transition: transform .18s ease, box-shadow .18s ease, outline-color .18s ease;
+  }
+
+  .doctor-stat-card:hover {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(15,23,42,.12);
+  }
+
+  .doctor-stat-yellow:hover {
+    color: #162033;
+  }
+
+  .doctor-stat-card.active {
+    outline: 4px solid rgba(13,110,253,.28);
+    outline-offset: 3px;
   }
 
   .doctor-stat-card::after {
@@ -452,7 +479,9 @@
   </section>
 
   <section class="doctor-stats-grid">
-    <div class="doctor-stat-card doctor-stat-blue">
+    <a href="{{ $doctorScopeUrl(null) }}"
+       class="doctor-stat-card doctor-stat-blue {{ empty($activeServiceScope) ? 'active' : '' }}"
+       aria-label="Show all doctors">
       <div class="doctor-stat-content">
         <div class="doctor-stat-icon">
           <i class="bi bi-people"></i>
@@ -464,9 +493,11 @@
           <div class="doctor-stat-help">Doctors listed in this view</div>
         </div>
       </div>
-    </div>
+    </a>
 
-    <div class="doctor-stat-card doctor-stat-green">
+    <a href="{{ $doctorScopeUrl('with_services') }}"
+       class="doctor-stat-card doctor-stat-green {{ $activeServiceScope === 'with_services' ? 'active' : '' }}"
+       aria-label="Show doctors with services">
       <div class="doctor-stat-content">
         <div class="doctor-stat-icon">
           <i class="bi bi-clipboard2-pulse"></i>
@@ -478,9 +509,11 @@
           <div class="doctor-stat-help">Can receive appointments</div>
         </div>
       </div>
-    </div>
+    </a>
 
-    <div class="doctor-stat-card doctor-stat-yellow">
+    <a href="{{ $doctorScopeUrl('needs_setup') }}"
+       class="doctor-stat-card doctor-stat-yellow {{ $activeServiceScope === 'needs_setup' ? 'active' : '' }}"
+       aria-label="Show doctors needing setup">
       <div class="doctor-stat-content">
         <div class="doctor-stat-icon">
           <i class="bi bi-exclamation-circle"></i>
@@ -492,7 +525,7 @@
           <div class="doctor-stat-help">No services assigned yet</div>
         </div>
       </div>
-    </div>
+    </a>
   </section>
 
   <section class="doctor-panel">
@@ -504,8 +537,16 @@
 
       <span class="doctor-pill">
         <i class="bi bi-check2-circle"></i>
-        {{ number_format($doctorCount) }} doctors
+        {{ number_format($matchingDoctorCount) }} doctors
       </span>
+
+      @if($activeServiceScope)
+        <a href="{{ $doctorScopeUrl(null) }}" class="doctor-pill text-decoration-none">
+          <i class="bi bi-funnel"></i>
+          {{ $activeServiceScope === 'with_services' ? 'With services' : 'Needs setup' }}
+          <i class="bi bi-x-lg"></i>
+        </a>
+      @endif
     </div>
 
     @if($doctorItems->isEmpty())
@@ -553,8 +594,8 @@
                   </div>
                 </td>
 
-                <td>{{ $d->email ?? '—' }}</td>
-                <td>{{ $d->phone ?: '—' }}</td>
+                <td>{{ $d->email ?? 'N/A' }}</td>
+                <td>{{ $d->phone ?: 'N/A' }}</td>
 
                 <td>
                   @if(isset($d->services) && $d->services && $d->services->count())
@@ -588,15 +629,15 @@
 
                     <form method="POST"
                           action="{{ $secUrl('secretary.doctors.destroy', ['doctor' => $d->id]) }}"
-                          data-confirm="Remove this doctor profile? They will lose access to clinic schedules."
+                          data-confirm="Unassign this doctor from the active clinic? Their clinic schedules and service assignments here will be removed, but appointment history will stay intact."
                           data-confirm-title="Remove Doctor"
                           data-confirm-btn="Remove">
                       @csrf
                       @method('DELETE')
 
                       <button class="btn btn-sm btn-outline-danger">
-                        <i class="bi bi-trash me-1"></i>
-                        Delete
+                        <i class="bi bi-person-dash me-1"></i>
+                        Remove
                       </button>
                     </form>
                   </div>
@@ -653,7 +694,7 @@
 
       @if(isset($doctors) && method_exists($doctors, 'links'))
         <div class="doctor-pagination">
-          {{ $doctors->links() }}
+          {{ $doctors->appends(request()->except('page'))->links() }}
         </div>
       @endif
     @endif
