@@ -38,6 +38,7 @@
   $waitingOnlyCount = $waiting->whereIn('status', ['waiting', 'called'])->count();
 
   $currentServed = $waiting->firstWhere('status', 'served');
+
   $currentInProgress = $waiting->first(function ($queueEntry) {
       return in_array($queueEntry->status, ['in_progress', 'now_serving'], true);
   });
@@ -119,6 +120,55 @@
     font-size: .78rem;
     font-weight: 900;
     white-space: nowrap;
+  }
+
+  .queue-current-alert {
+    border-radius: 22px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    box-shadow: 0 12px 30px rgba(15,23,42,.06);
+  }
+
+  .queue-current-alert.served {
+    border: 1px solid #bbf7d0;
+    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  }
+
+  .queue-current-alert.progress {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  }
+
+  .queue-current-title {
+    font-weight: 900;
+    margin: 0;
+  }
+
+  .queue-current-alert.served .queue-current-title {
+    color: #14532d;
+  }
+
+  .queue-current-alert.progress .queue-current-title {
+    color: #1d4ed8;
+  }
+
+  .queue-current-text {
+    margin: .15rem 0 0;
+    font-size: .88rem;
+    font-weight: 650;
+  }
+
+  .queue-current-alert.served .queue-current-text {
+    color: #166534;
+  }
+
+  .queue-current-alert.progress .queue-current-text {
+    color: #1e40af;
   }
 
   .queue-stats-grid {
@@ -347,32 +397,6 @@
     margin-bottom: .85rem;
   }
 
-  .served-alert {
-    border-radius: 22px;
-    border: 1px solid #bbf7d0;
-    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
-    padding: 1rem 1.15rem;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .served-alert-title {
-    color: #14532d;
-    font-weight: 900;
-    margin: 0;
-  }
-
-  .served-alert-text {
-    color: #166534;
-    margin: .15rem 0 0;
-    font-size: .88rem;
-    font-weight: 650;
-  }
-
   .resched-modal .modal-content {
     border: 0;
     border-radius: 22px;
@@ -460,13 +484,13 @@
   </section>
 
   @if($currentServed)
-    <section class="served-alert">
+    <section class="queue-current-alert served">
       <div>
-        <h5 class="served-alert-title">
+        <h5 class="queue-current-title">
           <i class="bi bi-check-circle me-1"></i>
           Patient is served
         </h5>
-        <p class="served-alert-text">
+        <p class="queue-current-text">
           {{ $currentServed->display_name }} is done with the doctor. You can now click Done &amp; Next.
         </p>
       </div>
@@ -480,13 +504,13 @@
       </form>
     </section>
   @elseif($currentInProgress)
-    <section class="served-alert" style="border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff,#f8fbff);">
+    <section class="queue-current-alert progress">
       <div>
-        <h5 class="served-alert-title" style="color:#1d4ed8;">
+        <h5 class="queue-current-title">
           <i class="bi bi-activity me-1"></i>
           Patient is with the doctor
         </h5>
-        <p class="served-alert-text" style="color:#1e40af;">
+        <p class="queue-current-text">
           {{ $currentInProgress->display_name }} is still in progress. Done &amp; Next will be available after the doctor clicks Serve.
         </p>
       </div>
@@ -528,7 +552,7 @@
     <div class="queue-stat-card queue-stat-green">
       <div class="queue-stat-content">
         <div class="queue-stat-icon">
-          <i class="bi bi-megaphone"></i>
+          <i class="bi bi-activity"></i>
         </div>
         <div>
           <div class="queue-stat-value">{{ number_format($nowServingCount) }}</div>
@@ -882,6 +906,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-bs-target="#reschedModal"][data-action-url]').forEach(btn => {
     btn.addEventListener('click', () => {
       const url = btn.getAttribute('data-action-url');
+
       if (url) {
         try {
           localStorage.setItem('lastReschedActionUrl', url);
@@ -892,6 +917,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   reschedModalEl.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
+
     if (!button) return;
 
     const actionUrl = button.getAttribute('data-action-url');
