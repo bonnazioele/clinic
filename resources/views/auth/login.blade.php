@@ -63,11 +63,11 @@
 
   .auth-hero-title {
     margin: 0;
-    max-width: 680px;
-    font-size: clamp(2.35rem, 5vw, 4.6rem);
-    line-height: 0.94;
+    max-width: 620px;
+    font-size: clamp(2rem, 3.8vw, 3.35rem);
+    line-height: 1.02;
     font-weight: 950;
-    letter-spacing: -0.055em;
+    letter-spacing: -0.04em;
   }
 
   .auth-hero-copy {
@@ -202,6 +202,11 @@
 
     .auth-mini-grid {
       grid-template-columns: 1fr;
+    }
+
+    .auth-hero-title {
+      font-size: clamp(1.85rem, 12vw, 2.55rem);
+      line-height: 1.05;
     }
   }
 </style>
