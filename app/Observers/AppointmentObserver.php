@@ -88,4 +88,16 @@ class AppointmentObserver
     {
         //
     }
+
+    private function syncQueueStatus(Appointment $appointment, string $status): void
+    {
+        if (! in_array($status, ['cancelled', 'no_show'], true)) {
+            return;
+        }
+
+        QueueEntry::query()
+            ->where('appointment_id', $appointment->id)
+            ->whereNotIn('status', ['served', 'completed', 'cancelled', 'no_show', 'rescheduled'])
+            ->update(['status' => $status]);
+    }
 }
