@@ -34,9 +34,11 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 
 use App\Http\Controllers\Secretary\AnalyticsReportController;
 use App\Http\Controllers\Secretary\AppointmentController as SecretaryAppointmentController;
+use App\Http\Controllers\Secretary\ClinicProfileController;
 use App\Http\Controllers\Secretary\ClinicSelectionController as SecretaryClinicSelectionController;
 use App\Http\Controllers\Secretary\ClinicServiceController;
 use App\Http\Controllers\Secretary\DoctorController as SecretaryDoctorController;
+use App\Http\Controllers\Secretary\OnboardingController;
 use App\Http\Controllers\Secretary\PatientController as SecretaryPatientController;
 use App\Http\Controllers\Secretary\QueueController as SecretaryQueueController;
 use App\Http\Controllers\Secretary\ServiceQueueController;
@@ -53,6 +55,7 @@ use App\Http\Controllers\Doctor\ReportsController as DoctorReportsController;
 */
 
 use App\Http\Middleware\EnsureSelectedClinic;
+use App\Http\Middleware\EnsureClinicOperationalHoursConfigured;
 use App\Http\Middleware\SecretaryMiddleware;
 
 /*
@@ -70,9 +73,6 @@ Route::get('/welcome', [DashboardController::class, 'welcome'])
 /*
 |--------------------------------------------------------------------------
 | Public Clinic Browsing
-|--------------------------------------------------------------------------
-| These must stay outside auth so guests can browse clinics without
-| patient navbar/sidebar.
 |--------------------------------------------------------------------------
 */
 
@@ -225,10 +225,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/appointments', [AppointmentController::class, 'store'])
         ->name('appointments.store');
 
-    Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])
-        ->whereNumber('appointment')
-        ->name('appointments.show');
-
     Route::get('/appointments/{appointment}/reschedule', [AppointmentController::class, 'editReschedule'])
         ->whereNumber('appointment')
         ->name('appointments.reschedule.edit');
@@ -237,9 +233,19 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('appointment')
         ->name('appointments.reschedule.update');
 
+    Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])
+        ->whereNumber('appointment')
+        ->name('appointments.show');
+
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])
         ->whereNumber('appointment')
         ->name('appointments.destroy');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Patient Queue
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('/queue/status', [QueueController::class, 'status'])
         ->name('queue.status');
@@ -309,7 +315,32 @@ Route::prefix('admin')
 
 /*
 |--------------------------------------------------------------------------
+| Secretary Forced Password Routes
+|--------------------------------------------------------------------------
+| These routes must NOT use force.password.change middleware,
+| otherwise the secretary can be redirected in a loop.
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('secretary')
+    ->name('secretary.')
+    ->middleware([
+        'auth',
+        SecretaryMiddleware::class,
+    ])
+    ->group(function () {
+        Route::get('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'show'])
+            ->name('auth.password.force.show');
+
+        Route::put('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'update'])
+            ->name('auth.password.force.update');
+    });
+
+/*
+|--------------------------------------------------------------------------
 | Secretary Clinic Selection Routes
+|--------------------------------------------------------------------------
+| After temporary password is changed, secretary chooses/selects clinic.
 |--------------------------------------------------------------------------
 */
 
@@ -327,7 +358,15 @@ Route::middleware([
 
 /*
 |--------------------------------------------------------------------------
-| Secretary Routes
+| Secretary Onboarding Routes
+|--------------------------------------------------------------------------
+| Flow:
+| 1. Change temporary password
+| 2. Configure operational hours
+| 3. Clinic ready
+|
+| These routes must NOT use EnsureClinicOperationalHoursConfigured,
+| otherwise operational-hours setup redirects to itself.
 |--------------------------------------------------------------------------
 */
 
@@ -340,11 +379,42 @@ Route::prefix('secretary')
         EnsureSelectedClinic::class,
     ])
     ->group(function () {
-        Route::get('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'show'])
-            ->name('auth.password.force.show');
+        Route::get('/onboarding/operational-hours', [OnboardingController::class, 'operationalHours'])
+            ->name('onboarding.operational-hours');
 
-        Route::put('/auth/force-password', [\App\Http\Controllers\Auth\ForcedPasswordChangeController::class, 'update'])
-            ->name('auth.password.force.update');
+        Route::post('/onboarding/operational-hours', [OnboardingController::class, 'storeOperationalHours'])
+            ->name('onboarding.operational-hours.store');
+
+        Route::get('/onboarding/ready', [OnboardingController::class, 'ready'])
+            ->name('onboarding.ready');
+        Route::post('/onboarding/finish', [OnboardingController::class, 'finish'])
+            ->name('onboarding.finish');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Secretary Main Routes
+|--------------------------------------------------------------------------
+| These routes ARE protected by operational-hours onboarding.
+| If operational hours are not configured, user is redirected to onboarding.
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('secretary')
+    ->name('secretary.')
+    ->middleware([
+        'auth',
+        'force.password.change',
+        SecretaryMiddleware::class,
+        EnsureSelectedClinic::class,
+        EnsureClinicOperationalHoursConfigured::class,
+    ])
+    ->group(function () {
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard
+        |--------------------------------------------------------------------------
+        */
 
         Route::get('/dashboard', [\App\Http\Controllers\Secretary\DashboardController::class, 'index'])
             ->name('dashboard');
@@ -355,9 +425,6 @@ Route::prefix('secretary')
         /*
         |--------------------------------------------------------------------------
         | Secretary Analytics Report
-        |--------------------------------------------------------------------------
-        | Final URL: /secretary/analytics
-        | Final route name: secretary.analytics.index
         |--------------------------------------------------------------------------
         */
 
@@ -373,9 +440,6 @@ Route::prefix('secretary')
         Route::get('/appointments', [SecretaryAppointmentController::class, 'index'])
             ->name('appointments.index');
 
-        Route::get('/appointments/export', [SecretaryAppointmentController::class, 'export'])
-            ->name('appointments.export');
-
         Route::get('/appointments/create', [SecretaryAppointmentController::class, 'create'])
             ->name('appointments.create');
 
@@ -389,14 +453,6 @@ Route::prefix('secretary')
         Route::put('/appointments/{appointment}', [SecretaryAppointmentController::class, 'update'])
             ->whereNumber('appointment')
             ->name('appointments.update');
-
-        Route::patch('/appointments/{appointment}/reschedule', [SecretaryAppointmentController::class, 'reschedule'])
-            ->whereNumber('appointment')
-            ->name('appointments.reschedule');
-
-        Route::patch('/appointments/{appointment}/cancel', [SecretaryAppointmentController::class, 'cancel'])
-            ->whereNumber('appointment')
-            ->name('appointments.cancel');
 
         Route::delete('/appointments/{appointment}', [SecretaryAppointmentController::class, 'destroy'])
             ->whereNumber('appointment')
@@ -449,11 +505,6 @@ Route::prefix('secretary')
             ->whereNumber('clinic')
             ->whereNumber('entry')
             ->name('queue.reschedule');
-
-        Route::post('/clinics/{clinic}/queue/{entry}/priority', [SecretaryQueueController::class, 'markPriority'])
-            ->whereNumber('clinic')
-            ->whereNumber('entry')
-            ->name('queue.priority');
 
         Route::post('/clinics/{clinic}/queue/{entry}/cancel', [SecretaryQueueController::class, 'cancel'])
             ->whereNumber('clinic')
@@ -583,13 +634,21 @@ Route::prefix('secretary')
         |--------------------------------------------------------------------------
         | Secretary Clinic Settings
         |--------------------------------------------------------------------------
+        | Clinic Settings opens as read-only first.
+        | Edit button sends user to clinic.edit.
+        | Queue mode removed. Operational hours included.
+        |--------------------------------------------------------------------------
         */
 
-        Route::get('/clinics/{clinic}/edit', [\App\Http\Controllers\Secretary\ClinicProfileController::class, 'edit'])
+        Route::get('/clinics/{clinic}', [ClinicProfileController::class, 'show'])
+            ->whereNumber('clinic')
+            ->name('clinic.show');
+
+        Route::get('/clinics/{clinic}/edit', [ClinicProfileController::class, 'edit'])
             ->whereNumber('clinic')
             ->name('clinic.edit');
 
-        Route::put('/clinics/{clinic}', [\App\Http\Controllers\Secretary\ClinicProfileController::class, 'update'])
+        Route::put('/clinics/{clinic}', [ClinicProfileController::class, 'update'])
             ->whereNumber('clinic')
             ->name('clinic.update');
     });
@@ -673,13 +732,3 @@ Route::get('/permits/{permit}', function (\App\Models\ClinicPermit $permit) {
 
     return Storage::disk('public')->response($permit->attachment_path);
 })->name('permits.download');
-
-use App\Services\MoceanSmsService;
-
-Route::get('/test-mocean-sms', function (MoceanSmsService $sms) {
-    $sent = $sms->send('09289839549', 'CliniQ: This is a test SMS using Mocean.');
-
-    return $sent
-        ? 'Mocean SMS request sent.'
-        : 'Mocean SMS failed. Check storage/logs/laravel.log.';
-});

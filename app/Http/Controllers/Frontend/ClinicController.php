@@ -16,67 +16,78 @@ use Illuminate\Support\Facades\Storage;
 class ClinicController extends Controller
 {
     public function index(Request $req)
-    {
-        $services = Service::orderBy('name')->get();
+{
+    $services = Service::orderBy('name')->get();
 
-        $query = Clinic::with('services')
-            ->whereIn('status', ['approved', 'active']);
+    $query = Clinic::with([
+            'services',
+            'doctors' => function ($q) {
+                $q->where('is_doctor', true)
+                    ->where('is_active', true)
+                    ->with([
+                        'services',
+                        'doctorSchedules',
+                    ])
+                    ->orderBy('name');
+            },
+        ])
+        ->whereIn('status', ['approved', 'active']);
 
-        if ($req->filled('service_id')) {
-            $query->whereHas('services', function ($q) use ($req) {
-                $q->where('services.id', $req->service_id);
-            });
-        }
+    if ($req->filled('search')) {
+        $search = trim($req->search);
 
-        if ($req->filled('name')) {
-            $name = trim($req->name);
-
-            $query->where(function ($q) use ($name) {
-                $q->where('name', 'like', '%' . $name . '%')
-                    ->orWhere('address', 'like', '%' . $name . '%');
-            });
-        }
-
-        if ($req->filled('location')) {
-            $location = trim($req->location);
-
-            $query->where(function ($q) use ($location) {
-                $q->where('name', 'like', '%' . $location . '%')
-                    ->orWhere('address', 'like', '%' . $location . '%');
-            });
-        }
-
-        if ($req->filled('lat') && $req->filled('lng')) {
-            $lat = (float) $req->lat;
-            $lng = (float) $req->lng;
-            $radiusKm = $req->filled('radius') ? (float) $req->radius : 10;
-
-            $distanceSql = "(6371 * acos(
-                cos(radians(?)) * cos(radians(gps_latitude))
-                * cos(radians(gps_longitude) - radians(?))
-                + sin(radians(?)) * sin(radians(gps_latitude))
-            ))";
-
-            $query->whereNotNull('gps_latitude')
-                ->whereNotNull('gps_longitude')
-                ->select('clinics.*')
-                ->selectRaw($distanceSql . ' as distance_km', [$lat, $lng, $lat])
-                ->having('distance_km', '<=', $radiusKm)
-                ->orderBy('distance_km');
-        } else {
-            $query->latest('id');
-        }
-
-        $mapClinics = (clone $query)
-            ->whereNotNull('gps_latitude')
-            ->whereNotNull('gps_longitude')
-            ->limit(200)
-            ->get();
-
-        $clinics = $query->paginate(10)->withQueryString();
-
-        return view('clinics.index', compact('clinics', 'services', 'mapClinics'));
+        $query->where(function ($q) use ($search) {
+            $q->where('clinics.name', 'like', '%' . $search . '%')
+                ->orWhere('clinics.address', 'like', '%' . $search . '%')
+                ->orWhere('clinics.contact_number', 'like', '%' . $search . '%')
+                ->orWhere('clinics.email', 'like', '%' . $search . '%')
+                ->orWhereHas('services', function ($serviceQuery) use ($search) {
+                    $serviceQuery->where('services.name', 'like', '%' . $search . '%');
+                })
+                ->orWhereHas('doctors', function ($doctorQuery) use ($search) {
+                    $doctorQuery->where('users.name', 'like', '%' . $search . '%')
+                        ->orWhere('users.first_name', 'like', '%' . $search . '%')
+                        ->orWhere('users.last_name', 'like', '%' . $search . '%')
+                        ->orWhere('users.email', 'like', '%' . $search . '%')
+                        ->orWhere('users.phone', 'like', '%' . $search . '%')
+                        ->orWhereHas('services', function ($doctorServiceQuery) use ($search) {
+                            $doctorServiceQuery->where('services.name', 'like', '%' . $search . '%');
+                        });
+                });
+        });
     }
+
+    if ($req->filled('lat') && $req->filled('lng')) {
+        $lat = (float) $req->lat;
+        $lng = (float) $req->lng;
+        $radiusKm = $req->filled('radius') ? (float) $req->radius : 10;
+
+        $distanceSql = "(6371 * acos(
+            cos(radians(?)) * cos(radians(gps_latitude))
+            * cos(radians(gps_longitude) - radians(?))
+            + sin(radians(?)) * sin(radians(gps_latitude))
+        ))";
+
+        $query->whereNotNull('gps_latitude')
+            ->whereNotNull('gps_longitude')
+            ->select('clinics.*')
+            ->selectRaw($distanceSql . ' as distance_km', [$lat, $lng, $lat])
+            ->having('distance_km', '<=', $radiusKm)
+            ->orderBy('distance_km');
+    } else {
+        $query->latest('id');
+    }
+
+    $mapClinics = (clone $query)
+        ->whereNotNull('gps_latitude')
+        ->whereNotNull('gps_longitude')
+        ->limit(200)
+        ->get();
+
+    $clinics = $query->paginate(10)->withQueryString();
+
+    return view('clinics.index', compact('clinics', 'services', 'mapClinics'));
+}
 
     public function create()
     {
@@ -148,7 +159,24 @@ class ClinicController extends Controller
             abort(404);
         }
 
-        $clinic->load(['services:id,name', 'doctors:id,first_name,last_name']);
+        $clinic->load([
+            'services',
+            'doctors' => function ($q) use ($clinic) {
+                $q->where('is_doctor', true)
+                    ->where('is_active', true)
+                    ->with([
+                        'services' => function ($serviceQuery) use ($clinic) {
+                            $serviceQuery->where('doctor_service.clinic_id', $clinic->id);
+                        },
+                        'doctorSchedules' => function ($scheduleQuery) use ($clinic) {
+                            $scheduleQuery->where('clinic_id', $clinic->id)
+                                ->orderBy('day_of_week')
+                                ->orderBy('start_time');
+                        },
+                    ])
+                    ->orderBy('name');
+            },
+        ]);
 
         $user = Auth::user();
         $canEdit = false;
@@ -172,12 +200,25 @@ class ClinicController extends Controller
             'logo_url'        => $clinic->logo ? asset('storage/' . $clinic->logo) : null,
             'cover_image_url' => $clinic->cover_image ? asset('storage/' . $clinic->cover_image) : null,
             'services'        => $clinic->services->map(fn ($s) => [
-                'id'   => $s->id,
-                'name' => $s->name,
+                'id'               => $s->id,
+                'name'             => $s->name,
+                'duration_minutes' => $s->pivot->duration_minutes ?? null,
             ]),
             'doctors'         => $clinic->doctors->map(fn ($d) => [
-                'id'   => $d->id,
-                'name' => trim($d->first_name . ' ' . $d->last_name),
+                'id'       => $d->id,
+                'name'     => $d->name ?: trim($d->first_name . ' ' . $d->last_name),
+                'email'    => $d->email,
+                'phone'    => $d->phone,
+                'services' => $d->services->map(fn ($s) => [
+                    'id'   => $s->id,
+                    'name' => $s->name,
+                ])->values(),
+                'schedules' => $d->doctorSchedules->map(fn ($schedule) => [
+                    'id'          => $schedule->id,
+                    'day_of_week' => $schedule->day_of_week,
+                    'start_time'  => $schedule->start_time,
+                    'end_time'    => $schedule->end_time,
+                ])->values(),
             ]),
             'can_edit' => $canEdit,
             'edit_url' => $canEdit ? route('secretary.clinic.edit', $clinic) : null,

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\ClinicOperationalHour;
 use App\Models\PatientVisit;
 use App\Models\QueueEntry;
 use App\Models\Service;
@@ -72,6 +73,11 @@ class QueueService
 
         $scheduleAvailability = app(DoctorScheduleAvailability::class);
         $dateString = $date->toDateString();
+        $clinicHour = $this->clinicOperationalHourForDate($clinicId, $date);
+
+        if (! $this->clinicIsOpenForDate($clinicHour)) {
+            return collect();
+        }
 
         foreach ($this->schedulesForDate($clinicId, $doctorId, $date, $serviceId) as $schedule) {
             [$start, $end] = $scheduleAvailability->scheduleDateTimes($schedule, $date);
@@ -85,6 +91,17 @@ class QueueService
                 }
 
                 if ($cursor->toDateString() === $dateString) {
+                    $outsideClinicHours = $this->slotOutsideClinicOperationalHours($clinicHour, $cursor, $slotEnd);
+                    $insideClinicBreak = $this->slotOverlapsClinicBreak($clinicHour, $cursor, $slotEnd);
+
+                    $unavailableReason = null;
+
+                    if ($outsideClinicHours) {
+                        $unavailableReason = 'Outside clinic hours';
+                    } elseif ($insideClinicBreak) {
+                        $unavailableReason = 'Clinic break time';
+                    }
+
                     $slots->push([
                         'date' => $cursor->toDateString(),
                         'time' => $cursor->format('H:i'),
@@ -93,6 +110,9 @@ class QueueService
                         'end_at' => $slotEnd->copy(),
                         'display' => $cursor->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
                         'end_time' => $slotEnd->format('H:i'),
+                        'outside_clinic_hours' => $outsideClinicHours,
+                        'inside_clinic_break' => $insideClinicBreak,
+                        'clinic_unavailable_reason' => $unavailableReason,
                     ]);
                 }
 
@@ -149,13 +169,34 @@ class QueueService
             : ($date->isPast() ? now() : null);
 
         return $this->buildSlotGrid($clinicId, $doctorId, $serviceId, $date)
-            ->map(function (array $slot) use ($occupied, $cutoff) {
-                $expired = $cutoff ? $slot['start_at']->lte($cutoff) : false;
+            ->filter(function (array $slot) use ($cutoff) {
+                /*
+                 * Do not show past time slots to patients.
+                 * Example: if today is selected and it is already 3:00 PM,
+                 * slots before/equal to the current time are removed from the response.
+                 */
+                return ! $cutoff || $slot['start_at']->gt($cutoff);
+            })
+            ->map(function (array $slot) use ($occupied) {
+                $isOccupied = $occupied->contains($slot['time']);
+                $outsideClinicHours = (bool) ($slot['outside_clinic_hours'] ?? false);
+                $insideClinicBreak = (bool) ($slot['inside_clinic_break'] ?? false);
+
+                $reason = null;
+
+                if ($isOccupied) {
+                    $reason = 'Booked';
+                } elseif ($outsideClinicHours) {
+                    $reason = 'Outside clinic hours';
+                } elseif ($insideClinicBreak) {
+                    $reason = 'Clinic break time';
+                }
 
                 return array_merge($slot, [
-                    'occupied' => $occupied->contains($slot['time']),
-                    'expired' => $expired,
-                    'available' => ! $occupied->contains($slot['time']) && ! $expired,
+                    'occupied' => $isOccupied,
+                    'expired' => false,
+                    'available' => ! $isOccupied && ! $outsideClinicHours && ! $insideClinicBreak,
+                    'reason' => $reason,
                 ]);
             })
             ->values();
@@ -366,6 +407,65 @@ class QueueService
                     ->get(),
             ];
         });
+    }
+
+    private function clinicOperationalHourForDate(int $clinicId, Carbon $date): ?ClinicOperationalHour
+    {
+        $dayKey = strtolower($date->format('l'));
+
+        return ClinicOperationalHour::query()
+            ->where('clinic_id', $clinicId)
+            ->where('day_of_week', $dayKey)
+            ->first();
+    }
+
+    private function clinicIsOpenForDate(?ClinicOperationalHour $clinicHour): bool
+    {
+        return $clinicHour !== null && (bool) $clinicHour->is_open;
+    }
+
+    private function slotOutsideClinicOperationalHours(?ClinicOperationalHour $clinicHour, Carbon $slotStart, Carbon $slotEnd): bool
+    {
+        if (! $clinicHour || ! $clinicHour->is_open) {
+            return true;
+        }
+
+        if ($clinicHour->is_24_hours) {
+            return false;
+        }
+
+        if (! $clinicHour->open_time || ! $clinicHour->close_time) {
+            return true;
+        }
+
+        $open = $slotStart->copy()->setTimeFromTimeString($this->normalizeTimeLabel($clinicHour->open_time));
+        $close = $slotStart->copy()->setTimeFromTimeString($this->normalizeTimeLabel($clinicHour->close_time));
+
+        if ($close->lessThanOrEqualTo($open)) {
+            $close->addDay();
+        }
+
+        return $slotStart->lt($open) || $slotEnd->gt($close);
+    }
+
+    private function slotOverlapsClinicBreak(?ClinicOperationalHour $clinicHour, Carbon $slotStart, Carbon $slotEnd): bool
+    {
+        if (! $clinicHour || ! $clinicHour->is_open) {
+            return false;
+        }
+
+        if (! $clinicHour->break_start || ! $clinicHour->break_end) {
+            return false;
+        }
+
+        $breakStart = $slotStart->copy()->setTimeFromTimeString($this->normalizeTimeLabel($clinicHour->break_start));
+        $breakEnd = $slotStart->copy()->setTimeFromTimeString($this->normalizeTimeLabel($clinicHour->break_end));
+
+        if ($breakEnd->lessThanOrEqualTo($breakStart)) {
+            $breakEnd->addDay();
+        }
+
+        return $slotStart->lt($breakEnd) && $slotEnd->gt($breakStart);
     }
 
     public function normalizeTimeLabel($time): ?string

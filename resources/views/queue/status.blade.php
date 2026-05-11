@@ -1100,7 +1100,7 @@
                 <div class="queue-message served">
                   <i class="bi bi-check-circle me-2"></i>
                   <strong>Your queue is complete.</strong>
-                  You were served at {{ $entry->formatted_served_time }}.
+                  You were served at {{ $entry->served_at }}.
                 </div>
               @endif
 

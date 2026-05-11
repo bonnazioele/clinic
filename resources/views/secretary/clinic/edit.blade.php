@@ -1,481 +1,193 @@
 @extends('layouts.app')
 
+@section('title', 'Edit Clinic Settings')
+
 @section('content')
+@php
+  $logoUrl = $clinic->logo ? asset('storage/' . $clinic->logo) : null;
+  $coverUrl = $clinic->cover_image ? asset('storage/' . $clinic->cover_image) : null;
+@endphp
+
 <style>
-  .clinic-edit-shell {
-    max-width: 1180px;
-    margin: 0 auto;
-  }
-
-  .clinic-hero-card {
-    position: relative;
-    overflow: hidden;
-    border: 0;
-    border-radius: 28px;
-    background:
-      radial-gradient(circle at top left, rgba(13, 110, 253, 0.18), transparent 36%),
-      linear-gradient(135deg, #ffffff 0%, #f8fbff 48%, #eef6ff 100%);
-    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-  }
-
-  .clinic-hero-card::before {
-    content: "";
-    position: absolute;
-    inset: auto -90px -120px auto;
-    width: 260px;
-    height: 260px;
-    border-radius: 999px;
-    background: rgba(13, 110, 253, 0.1);
-  }
-
-  .clinic-hero-content {
-    position: relative;
-    z-index: 1;
-  }
-
-  .clinic-icon-wrap {
-    width: 58px;
-    height: 58px;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #0d6efd, #4dabf7);
-    color: #fff;
-    box-shadow: 0 14px 30px rgba(13, 110, 253, 0.28);
-    flex-shrink: 0;
-  }
-
-  .clinic-title {
-    color: #0f172a;
-    letter-spacing: -0.03em;
-  }
-
-  .clinic-subtitle {
-    color: #64748b;
-  }
-
-  .clinic-back-btn {
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    background: rgba(255, 255, 255, 0.84);
-    color: #334155;
-    border-radius: 16px;
-    padding: 0.72rem 1rem;
-    font-weight: 700;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-    transition: all 0.2s ease;
-  }
-
-  .clinic-back-btn:hover {
-    transform: translateY(-1px);
-    background: #fff;
-    color: #0d6efd;
-    border-color: rgba(13, 110, 253, 0.28);
-  }
-
-  .clinic-form-card {
-    border: 0;
-    border-radius: 28px;
-    overflow: hidden;
-    background: #fff;
-    box-shadow: 0 20px 55px rgba(15, 23, 42, 0.08);
-  }
-
-  .clinic-form-header {
-    padding: 1.35rem 1.5rem;
-    border-bottom: 1px solid #eef2f7;
-    background: linear-gradient(180deg, #ffffff, #fbfdff);
-  }
-
-  .clinic-form-body {
-    padding: 1.5rem;
-  }
-
-  .section-card {
-    border: 1px solid #eef2f7;
-    border-radius: 24px;
-    background: #ffffff;
-    padding: 1.25rem;
-    height: 100%;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.04);
-  }
-
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-bottom: 1rem;
-    font-weight: 800;
-    color: #0f172a;
-  }
-
-  .section-title-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #eff6ff;
-    color: #0d6efd;
-  }
-
-  .form-label {
-    color: #334155;
-    margin-bottom: 0.45rem;
-  }
-
-  .clinic-input,
-  .clinic-select,
-  .clinic-textarea {
-    border-radius: 16px;
-    border: 1px solid #dbe3ef;
-    background-color: #f8fafc;
-    padding: 0.78rem 0.95rem;
-    color: #0f172a;
-    transition: all 0.2s ease;
-  }
-
-  .clinic-input:focus,
-  .clinic-select:focus,
-  .clinic-textarea:focus {
-    border-color: rgba(13, 110, 253, 0.55);
-    background-color: #fff;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.11);
-  }
-
-  .queue-info-box {
-    border-radius: 20px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 1rem;
-    color: #475569;
-  }
-
-  .queue-mode-item {
-    display: flex;
-    gap: 0.75rem;
-  }
-
-  .queue-mode-number {
-    width: 28px;
-    height: 28px;
-    border-radius: 10px;
-    background: #0d6efd;
-    color: #fff;
-    font-size: 0.8rem;
-    font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 0.1rem;
-  }
-
-  .upload-box {
-    border: 1.5px dashed #cbd5e1;
-    background: #f8fafc;
-    border-radius: 22px;
-    padding: 1rem;
-    transition: all 0.2s ease;
-  }
-
-  .upload-box:hover {
-    border-color: rgba(13, 110, 253, 0.55);
-    background: #f4f9ff;
-  }
-
-  .preview-image-wrap {
-    margin-top: 0.85rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.65rem;
-    border-radius: 18px;
-    background: #ffffff;
-    border: 1px solid #eef2f7;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-  }
-
-  .preview-image {
-    width: 76px;
-    height: 58px;
-    object-fit: cover;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-  }
-
-  .preview-label {
-    color: #64748b;
-    font-size: 0.86rem;
-    font-weight: 700;
-  }
-
-  .clinic-form-footer {
-    padding: 1.2rem 1.5rem;
-    background: #f8fafc;
-    border-top: 1px solid #eef2f7;
-  }
-
-  .save-btn {
-    border: 0;
-    border-radius: 16px;
-    padding: 0.78rem 1.2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #0d6efd, #2563eb);
-    box-shadow: 0 14px 28px rgba(13, 110, 253, 0.24);
-    transition: all 0.2s ease;
-  }
-
-  .save-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 18px 34px rgba(13, 110, 253, 0.3);
-  }
-
-  .soft-note {
-    color: #64748b;
-    font-size: 0.92rem;
-  }
-
-  @media (max-width: 767.98px) {
-    .clinic-hero-card,
-    .clinic-form-card {
-      border-radius: 22px;
-    }
-
-    .clinic-form-body {
-      padding: 1rem;
-    }
-
-    .section-card {
-      padding: 1rem;
-      border-radius: 20px;
-    }
-
-    .clinic-hero-actions {
-      width: 100%;
-      margin-top: 1rem;
-    }
-
-    .clinic-back-btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
+  .settings-edit-page{width:min(96%,1180px);margin:0 auto;padding:1rem 0 2rem}.edit-hero{border-radius:26px;padding:1.4rem;color:#fff;background:radial-gradient(circle at 90% 20%,rgba(255,255,255,.18),transparent 18%),linear-gradient(135deg,#0d6efd,#1d4ed8);box-shadow:0 18px 45px rgba(37,99,235,.22);margin-bottom:1rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}.edit-title{margin:0;font-size:clamp(1.55rem,3vw,2.25rem);font-weight:950;letter-spacing:-.05em}.edit-subtitle{margin:.25rem 0 0;opacity:.95;font-weight:650}.back-btn{border-radius:14px;font-weight:900}.settings-card{border:1px solid #e2e8f0;border-radius:24px;background:#fff;box-shadow:0 16px 40px rgba(15,23,42,.06);overflow:hidden;margin-bottom:1rem}.settings-card-body{padding:1.25rem}.section-title{margin:0 0 1rem;color:#0f172a;font-size:1.1rem;font-weight:950;display:flex;align-items:center;gap:.5rem}.section-title i{color:#0d6efd}.form-label{font-weight:900;color:#334155}.form-control,.form-select{border-radius:14px;border-color:#cbd5e1;min-height:46px;font-weight:700}.upload-preview{display:flex;align-items:center;gap:.75rem;margin-top:.7rem;border:1px solid #edf2f7;background:#f8fafc;border-radius:16px;padding:.65rem}.upload-preview img{width:76px;height:54px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0}.hours-grid{display:grid;gap:.8rem}.hour-card{border:1px solid #edf2f7;background:#f8fafc;border-radius:20px;padding:1rem}.hour-head{display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.85rem}.hour-day{font-weight:950;color:#0f172a;font-size:1rem}.hour-toggles{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}.form-check-label{font-weight:850;color:#334155}.time-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}.closed-note{color:#64748b;font-weight:750;font-size:.88rem}.save-bar{position:sticky;bottom:0;background:rgba(248,250,252,.94);backdrop-filter:blur(10px);border:1px solid #e2e8f0;border-radius:20px;padding:1rem;display:flex;justify-content:flex-end;gap:.65rem;flex-wrap:wrap;box-shadow:0 -12px 30px rgba(15,23,42,.06)}.save-bar .btn{border-radius:14px;font-weight:900;padding:.72rem 1rem}.soft-note{color:#64748b;font-weight:650;line-height:1.55}@media(max-width:900px){.time-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.time-grid{grid-template-columns:1fr}.save-bar .btn{width:100%}}
 </style>
 
-<div class="container py-4">
-  <div class="clinic-edit-shell">
-    @include('partials.alerts')
+<div class="settings-edit-page">
+  @include('partials.alerts')
 
-    <div class="clinic-hero-card p-4 mb-4">
-      <div class="clinic-hero-content d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div class="d-flex align-items-center gap-3">
-          <div class="clinic-icon-wrap">
-            <i class="bi bi-building fs-4"></i>
-          </div>
-
-          <div>
-            <h2 class="clinic-title fw-bold mb-1">Edit Clinic Profile</h2>
-            <p class="clinic-subtitle mb-0">
-              Manage clinic details, queue strategy, logo, and cover image.
-            </p>
-            <div class="mt-2 small text-primary fw-semibold">
-              <i class="bi bi-hospital me-1"></i>{{ $clinic->name }}
-            </div>
-          </div>
-        </div>
-
-        <div class="clinic-hero-actions">
-          <a href="{{ route('secretary.appointments.index') }}" class="btn clinic-back-btn d-inline-flex align-items-center">
-            <i class="bi bi-arrow-left me-2"></i>Back
-          </a>
-        </div>
-      </div>
+  <section class="edit-hero">
+    <div>
+      <h1 class="edit-title">Edit Clinic Settings</h1>
+      <p class="edit-subtitle">Update clinic information and operational hours. Queue mode has been removed.</p>
     </div>
 
-    <form method="POST" action="{{ route('secretary.clinic.update', $clinic) }}" enctype="multipart/form-data" class="clinic-form-card">
-      @csrf
-      @method('PUT')
+    <a href="{{ route('secretary.clinic.show', $clinic) }}" class="btn btn-light text-primary back-btn">
+      <i class="bi bi-arrow-left me-1"></i>Back to Settings
+    </a>
+  </section>
 
-      <div class="clinic-form-header">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <div>
-            <h5 class="fw-bold mb-1 text-dark">Clinic Information</h5>
-            <p class="soft-note mb-0">Keep this profile updated so patients see the correct clinic details.</p>
-          </div>
-          <span class="badge rounded-pill text-bg-primary px-3 py-2">
-            <i class="bi bi-pencil-square me-1"></i>Edit Mode
-          </span>
-        </div>
-      </div>
+  <form method="POST" action="{{ route('secretary.clinic.update', $clinic) }}" enctype="multipart/form-data">
+    @csrf
+    @method('PUT')
 
-      <div class="clinic-form-body">
-        <div class="row g-4">
-          <div class="col-lg-7">
-            <div class="section-card">
-              <div class="section-title">
-                <span class="section-title-icon">
-                  <i class="bi bi-info-circle"></i>
-                </span>
-                Basic Details
-              </div>
+    <section class="settings-card">
+      <div class="settings-card-body">
+        <h2 class="section-title"><i class="bi bi-info-circle"></i>Clinic Information</h2>
 
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Clinic Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    class="form-control clinic-input"
-                    value="{{ old('name', $clinic->name) }}"
-                    placeholder="Enter clinic name"
-                    required
-                  >
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    class="form-control clinic-input"
-                    value="{{ old('address', $clinic->address) }}"
-                    placeholder="Enter clinic address"
-                    required
-                  >
-                </div>
-
-                <div class="col-12">
-                  <label class="form-label fw-semibold">Description</label>
-                  <textarea
-                    name="description"
-                    rows="5"
-                    class="form-control clinic-textarea"
-                    placeholder="Describe your clinic..."
-                  >{{ old('description', $clinic->description) }}</textarea>
-                </div>
-              </div>
-            </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="name">Clinic Name</label>
+            <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $clinic->name) }}" required>
+            @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
           </div>
 
-          <div class="col-lg-5">
-            <div class="section-card">
-              <div class="section-title">
-                <span class="section-title-icon">
-                  <i class="bi bi-diagram-3"></i>
-                </span>
-                Queue Strategy
-              </div>
-
-              <label class="form-label fw-semibold">
-                Queue Mode <span class="text-danger">*</span>
-              </label>
-
-              <select name="queue_mode" class="form-select clinic-select" required>
-                <option value="fcfs" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'fcfs' ? 'selected' : '' }}>
-                  First-Come, First-Served (FCFS)
-                </option>
-                <option value="priority" {{ old('queue_mode', $clinic->queue_mode ?? 'fcfs') === 'priority' ? 'selected' : '' }}>
-                  Priority-Aware Queue
-                </option>
-              </select>
-
-              <div class="queue-info-box mt-3">
-                <div class="queue-mode-item mb-3">
-                  <span class="queue-mode-number">1</span>
-                  <div>
-                    <strong class="text-dark">First-Come, First-Served</strong>
-                    <div class="small mt-1">
-                      Patients are served strictly by arrival order. Priority flags are ignored.
-                    </div>
-                  </div>
-                </div>
-
-                <div class="queue-mode-item">
-                  <span class="queue-mode-number">2</span>
-                  <div>
-                    <strong class="text-dark">Priority-Aware Queue</strong>
-                    <div class="small mt-1">
-                      Senior, PWD, pregnant, and emergency patients can be moved earlier in the queue.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div class="col-md-6">
+            <label class="form-label">Status</label>
+            <input type="text" class="form-control" value="{{ ucfirst($clinic->status ?? 'active') }}" disabled>
           </div>
 
-          <div class="col-lg-6">
-            <div class="section-card">
-              <div class="section-title">
-                <span class="section-title-icon">
-                  <i class="bi bi-image"></i>
-                </span>
-                Clinic Logo
-              </div>
-
-              <div class="upload-box">
-                <label class="form-label fw-semibold">Upload Logo</label>
-                <input type="file" name="logo" class="form-control clinic-input" accept="image/*">
-                <div class="small text-muted mt-2">
-                  Recommended: square image for cleaner display.
-                </div>
-
-                @if($clinic->logo)
-                  <div class="preview-image-wrap">
-                    <img src="{{ asset('storage/'.$clinic->logo) }}" alt="Logo" class="preview-image">
-                    <div>
-                      <div class="preview-label">Current Logo</div>
-                      <div class="small text-muted">Uploading a new image will replace this.</div>
-                    </div>
-                  </div>
-                @endif
-              </div>
-            </div>
+          <div class="col-12">
+            <label class="form-label" for="address">Address</label>
+            <textarea id="address" name="address" rows="2" class="form-control @error('address') is-invalid @enderror" required>{{ old('address', $clinic->address) }}</textarea>
+            @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
           </div>
 
-          <div class="col-lg-6">
-            <div class="section-card">
-              <div class="section-title">
-                <span class="section-title-icon">
-                  <i class="bi bi-card-image"></i>
-                </span>
-                Cover Image
-              </div>
+          <div class="col-12">
+            <label class="form-label" for="description">Description</label>
+            <textarea id="description" name="description" rows="4" class="form-control @error('description') is-invalid @enderror">{{ old('description', $clinic->description) }}</textarea>
+            @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
+          </div>
 
-              <div class="upload-box">
-                <label class="form-label fw-semibold">Upload Cover Image</label>
-                <input type="file" name="cover_image" class="form-control clinic-input" accept="image/*">
-                <div class="small text-muted mt-2">
-                  Recommended: wide image for the clinic banner.
-                </div>
+          <div class="col-md-6">
+            <label class="form-label" for="logo">Clinic Logo</label>
+            <input type="file" id="logo" name="logo" class="form-control @error('logo') is-invalid @enderror" accept="image/*">
+            @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            @if($logoUrl)
+              <div class="upload-preview"><img src="{{ $logoUrl }}" alt="Current logo"><span class="soft-note">Current logo</span></div>
+            @endif
+          </div>
 
-                @if($clinic->cover_image)
-                  <div class="preview-image-wrap">
-                    <img src="{{ asset('storage/'.$clinic->cover_image) }}" alt="Cover" class="preview-image">
-                    <div>
-                      <div class="preview-label">Current Cover</div>
-                      <div class="small text-muted">Uploading a new image will replace this.</div>
-                    </div>
-                  </div>
-                @endif
-              </div>
-            </div>
+          <div class="col-md-6">
+            <label class="form-label" for="cover_image">Cover Image</label>
+            <input type="file" id="cover_image" name="cover_image" class="form-control @error('cover_image') is-invalid @enderror" accept="image/*">
+            @error('cover_image')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            @if($coverUrl)
+              <div class="upload-preview"><img src="{{ $coverUrl }}" alt="Current cover"><span class="soft-note">Current cover</span></div>
+            @endif
           </div>
         </div>
       </div>
+    </section>
 
-      <div class="clinic-form-footer d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div class="soft-note">
-          <i class="bi bi-shield-check me-1 text-primary"></i>
-          Changes will update this clinic profile immediately.
+    <section class="settings-card">
+      <div class="settings-card-body">
+        <h2 class="section-title"><i class="bi bi-clock-history"></i>Operational Hours</h2>
+        <p class="soft-note mb-3">Set the clinic schedule per day. For 24-hour operation, check both Open and 24 Hours.</p>
+
+        @error('hours')<div class="alert alert-danger">{{ $message }}</div>@enderror
+
+        <div class="hours-grid">
+          @foreach(\App\Models\ClinicOperationalHour::DAYS as $dayKey => $dayLabel)
+            @php
+              $hour = $hours[$dayKey] ?? null;
+              $isOpen = old("hours.$dayKey.is_open", $hour?->is_open ? '1' : null);
+              $is24 = old("hours.$dayKey.is_24_hours", $hour?->is_24_hours ? '1' : null);
+              $openTime = old("hours.$dayKey.open_time", $hour?->open_time ? $hour->open_time->format('H:i') : '');
+              $closeTime = old("hours.$dayKey.close_time", $hour?->close_time ? $hour->close_time->format('H:i') : '');
+              $breakStart = old("hours.$dayKey.break_start", $hour?->break_start ? $hour->break_start->format('H:i') : '');
+              $breakEnd = old("hours.$dayKey.break_end", $hour?->break_end ? $hour->break_end->format('H:i') : '');
+            @endphp
+
+            <div class="hour-card" data-day-card="{{ $dayKey }}">
+              <div class="hour-head">
+                <div class="hour-day">{{ $dayLabel }}</div>
+
+                <div class="hour-toggles">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input js-open-toggle" type="checkbox" role="switch" id="{{ $dayKey }}_open" name="hours[{{ $dayKey }}][is_open]" value="1" @checked($isOpen)>
+                    <label class="form-check-label" for="{{ $dayKey }}_open">Open</label>
+                  </div>
+
+                  <div class="form-check form-switch">
+                    <input class="form-check-input js-24-toggle" type="checkbox" role="switch" id="{{ $dayKey }}_24" name="hours[{{ $dayKey }}][is_24_hours]" value="1" @checked($is24)>
+                    <label class="form-check-label" for="{{ $dayKey }}_24">24 Hours</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="time-grid js-time-grid">
+                <div>
+                  <label class="form-label" for="{{ $dayKey }}_open_time">Open Time</label>
+                  <input type="time" id="{{ $dayKey }}_open_time" name="hours[{{ $dayKey }}][open_time]" class="form-control @error("hours.$dayKey.open_time") is-invalid @enderror" value="{{ $openTime }}">
+                  @error("hours.$dayKey.open_time")<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                  <label class="form-label" for="{{ $dayKey }}_close_time">Close Time</label>
+                  <input type="time" id="{{ $dayKey }}_close_time" name="hours[{{ $dayKey }}][close_time]" class="form-control @error("hours.$dayKey.close_time") is-invalid @enderror" value="{{ $closeTime }}">
+                  @error("hours.$dayKey.close_time")<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                  <label class="form-label" for="{{ $dayKey }}_break_start">Break Start</label>
+                  <input type="time" id="{{ $dayKey }}_break_start" name="hours[{{ $dayKey }}][break_start]" class="form-control @error("hours.$dayKey.break_start") is-invalid @enderror" value="{{ $breakStart }}">
+                  @error("hours.$dayKey.break_start")<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div>
+                  <label class="form-label" for="{{ $dayKey }}_break_end">Break End</label>
+                  <input type="time" id="{{ $dayKey }}_break_end" name="hours[{{ $dayKey }}][break_end]" class="form-control @error("hours.$dayKey.break_end") is-invalid @enderror" value="{{ $breakEnd }}">
+                  @error("hours.$dayKey.break_end")<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+              </div>
+
+              <div class="closed-note js-closed-note d-none">This day is closed.</div>
+              <div class="closed-note js-24-note d-none">This day is open 24 hours. Specific time fields are not required.</div>
+            </div>
+          @endforeach
         </div>
-
-        <button class="btn btn-primary save-btn">
-          <i class="bi bi-save me-2"></i>Save Changes
-        </button>
       </div>
-    </form>
-  </div>
+    </section>
+
+    <div class="save-bar">
+      <a href="{{ route('secretary.clinic.show', $clinic) }}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Settings</button>
+    </div>
+  </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-day-card]').forEach(function (card) {
+    const openToggle = card.querySelector('.js-open-toggle');
+    const hoursToggle = card.querySelector('.js-24-toggle');
+    const timeGrid = card.querySelector('.js-time-grid');
+    const closedNote = card.querySelector('.js-closed-note');
+    const hoursNote = card.querySelector('.js-24-note');
+    const timeInputs = timeGrid.querySelectorAll('input[type="time"]');
+
+    function sync() {
+      const isOpen = openToggle.checked;
+      const is24 = hoursToggle.checked;
+
+      hoursToggle.disabled = !isOpen;
+      timeGrid.classList.toggle('d-none', !isOpen || is24);
+      closedNote.classList.toggle('d-none', isOpen);
+      hoursNote.classList.toggle('d-none', !isOpen || !is24);
+
+      timeInputs.forEach(function (input) {
+        input.disabled = !isOpen || is24;
+      });
+
+      if (!isOpen) {
+        hoursToggle.checked = false;
+      }
+    }
+
+    openToggle.addEventListener('change', sync);
+    hoursToggle.addEventListener('change', sync);
+    sync();
+  });
+});
+</script>
 @endsection

@@ -92,8 +92,10 @@ class DoctorController extends Controller
             'password' => 'nullable|string|min:6|confirmed',
             'service_ids' => 'array',
             'service_ids.*' => 'exists:services,id',
-            'phone' => 'nullable|string|max:50',
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s\-()]+$/'],
             'address' => 'nullable|string|max:500',
+        ], [
+            'phone.regex' => 'The phone number may only contain numbers, spaces, dashes, parentheses, and an optional plus sign.',
         ]);
 
         $existingUser = User::where('email', $data['email'])->first();
@@ -134,11 +136,11 @@ class DoctorController extends Controller
 
             if ($existingUser) {
                 $doctor->update([
-                    'first_name' => $doctor->first_name ?: $data['first_name'],
-                    'last_name' => $doctor->last_name ?: $data['last_name'],
-                    'name' => $doctor->name ?: trim($data['first_name'] . ' ' . $data['last_name']),
-                    'phone' => $doctor->phone ?: ($data['phone'] ?? null),
-                    'address' => $doctor->address ?: ($data['address'] ?? null),
+                    'first_name' => $data['first_name'],
+                    'last_name' => $data['last_name'],
+                    'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+                    'phone' => $data['phone'] ?? null,
+                    'address' => $data['address'] ?? null,
                     'is_doctor' => true,
                     'is_active' => true,
                 ]);
@@ -178,8 +180,10 @@ class DoctorController extends Controller
             'password' => 'nullable|string|min:6|confirmed',
             'service_ids' => 'array',
             'service_ids.*' => 'exists:services,id',
-            'phone' => 'nullable|string|max:50',
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s\-()]+$/'],
             'address' => 'nullable|string|max:500',
+        ], [
+            'phone.regex' => 'The phone number may only contain numbers, spaces, dashes, parentheses, and an optional plus sign.',
         ]);
 
         $payload = [

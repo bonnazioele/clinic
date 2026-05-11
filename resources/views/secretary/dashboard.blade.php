@@ -3,6 +3,12 @@
 @section('title', 'Secretary Dashboard')
 
 @section('content')
+@php
+  $doctorCount = (int) ($totalActiveDoctors ?? 0);
+  $hasDoctors = $doctorCount > 0;
+  $canShowAddDoctorPrompt = ! $hasDoctors && Route::has('secretary.doctors.create');
+@endphp
+
 <style>
   .secretary-dashboard-page {
     width: 96%;
@@ -40,6 +46,89 @@
     font-size: 0.98rem;
     font-weight: 600;
     opacity: 0.95;
+  }
+
+  .first-doctor-card {
+    border-radius: 24px;
+    border: 1px solid rgba(191, 219, 254, 0.95);
+    background:
+      radial-gradient(circle at 92% 18%, rgba(13, 110, 253, 0.11), transparent 20%),
+      linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+    box-shadow: 0 18px 45px rgba(37, 99, 235, 0.13);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .first-doctor-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+  }
+
+  .first-doctor-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #0d6efd, #178bff);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    font-size: 1.6rem;
+    box-shadow: 0 12px 24px rgba(13, 110, 253, 0.2);
+    flex: 0 0 58px;
+  }
+
+  .first-doctor-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.2rem;
+    font-weight: 950;
+    letter-spacing: -0.03em;
+  }
+
+  .first-doctor-text {
+    margin: 0.25rem 0 0;
+    color: #475569;
+    font-size: 0.92rem;
+    font-weight: 650;
+    line-height: 1.45;
+  }
+
+  .first-doctor-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+  }
+
+  .first-doctor-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.38rem 0.65rem;
+    background: #ffffff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-size: 0.76rem;
+    font-weight: 900;
+  }
+
+  .first-doctor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .first-doctor-actions .btn {
+    border-radius: 14px;
+    font-weight: 900;
+    padding: 0.7rem 1rem;
   }
 
   .secretary-stats-grid {
@@ -637,7 +726,8 @@
     }
 
     .secretary-welcome,
-    .queue-workspace-card {
+    .queue-workspace-card,
+    .first-doctor-card {
       border-radius: 22px;
     }
 
@@ -667,16 +757,70 @@
     .lane-action-buttons {
       flex-direction: column;
     }
+
+    .first-doctor-card {
+      align-items: stretch;
+    }
+
+    .first-doctor-actions,
+    .first-doctor-actions .btn {
+      width: 100%;
+    }
   }
 
   @media (max-width: 520px) {
     .secretary-stats-grid {
       grid-template-columns: 1fr;
     }
+
+    .first-doctor-left {
+      flex-direction: column;
+    }
   }
 </style>
 
 <div class="secretary-dashboard-page">
+  @include('partials.alerts')
+
+  @if($canShowAddDoctorPrompt)
+    <section class="first-doctor-card">
+      <div class="first-doctor-left">
+        <div class="first-doctor-icon">
+          <i class="bi bi-person-plus-fill"></i>
+        </div>
+
+        <div>
+          <h2 class="first-doctor-title">Add your first doctor</h2>
+          <p class="first-doctor-text">
+            Your clinic is ready. Add at least one doctor so services, schedules, appointments, and queues can start working properly.
+          </p>
+
+          <div class="first-doctor-steps">
+            <span class="first-doctor-step">
+              <i class="bi bi-check-circle"></i>
+              Password changed
+            </span>
+            <span class="first-doctor-step">
+              <i class="bi bi-check-circle"></i>
+              Operational hours configured
+            </span>
+            <span class="first-doctor-step">
+              <i class="bi bi-person-badge"></i>
+              Next: Add doctor
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="first-doctor-actions">
+        <a href="{{ route('secretary.doctors.create') }}" class="btn btn-primary">
+          <i class="bi bi-person-plus me-1"></i>
+          Add Doctor
+        </a>
+      </div>
+    </section>
+  @endif
+
   <section class="dashboard-summary-shell">
     <div class="secretary-welcome">
       <h1>Secretary Dashboard</h1>
@@ -686,46 +830,46 @@
     </div>
 
     <div class="secretary-stats-grid">
-    <div class="secretary-stat-card stat-yellow">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-hourglass-split"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">{{ number_format($totalWaiting ?? 0) }}</div>
-          <div class="secretary-stat-title">Total Waiting</div>
-          <p class="secretary-stat-sub">Patients waiting in queue</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="secretary-stat-card stat-blue">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-person-check"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">{{ number_format($nowServingCount ?? 0) }}</div>
-          <div class="secretary-stat-title">Now Serving</div>
-          <p class="secretary-stat-sub">Active patient encounters</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="secretary-stat-card stat-green">
-      <div class="secretary-stat-content">
-        <div class="secretary-stat-icon">
-          <i class="bi bi-person-badge"></i>
-        </div>
-        <div>
-          <div class="secretary-stat-value">
-            {{ number_format($onDutyDoctors ?? 0) }}/{{ number_format($totalActiveDoctors ?? 0) }}
+      <div class="secretary-stat-card stat-yellow">
+        <div class="secretary-stat-content">
+          <div class="secretary-stat-icon">
+            <i class="bi bi-hourglass-split"></i>
           </div>
-          <div class="secretary-stat-title">Doctors</div>
-          <p class="secretary-stat-sub">Serving / active</p>
+          <div>
+            <div class="secretary-stat-value">{{ number_format($totalWaiting ?? 0) }}</div>
+            <div class="secretary-stat-title">Total Waiting</div>
+            <p class="secretary-stat-sub">Patients waiting in queue</p>
+          </div>
         </div>
       </div>
-    </div>
+
+      <div class="secretary-stat-card stat-blue">
+        <div class="secretary-stat-content">
+          <div class="secretary-stat-icon">
+            <i class="bi bi-person-check"></i>
+          </div>
+          <div>
+            <div class="secretary-stat-value">{{ number_format($nowServingCount ?? 0) }}</div>
+            <div class="secretary-stat-title">Now Serving</div>
+            <p class="secretary-stat-sub">Active patient encounters</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="secretary-stat-card stat-green">
+        <div class="secretary-stat-content">
+          <div class="secretary-stat-icon">
+            <i class="bi bi-person-badge"></i>
+          </div>
+          <div>
+            <div class="secretary-stat-value">
+              {{ number_format($onDutyDoctors ?? 0) }}/{{ number_format($totalActiveDoctors ?? 0) }}
+            </div>
+            <div class="secretary-stat-title">Doctors</div>
+            <p class="secretary-stat-sub">Serving / active</p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -752,20 +896,25 @@
         @php
           $serviceLink = route('secretary.services.queue.index', ['service_id' => $serviceCard['route_key']]);
         @endphp
+
         <div class="col-md-6 col-xl-4 mb-4">
           <a class="cliniq-service-card-link" href="{{ $serviceLink }}">
             <div class="cliniq-service-card">
               <div class="cliniq-service-card__header">
                 <h3 class="cliniq-service-card__title">{{ $serviceCard['name'] }}</h3>
               </div>
+
               <div class="cliniq-service-card__stats">
                 <div class="cliniq-service-card__stat">
                   <span class="cliniq-service-card__stat-label">WAITING</span>
                   <span class="cliniq-service-card__stat-value">{{ number_format($serviceCard['waiting_count']) }}</span>
                 </div>
+
                 <div class="cliniq-service-card__stat cliniq-service-card__stat--right">
                   <span class="cliniq-service-card__stat-label">SERVING</span>
-                  <span class="cliniq-service-card__stat-value cliniq-service-card__stat-value--primary">{{ number_format($serviceCard['serving_doctors']) }}</span>
+                  <span class="cliniq-service-card__stat-value cliniq-service-card__stat-value--primary">
+                    {{ number_format($serviceCard['serving_doctors']) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -777,7 +926,12 @@
             <div class="empty-panel-icon">
               <i class="bi bi-layers"></i>
             </div>
-            No services are assigned to this clinic yet.
+
+            @if($canShowAddDoctorPrompt)
+              Add your first doctor to start setting up services and queue lanes.
+            @else
+              No services are assigned to this clinic yet.
+            @endif
           </div>
         </div>
       @endforelse

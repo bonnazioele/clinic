@@ -1,15 +1,13 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Clinic extends Model
 {
@@ -31,12 +29,23 @@ class Clinic extends Model
         'gps_latitude',
         'gps_longitude',
         'status',
-        'queue_mode',
+        'operational_hours_configured',
+        'setup_completed_at',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'operational_hours_configured' => 'boolean',
+        'setup_completed_at' => 'datetime',
+        'gps_latitude' => 'decimal:8',
+        'gps_longitude' => 'decimal:8',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
 
     public function user(): BelongsTo
     {
@@ -46,8 +55,8 @@ class Clinic extends Model
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'clinic_service', 'clinic_id', 'service_id')
-                    ->withPivot(['duration_minutes'])
-                    ->withTimestamps();
+            ->withPivot(['duration_minutes'])
+            ->withTimestamps();
     }
 
     public function appointments(): HasMany
@@ -70,26 +79,38 @@ class Clinic extends Model
         return $this->hasMany(ClinicStatusLog::class);
     }
 
+    public function operationalHours(): HasMany
+    {
+        return $this->hasMany(ClinicOperationalHour::class, 'clinic_id')
+            ->orderBy('sort_order');
+    }
+
     public function doctors(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'clinic_doctor', 'clinic_id', 'doctor_id')
-                    ->where('is_doctor', true)
-                    ->withTimestamps();
+            ->where('is_doctor', true)
+            ->withTimestamps();
     }
 
     public function secretaries(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'clinic_secretary', 'clinic_id', 'secretary_id')
-                    ->where('is_secretary', true)
-                    ->withTimestamps();
+            ->where('is_secretary', true)
+            ->withTimestamps();
     }
 
     public function patients(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'clinic_patients', 'clinic_id', 'patient_id')
-                    ->withPivot(['registered_by'])
-                    ->withTimestamps();
+            ->withPivot(['registered_by'])
+            ->withTimestamps();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
 
     public function scopeStatus($query, string $status)
     {
@@ -125,13 +146,52 @@ class Clinic extends Model
         ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
     public function isApprovedLike(): bool
     {
-        return in_array(strtolower((string)$this->status), ['approved','active'], true);
+        return in_array(strtolower((string) $this->status), ['approved', 'active'], true);
     }
 
     public function queueModeIs(string $mode): bool
     {
         return strtolower($this->queue_mode ?? 'fcfs') === strtolower($mode);
+    }
+
+    public function hasConfiguredOperationalHours(): bool
+    {
+        if ((bool) ($this->operational_hours_configured ?? false)) {
+            return true;
+        }
+
+        return $this->operationalHours()
+            ->where('is_open', true)
+            ->exists();
+    }
+
+    public function isSetupReady(): bool
+    {
+        return $this->hasConfiguredOperationalHours()
+            && ! is_null($this->setup_completed_at);
+    }
+
+    public function markOperationalHoursConfigured(): void
+    {
+        $this->forceFill([
+            'operational_hours_configured' => true,
+            'setup_completed_at' => $this->setup_completed_at ?? now(),
+        ])->save();
+    }
+
+    public function markSetupReady(): void
+    {
+        $this->forceFill([
+            'operational_hours_configured' => true,
+            'setup_completed_at' => now(),
+        ])->save();
     }
 }
