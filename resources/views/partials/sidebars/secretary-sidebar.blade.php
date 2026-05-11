@@ -400,6 +400,23 @@
     <div
       class="secretary-sidebar-collapse {{ $servicesExpanded ? 'is-open' : '' }}"
       id="secretaryServicesCollapse">
+
+      <a href="{{ $servicesUrl }}"
+         class="secretary-sidebar-service-link {{ request()->routeIs('secretary.services.index') ? 'active' : '' }}">
+        <i class="bi bi-list-ul"></i>
+        <span>Manage Services</span>
+      </a>
+
+      <a href="{{ $secretaryClinicId ? route('secretary.services.create', ['clinic' => $secretaryClinicId]) : $servicesUrl }}"
+         class="secretary-sidebar-service-link {{ request()->routeIs('secretary.services.create') ? 'active' : '' }}">
+        <i class="bi bi-plus-circle"></i>
+        <span>Add New Service</span>
+      </a>
+
+      @if($activeClinicServices->isNotEmpty())
+        <div style="margin: 4px 12px 4px 12px; border-top: 1px solid rgba(255,255,255,0.08);"></div>
+      @endif
+
       @forelse ($activeClinicServices as $service)
         <a
           href="{{ safe_secretary_route('secretary.services.queue.index', '/secretary/dashboard', ['service_id' => $service->id]) }}"
@@ -408,7 +425,7 @@
           <span>{{ $service->name }}</span>
         </a>
       @empty
-        <span class="secretary-sidebar-service-link">
+        <span class="secretary-sidebar-service-link" style="opacity: 0.55; font-style: italic;">
           <i class="bi bi-dot"></i>
           <span>No services yet</span>
         </span>

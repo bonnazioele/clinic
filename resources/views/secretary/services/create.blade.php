@@ -383,25 +383,6 @@
             </div>
 
             <div>
-              <label class="form-label">Duration Minutes</label>
-              <input type="number"
-                     name="duration_minutes"
-                     value="{{ old('duration_minutes', 30) }}"
-                     class="form-control @error('duration_minutes') is-invalid @enderror"
-                     min="5"
-                     max="480"
-                     required>
-
-              <div class="field-help">
-                Default duration is 30 minutes.
-              </div>
-
-              @error('duration_minutes')
-                <div class="invalid-feedback">{{ $message }}</div>
-              @enderror
-            </div>
-
-            <div>
               <label class="form-label">Clinic</label>
               <input type="text"
                      class="form-control"

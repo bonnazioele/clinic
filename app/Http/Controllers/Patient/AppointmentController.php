@@ -144,7 +144,8 @@ class AppointmentController extends Controller
 
         $slotMinutes = $queueService->getSlotMinutes(
             (int) $data['clinic_id'],
-            ! empty($data['service_id']) ? (int) $data['service_id'] : null
+            ! empty($data['service_id']) ? (int) $data['service_id'] : null,
+            (int) $data['doctor_id']
         );
 
         $slots = $queueService->availableSlots(

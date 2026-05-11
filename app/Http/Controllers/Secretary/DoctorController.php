@@ -63,7 +63,9 @@ class DoctorController extends Controller
                     $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
                 },
                 'services' => function ($q) use ($activeClinicId) {
-                    $q->where('doctor_service.clinic_id', $activeClinicId)->select('services.id', 'services.name');
+                    $q->where('doctor_service.clinic_id', $activeClinicId)
+                      ->select('services.id', 'services.name')
+                      ->withPivot('duration_minutes');
                 },
             ])
             ->orderBy('name')
@@ -86,14 +88,16 @@ class DoctorController extends Controller
         $activeClinicId = $this->activeClinicId($request);
 
         $data = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'password' => 'nullable|string|min:6|confirmed',
-            'service_ids' => 'array',
-            'service_ids.*' => 'exists:services,id',
-            'phone' => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s\-()]+$/'],
-            'address' => 'nullable|string|max:500',
+            'first_name'         => 'required|string|max:255',
+            'last_name'          => 'required|string|max:255',
+            'email'              => 'required|email',
+            'password'           => 'nullable|string|min:6|confirmed',
+            'service_ids'        => 'array',
+            'service_ids.*'      => 'exists:services,id',
+            'duration_minutes'   => 'array',
+            'duration_minutes.*' => 'integer|min:5|max:480',
+            'phone'              => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s\-()]+$/'],
+            'address'            => 'nullable|string|max:500',
         ], [
             'phone.regex' => 'The phone number may only contain numbers, spaces, dashes, parentheses, and an optional plus sign.',
         ]);
@@ -119,35 +123,36 @@ class DoctorController extends Controller
         }
 
         $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
-        $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
+        $chosen    = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
+        $durations = $request->input('duration_minutes', []); // ← read submitted durations
 
-        $doctor = DB::transaction(function () use ($existingUser, $data, $activeClinicId, $chosen) {
+        $doctor = DB::transaction(function () use ($existingUser, $data, $activeClinicId, $chosen, $durations) {
             $doctor = $existingUser ?: User::create([
-                'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+                'name'       => trim($data['first_name'] . ' ' . $data['last_name']),
                 'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-                'phone' => $data['phone'] ?? null,
-                'address' => $data['address'] ?? null,
-                'is_doctor' => true,
-                'is_active' => true,
+                'last_name'  => $data['last_name'],
+                'email'      => $data['email'],
+                'password'   => Hash::make($data['password']),
+                'phone'      => $data['phone'] ?? null,
+                'address'    => $data['address'] ?? null,
+                'is_doctor'  => true,
+                'is_active'  => true,
             ]);
 
             if ($existingUser) {
                 $doctor->update([
                     'first_name' => $data['first_name'],
-                    'last_name' => $data['last_name'],
-                    'name' => trim($data['first_name'] . ' ' . $data['last_name']),
-                    'phone' => $data['phone'] ?? null,
-                    'address' => $data['address'] ?? null,
-                    'is_doctor' => true,
-                    'is_active' => true,
+                    'last_name'  => $data['last_name'],
+                    'name'       => trim($data['first_name'] . ' ' . $data['last_name']),
+                    'phone'      => $data['phone'] ?? null,
+                    'address'    => $data['address'] ?? null,
+                    'is_doctor'  => true,
+                    'is_active'  => true,
                 ]);
             }
 
             $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
-            $doctor->syncServicesForClinic($activeClinicId, $chosen);
+            $doctor->syncServicesForClinic($activeClinicId, $chosen, $durations); // ← pass durations
 
             return $doctor;
         });
@@ -161,7 +166,9 @@ class DoctorController extends Controller
         $activeClinicId = $this->activeClinicId($request);
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
         $doctor->load(['services' => function ($q) use ($activeClinicId) {
-            $q->where('doctor_service.clinic_id', $activeClinicId)->select('services.id', 'services.name');
+            $q->where('doctor_service.clinic_id', $activeClinicId)
+              ->select('services.id', 'services.name')
+              ->withPivot('duration_minutes');
         }]);
         $services = $this->servicesForActiveClinic($activeClinicId);
 
@@ -174,25 +181,27 @@ class DoctorController extends Controller
         $doctor = $this->doctorInActiveClinicOrAbort($doctor, $activeClinicId);
 
         $data = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $doctor->id,
-            'password' => 'nullable|string|min:6|confirmed',
-            'service_ids' => 'array',
-            'service_ids.*' => 'exists:services,id',
-            'phone' => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s\-()]+$/'],
-            'address' => 'nullable|string|max:500',
+            'first_name'         => 'required|string|max:255',
+            'last_name'          => 'required|string|max:255',
+            'email'              => 'required|email|unique:users,email,' . $doctor->id,
+            'password'           => 'nullable|string|min:6|confirmed',
+            'service_ids'        => 'array',
+            'service_ids.*'      => 'exists:services,id',
+            'duration_minutes'   => 'array',
+            'duration_minutes.*' => 'integer|min:5|max:480',
+            'phone'              => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s\-()]+$/'],
+            'address'            => 'nullable|string|max:500',
         ], [
             'phone.regex' => 'The phone number may only contain numbers, spaces, dashes, parentheses, and an optional plus sign.',
         ]);
 
         $payload = [
-            'name' => trim($data['first_name'] . ' ' . $data['last_name']),
+            'name'       => trim($data['first_name'] . ' ' . $data['last_name']),
             'first_name' => $data['first_name'],
-            'last_name' => $data['last_name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
-            'address' => $data['address'] ?? null,
+            'last_name'  => $data['last_name'],
+            'email'      => $data['email'],
+            'phone'      => $data['phone'] ?? null,
+            'address'    => $data['address'] ?? null,
         ];
 
         if (!empty($data['password'])) {
@@ -200,12 +209,13 @@ class DoctorController extends Controller
         }
 
         $allowedServiceIds = $this->serviceIdsForActiveClinic($activeClinicId);
-        $chosen = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
+        $chosen    = array_values(array_intersect($data['service_ids'] ?? [], $allowedServiceIds));
+        $durations = $request->input('duration_minutes', []); // ← read submitted durations
 
-        DB::transaction(function () use ($doctor, $payload, $activeClinicId, $chosen) {
+        DB::transaction(function () use ($doctor, $payload, $activeClinicId, $chosen, $durations) {
             $doctor->update($payload);
             $doctor->clinics()->syncWithoutDetaching([$activeClinicId]);
-            $doctor->syncServicesForClinic($activeClinicId, $chosen);
+            $doctor->syncServicesForClinic($activeClinicId, $chosen, $durations); // ← pass durations
         });
 
         return redirect()->route('secretary.doctors.index')
@@ -246,7 +256,9 @@ class DoctorController extends Controller
                 $q->where('clinics.id', $activeClinicId)->select('clinics.id', 'clinics.name');
             },
             'services' => function ($q) use ($activeClinicId) {
-                $q->where('doctor_service.clinic_id', $activeClinicId)->select('services.id', 'services.name');
+                $q->where('doctor_service.clinic_id', $activeClinicId)
+                  ->select('services.id', 'services.name')
+                  ->withPivot('duration_minutes');
             },
             'doctorSchedules' => function ($q) use ($activeClinicId) {
                 $q->where('clinic_id', $activeClinicId)->with('clinic:id,name');

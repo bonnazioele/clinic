@@ -109,7 +109,7 @@ public function queueEntries()
             'doctor_service',
             'doctor_id',
             'service_id'
-        )->withPivot('clinic_id');
+        )->withPivot('clinic_id', 'duration_minutes');
     }
 
     public function servicesForClinic(int $clinicId)
@@ -117,10 +117,19 @@ public function queueEntries()
         return $this->services()->wherePivot('clinic_id', $clinicId);
     }
 
-    public function syncServicesForClinic(int $clinicId, array $serviceIds): void
+    public function syncServicesForClinic(int $clinicId, array $serviceIds, array $durations = []): void
     {
         $syncPayload = collect($serviceIds)
-            ->mapWithKeys(fn ($serviceId) => [(int) $serviceId => ['clinic_id' => $clinicId]])
+            ->mapWithKeys(function ($serviceId) use ($clinicId, $durations) {
+                $duration = isset($durations[$serviceId])
+                    ? max(5, min(480, (int) $durations[$serviceId]))
+                    : 30;
+
+                return [(int) $serviceId => [
+                    'clinic_id'        => $clinicId,
+                    'duration_minutes' => $duration,
+                ]];
+            })
             ->all();
 
         $this->servicesForClinic($clinicId)->sync($syncPayload);

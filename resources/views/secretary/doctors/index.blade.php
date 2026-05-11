@@ -451,6 +451,19 @@
       width: 100%;
     }
   }
+
+  .doctor-service-duration {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(13,110,253,.14);
+    color: #1d4ed8;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 900;
+    padding: .1rem .4rem;
+    margin-left: .3rem;
+  }
+
 </style>
 
 <div class="doctor-page">
@@ -601,7 +614,12 @@
                   @if(isset($d->services) && $d->services && $d->services->count())
                     <div class="doctor-service-tags">
                       @foreach($d->services->take(3) as $service)
-                        <span class="doctor-service-tag">{{ $service->name }}</span>
+                        <span class="doctor-service-tag">
+                          {{ $service->name }}
+                          @if($service->pivot?->duration_minutes)
+                            <span class="doctor-service-duration">{{ $service->pivot->duration_minutes }}m</span>
+                          @endif
+                        </span>
                       @endforeach
 
                       @if($d->services->count() > 3)
@@ -667,7 +685,12 @@
               @if(isset($d->services) && $d->services && $d->services->count())
                 <div class="doctor-service-tags">
                   @foreach($d->services as $service)
-                    <span class="doctor-service-tag">{{ $service->name }}</span>
+                    <span class="doctor-service-tag">
+                      {{ $service->name }}
+                      @if($service->pivot?->duration_minutes)
+                        <span class="doctor-service-duration">{{ $service->pivot->duration_minutes }}m</span>
+                      @endif
+                    </span>
                   @endforeach
                 </div>
               @else

@@ -34,12 +34,26 @@ class QueueService
         return $slotIndex + 1;
     }
 
-    public function getSlotMinutes(int $clinicId, ?int $serviceId): int
+    public function getSlotMinutes(int $clinicId, ?int $serviceId, ?int $doctorId = null): int
     {
         if (! $serviceId) {
             return 30;
         }
 
+        // Prefer the per-doctor duration stored in doctor_service pivot
+        if ($doctorId) {
+            $duration = DB::table('doctor_service')
+                ->where('clinic_id', $clinicId)
+                ->where('doctor_id', $doctorId)
+                ->where('service_id', $serviceId)
+                ->value('duration_minutes');
+
+            if ($duration && is_numeric($duration) && $duration > 0 && $duration <= 480) {
+                return (int) $duration;
+            }
+        }
+
+        // Fall back to clinic-level duration if no doctor-specific one exists
         $duration = DB::table('clinic_service')
             ->where('clinic_id', $clinicId)
             ->where('service_id', $serviceId)
@@ -68,7 +82,7 @@ class QueueService
     public function buildSlotGrid(int $clinicId, int $doctorId, ?int $serviceId, Carbon|string $date): Collection
     {
         $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
-        $slotMinutes = $this->getSlotMinutes($clinicId, $serviceId);
+        $slotMinutes = $this->getSlotMinutes($clinicId, $serviceId, $doctorId);
         $slots = collect();
 
         $scheduleAvailability = app(DoctorScheduleAvailability::class);

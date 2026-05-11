@@ -343,10 +343,15 @@
           </div>
 
           <div class="profile-info-item">
-            <div class="profile-info-label">Services</div>
+            <div class="profile-info-label">Services &amp; Duration</div>
             <div class="tag-list">
               @forelse($doctor->services as $s)
-                <span class="profile-tag">{{ $s->name }}</span>
+                <span class="profile-tag">
+                  {{ $s->name }}
+                  @if($s->pivot?->duration_minutes)
+                    &mdash; {{ $s->pivot->duration_minutes }} mins
+                  @endif
+                </span>
               @empty
                 <span class="text-muted">None</span>
               @endforelse

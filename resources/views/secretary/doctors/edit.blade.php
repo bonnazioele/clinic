@@ -293,6 +293,75 @@
       width: 100%;
     }
   }
+
+  .service-assign-list {
+    border-radius: 18px;
+    border: 1px solid #dbe3ef;
+    background: #f8fafc;
+    overflow: hidden;
+  }
+
+  .service-assign-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid #edf2f7;
+    transition: background .15s ease;
+  }
+
+  .service-assign-row:last-child {
+    border-bottom: 0;
+  }
+
+  .service-assign-row.is-checked {
+    background: #eff6ff;
+  }
+
+  .service-assign-check {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+  }
+
+  .service-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #0d6efd;
+    flex: 0 0 auto;
+  }
+
+  .service-assign-name {
+    font-size: .88rem;
+    font-weight: 750;
+    color: #0f172a;
+  }
+
+  .service-assign-duration {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    flex: 0 0 auto;
+  }
+
+  .service-duration-input {
+    width: 80px !important;
+    border-radius: 12px !important;
+    text-align: center;
+    font-weight: 750;
+    padding: .35rem .5rem !important;
+  }
+
+  .duration-unit {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #64748b;
+  }
+
 </style>
 
 <div class="doctor-form-page">
@@ -421,20 +490,45 @@
             </div>
 
             <div class="field-full">
-              <label for="doctor_services" class="form-label">Services</label>
-              <select id="doctor_services"
-                      name="service_ids[]"
-                      class="form-select enhanced-multiselect @error('service_ids') is-invalid @enderror"
-                      multiple
-                      data-placeholder="Select one or more services">
-                @foreach($services as $s)
-                  <option value="{{ $s->id }}" @selected(in_array($s->id, old('service_ids', $doctor->services->pluck('id')->toArray())))>
-                    {{ $s->name }}
-                  </option>
-                @endforeach
-              </select>
-              <div class="field-help">Select all services this doctor can perform.</div>
-              @error('service_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+              <label class="form-label">Services &amp; Duration</label>
+              <div class="field-help mb-2">Check a service to assign it, then set how many minutes this doctor takes per appointment for that service.</div>
+              @error('service_ids')<div class="text-danger small mb-2">{{ $message }}</div>@enderror
+
+              @php
+                $assignedServiceIds = old('service_ids', $doctor->services->pluck('id')->toArray());
+                $existingDurations = $doctor->services->pluck('pivot.duration_minutes', 'id');
+              @endphp
+
+              <div class="service-assign-list">
+                @forelse($services as $s)
+                  @php
+                    $checked = in_array($s->id, $assignedServiceIds);
+                    $duration = old('duration_minutes.' . $s->id, $existingDurations[$s->id] ?? 30);
+                  @endphp
+                  <div class="service-assign-row {{ $checked ? 'is-checked' : '' }}" data-service-row>
+                    <label class="service-assign-check">
+                      <input type="checkbox"
+                             name="service_ids[]"
+                             value="{{ $s->id }}"
+                             class="service-checkbox"
+                             {{ $checked ? 'checked' : '' }}>
+                      <span class="service-assign-name">{{ $s->name }}</span>
+                    </label>
+                    <div class="service-assign-duration {{ $checked ? '' : 'd-none' }}" data-duration-wrap>
+                      <input type="number"
+                             name="duration_minutes[{{ $s->id }}]"
+                             value="{{ $duration }}"
+                             min="5"
+                             max="480"
+                             class="form-control service-duration-input"
+                             placeholder="mins">
+                      <span class="duration-unit">mins</span>
+                    </div>
+                  </div>
+                @empty
+                  <div class="text-muted small p-3">No services available for this clinic yet.</div>
+                @endforelse
+              </div>
             </div>
           </div>
         </div>
@@ -483,4 +577,22 @@
     </aside>
   </div>
 </div>
+
+@push('scripts')
+<script>
+  document.querySelectorAll('.service-checkbox').forEach(function (checkbox) {
+    checkbox.addEventListener('change', function () {
+      const row = this.closest('[data-service-row]');
+      const durationWrap = row.querySelector('[data-duration-wrap]');
+      if (this.checked) {
+        row.classList.add('is-checked');
+        durationWrap.classList.remove('d-none');
+      } else {
+        row.classList.remove('is-checked');
+        durationWrap.classList.add('d-none');
+      }
+    });
+  });
+</script>
+@endpush
 @endsection

@@ -418,7 +418,7 @@
 
   .service-mini-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
     margin-bottom: 0.95rem;
   }
@@ -693,7 +693,6 @@
 
           $doctorCount = isset($activeDoctorCounts) ? (int) ($activeDoctorCounts[$service->id] ?? 0) : 0;
           $todayQueue = isset($todayQueueCounts) ? (int) ($todayQueueCounts[$service->id] ?? 0) : 0;
-          $duration = $service->pivot->duration_minutes ?? 30;
         @endphp
 
         <article class="service-card">
@@ -747,11 +746,6 @@
 
           <div class="service-card-body">
             <div class="service-mini-grid">
-              <div class="service-mini-info">
-                <small>Duration</small>
-                <strong>{{ $duration }} mins</strong>
-              </div>
-
               <div class="service-mini-info">
                 <small>Doctors</small>
                 <strong>{{ $doctorCount }} assigned</strong>
@@ -814,7 +808,6 @@
             <tr>
               <th>Service</th>
               <th>Description</th>
-              <th>Duration</th>
               <th>Doctors</th>
               <th>Today’s Queue</th>
               <th class="text-end">Actions</th>
@@ -829,7 +822,6 @@
 
                 $doctorCount = isset($activeDoctorCounts) ? (int) ($activeDoctorCounts[$service->id] ?? 0) : 0;
                 $todayQueue = isset($todayQueueCounts) ? (int) ($todayQueueCounts[$service->id] ?? 0) : 0;
-                $duration = $service->pivot->duration_minutes ?? 30;
               @endphp
 
               <tr>
@@ -850,10 +842,6 @@
                   <span class="text-muted fw-semibold">
                     {{ $service->description ?: 'No description provided.' }}
                   </span>
-                </td>
-
-                <td>
-                  <span class="service-pill">{{ $duration }} mins</span>
                 </td>
 
                 <td>

@@ -151,7 +151,6 @@ class ClinicServiceController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:480'],
         ]);
 
         $service = Service::create([
@@ -159,11 +158,7 @@ class ClinicServiceController extends Controller
             'description' => $data['description'] ?? null,
         ]);
 
-        $clinic->services()->syncWithoutDetaching([
-            $service->id => [
-                'duration_minutes' => $data['duration_minutes'] ?? 30,
-            ],
-        ]);
+        $clinic->services()->syncWithoutDetaching([$service->id]);
 
         return redirect()
             ->route('secretary.services.index', ['clinic' => $clinic->id])
