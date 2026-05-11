@@ -88,7 +88,7 @@ class DashboardController extends Controller
         $past = $user->appointments()
                      ->where(function($query) {
                          $query->where('appointment_date','<', now()->toDateString())
-                               ->orWhereIn('status', ['completed', 'cancelled']);
+                               ->orWhereIn('status', \App\Models\Appointment::HISTORY_STATUSES);
                      })
                      ->orderBy('appointment_date','desc')
                      ->take(10)
@@ -101,7 +101,7 @@ class DashboardController extends Controller
                                ->get();
 
         $pastAlternative = $allAppointments->filter(function($appointment) {
-            return $appointment->isPast() || $appointment->isCompleted() || $appointment->isCancelled();
+            return $appointment->shouldAppearInHistory();
         })->take(10);
 
         \Log::info('Dashboard data for user ' . $user->id, [

@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\PatientVisit;
 use App\Models\QueueEntry;
+use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class QueueService
 {
@@ -121,7 +124,7 @@ class QueueService
             ->where('clinic_id', $clinicId)
             ->where('doctor_id', $doctorId)
             ->whereDate('appointment_date', $dateString)
-            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->whereNotIn('status', Appointment::FINAL_STATUSES)
             ->pluck('appointment_time')
             ->map(fn ($time) => $this->normalizeTimeLabel($time));
 
@@ -141,11 +144,13 @@ class QueueService
     ): Collection {
         $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
         $occupied = $this->occupiedSlotTimes($clinicId, $doctorId, $date);
-        $cutoff = $date->isToday() ? now()->addMinutes($bufferMinutes) : null;
+        $cutoff = $date->isToday()
+            ? now()->addMinutes($bufferMinutes)
+            : ($date->isPast() ? now() : null);
 
         return $this->buildSlotGrid($clinicId, $doctorId, $serviceId, $date)
             ->map(function (array $slot) use ($occupied, $cutoff) {
-                $expired = $cutoff ? $slot['start_at']->lt($cutoff) : false;
+                $expired = $cutoff ? $slot['start_at']->lte($cutoff) : false;
 
                 return array_merge($slot, [
                     'occupied' => $occupied->contains($slot['time']),
@@ -170,6 +175,64 @@ class QueueService
             ->contains(fn (array $slot) => $slot['time'] === $time && $slot['available']);
     }
 
+    public function createOrReuseSlotEntry(
+        int $clinicId,
+        int $doctorId,
+        Carbon|string $date,
+        string $time,
+        array $values
+    ): QueueEntry {
+        $date = $date instanceof Carbon ? $date->toDateString() : Carbon::parse($date)->toDateString();
+        $time = $this->normalizeTimeForStorage($time);
+
+        return DB::transaction(function () use ($clinicId, $doctorId, $date, $time, $values) {
+            $slot = QueueEntry::query()
+                ->where('clinic_id', $clinicId)
+                ->where('doctor_id', $doctorId)
+                ->whereDate('scheduled_slot_date', $date)
+                ->where('scheduled_slot_time', $time)
+                ->lockForUpdate()
+                ->first();
+
+            $payload = array_merge($values, [
+                'clinic_id' => $clinicId,
+                'doctor_id' => $doctorId,
+                'scheduled_slot_date' => $date,
+                'scheduled_slot_time' => $time,
+                'status' => $values['status'] ?? 'waiting',
+            ]);
+
+            if (! $slot) {
+                return QueueEntry::create($payload);
+            }
+
+            if (! in_array($slot->status, QueueEntry::finalPatientStatuses(), true)) {
+                throw new RuntimeException('This queue slot is already in use.');
+            }
+
+            $slot->forceFill(array_merge([
+                'user_id' => null,
+                'patient_id' => null,
+                'appointment_id' => null,
+                'served_at' => null,
+                'called_at' => null,
+                'service_started_at' => null,
+                'doctor_completed_at' => null,
+                'service_ended_at' => null,
+                'delay_notice_at' => null,
+                'delay_notice_reason' => null,
+                'priority_level' => 'regular',
+                'priority_rank' => 5,
+                'priority_marked_at' => null,
+                'priority_marked_by' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], $payload))->save();
+
+            return $slot->fresh();
+        });
+    }
+
     public function findEarliestWalkInSlot(
         int $clinicId,
         int $doctorId,
@@ -181,6 +244,128 @@ class QueueService
 
         return $this->availableSlots($clinicId, $doctorId, $serviceId, $date, $bufferMinutes)
             ->firstWhere('available', true);
+    }
+
+    public function markEntryPriorityAndReflow(QueueEntry $entry, int $secretaryId): array
+    {
+        return DB::transaction(function () use ($entry, $secretaryId) {
+            $fresh = QueueEntry::query()
+                ->with(['appointment', 'patient'])
+                ->whereKey($entry->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($fresh->status, QueueEntry::nextCandidateStatuses(), true)) {
+                throw new RuntimeException('Only waiting or called patients can be marked as priority.');
+            }
+
+            $doctorId = (int) ($fresh->doctor_id ?: $fresh->appointment?->doctor_id ?: 0);
+            $date = $fresh->scheduledSlotDateString();
+
+            if ($doctorId <= 0 || ! $date) {
+                throw new RuntimeException('This queue entry is missing the doctor or scheduled date needed for priority placement.');
+            }
+
+            $entries = QueueEntry::query()
+                ->with(['appointment', 'patient'])
+                ->where('clinic_id', $fresh->clinic_id)
+                ->where(function ($doctorQuery) use ($doctorId) {
+                    $doctorQuery->where('doctor_id', $doctorId)
+                        ->orWhereHas('appointment', function ($appointmentQuery) use ($doctorId) {
+                            $appointmentQuery->where('doctor_id', $doctorId);
+                        });
+                })
+                ->whereDate('scheduled_slot_date', $date)
+                ->whereIn('status', QueueEntry::nextCandidateStatuses())
+                ->orderByScheduledSlot()
+                ->lockForUpdate()
+                ->get();
+
+            $currentIndex = $entries->search(fn (QueueEntry $candidate) => (int) $candidate->id === (int) $fresh->id);
+
+            if ($currentIndex === false) {
+                throw new RuntimeException('This queue entry is no longer available for priority placement.');
+            }
+
+            $entriesExceptTarget = $entries
+                ->reject(fn (QueueEntry $candidate) => (int) $candidate->id === (int) $fresh->id)
+                ->values();
+
+            $lastPriorityIndex = null;
+
+            foreach ($entriesExceptTarget as $index => $candidate) {
+                if ($candidate->isPriority()) {
+                    $lastPriorityIndex = $index;
+                }
+            }
+
+            $insertionIndex = $lastPriorityIndex === null ? 0 : $lastPriorityIndex + 1;
+            $affected = collect([$fresh]);
+
+            if ($currentIndex > $insertionIndex) {
+                $affected = $entries->slice($insertionIndex, $currentIndex - $insertionIndex + 1)->values();
+                $this->preserveOriginalSlots($affected);
+
+                $slotAssignments = [];
+
+                foreach ($affected as $index => $candidate) {
+                    if ($index === 0) {
+                        $slotAssignments[$fresh->id] = $this->slotPayloadFromEntry($candidate);
+                        continue;
+                    }
+
+                    $previous = $affected[$index - 1];
+                    $slotAssignments[$previous->id] = $this->slotPayloadFromEntry($candidate);
+                }
+
+                $lastDisplaced = $affected[$affected->count() - 2] ?? null;
+
+                if ($lastDisplaced && empty($slotAssignments[$lastDisplaced->id]['scheduled_slot_time'])) {
+                    $slotAssignments[$lastDisplaced->id] = $this->nextGeneratedSlotPayload($fresh, $entries);
+                }
+
+                QueueEntry::query()
+                    ->whereIn('id', array_keys($slotAssignments))
+                    ->update([
+                        'scheduled_slot_date' => null,
+                        'scheduled_slot_time' => null,
+                    ]);
+
+                foreach ($slotAssignments as $entryId => $payload) {
+                    QueueEntry::query()
+                        ->whereKey($entryId)
+                        ->update($payload);
+                }
+            } else {
+                $this->preserveOriginalSlots(collect([$fresh]));
+            }
+
+            QueueEntry::query()
+                ->whereKey($fresh->id)
+                ->update([
+                    'priority_level' => 'priority',
+                    'priority_rank' => 1,
+                    'priority_marked_at' => now(),
+                    'priority_marked_by' => $secretaryId,
+                ]);
+
+            $affectedIds = $affected
+                ->pluck('id')
+                ->push($fresh->id)
+                ->unique()
+                ->values();
+
+            return [
+                'entry' => QueueEntry::query()
+                    ->with(['appointment.user', 'patient.user', 'clinic', 'user'])
+                    ->findOrFail($fresh->id),
+                'affected' => QueueEntry::query()
+                    ->with(['appointment.user', 'patient.user', 'clinic', 'user'])
+                    ->whereIn('id', $affectedIds)
+                    ->orderByScheduledSlot()
+                    ->get(),
+            ];
+        });
     }
 
     public function normalizeTimeLabel($time): ?string
@@ -198,5 +383,105 @@ class QueueService
         }
 
         return Carbon::parse($time)->format('H:i');
+    }
+
+    private function normalizeTimeForStorage($time): ?string
+    {
+        $normalized = $this->normalizeTimeLabel($time);
+
+        return $normalized ? $normalized . ':00' : null;
+    }
+
+    private function preserveOriginalSlots(Collection $entries): void
+    {
+        foreach ($entries as $entry) {
+            if ($entry->original_scheduled_slot_date || $entry->original_scheduled_slot_time) {
+                continue;
+            }
+
+            QueueEntry::query()
+                ->whereKey($entry->id)
+                ->update([
+                    'original_scheduled_slot_date' => $entry->scheduledSlotDateString(),
+                    'original_scheduled_slot_time' => $entry->scheduledSlotTimeString()
+                        ? $entry->scheduledSlotTimeString() . ':00'
+                        : null,
+                ]);
+        }
+    }
+
+    private function slotPayloadFromEntry(QueueEntry $entry): array
+    {
+        $date = $entry->scheduledSlotDateString();
+        $time = $entry->scheduledSlotTimeString();
+
+        return [
+            'scheduled_slot_date' => $date,
+            'scheduled_slot_time' => $time ? $time . ':00' : null,
+        ];
+    }
+
+    private function nextGeneratedSlotPayload(QueueEntry $entry, Collection $laneEntries): array
+    {
+        $serviceId = $this->serviceIdForEntry($entry);
+
+        if (! $serviceId) {
+            throw new RuntimeException('Unable to generate a later slot because the queue entry service could not be determined.');
+        }
+
+        $date = Carbon::parse($entry->scheduledSlotDateString());
+        $doctorId = (int) ($entry->doctor_id ?: $entry->appointment?->doctor_id);
+        $used = $this->occupiedSlotTimes((int) $entry->clinic_id, $doctorId, $date)
+            ->merge(
+                $laneEntries
+                    ->map(fn (QueueEntry $candidate) => $candidate->scheduledSlotTimeString())
+                    ->filter()
+            )
+            ->unique()
+            ->values();
+
+        $latest = $used->sort()->last();
+
+        $slot = $this->buildSlotGrid((int) $entry->clinic_id, $doctorId, $serviceId, $date)
+            ->first(function (array $slot) use ($used, $latest) {
+                return ! $used->contains($slot['time'])
+                    && (! $latest || $slot['time'] > $latest);
+            });
+
+        if (! $slot) {
+            throw new RuntimeException('No later doctor slot is available for the displaced patient.');
+        }
+
+        return [
+            'scheduled_slot_date' => $slot['date'],
+            'scheduled_slot_time' => $slot['time_with_seconds'],
+        ];
+    }
+
+    private function serviceIdForEntry(QueueEntry $entry): ?int
+    {
+        if ($entry->appointment?->service_id) {
+            return (int) $entry->appointment->service_id;
+        }
+
+        if (! $entry->patient_id) {
+            return null;
+        }
+
+        $visit = PatientVisit::query()
+            ->where('clinic_id', $entry->clinic_id)
+            ->where('patient_id', $entry->patient_id)
+            ->whereDate('date_of_visit', $entry->scheduledSlotDateString() ?? now()->toDateString())
+            ->latest('time_in')
+            ->first();
+
+        if (! $visit?->requested_service) {
+            return null;
+        }
+
+        return Service::query()
+            ->forClinics([(int) $entry->clinic_id])
+            ->where('name', $visit->requested_service)
+            ->value('services.id');
     }
 }

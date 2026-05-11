@@ -220,7 +220,7 @@ class AppointmentController extends Controller
         $doctorBusy = Appointment::where('doctor_id', $data['doctor_id'])
             ->whereDate('appointment_date', $appointmentDate)
             ->where('appointment_time', $time)
-            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->whereNotIn('status', Appointment::FINAL_STATUSES)
             ->exists();
 
         if ($doctorBusy) {
@@ -232,7 +232,7 @@ class AppointmentController extends Controller
         $patientConflict = Appointment::where('user_id', Auth::id())
             ->whereDate('appointment_date', $appointmentDate)
             ->where('appointment_time', $time)
-            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->whereNotIn('status', Appointment::FINAL_STATUSES)
             ->exists();
 
         if ($patientConflict) {
@@ -244,7 +244,7 @@ class AppointmentController extends Controller
         $sameClinicConflict = Appointment::where('user_id', Auth::id())
             ->where('clinic_id', $data['clinic_id'])
             ->whereDate('appointment_date', $appointmentDate)
-            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->whereNotIn('status', Appointment::FINAL_STATUSES)
             ->exists();
 
         if ($sameClinicConflict) {
@@ -283,7 +283,10 @@ class AppointmentController extends Controller
             $errorMessage = strtolower((string) $e->getMessage());
 
             $isDoctorSlotConflict = $sqlState === '23000'
-                && str_contains($errorMessage, 'appointments_doctor_date_time_unique');
+                && (
+                    str_contains($errorMessage, 'appointments_doctor_date_time_unique')
+                    || str_contains($errorMessage, 'appointments_active_doctor_slot_unique')
+                );
 
             if ($isDoctorSlotConflict) {
                 return back()->withInput()->withErrors([
@@ -307,13 +310,11 @@ class AppointmentController extends Controller
             $time
         );
 
-        QueueEntry::updateOrCreate(
-            [
-                'clinic_id' => $data['clinic_id'],
-                'doctor_id' => $data['doctor_id'],
-                'scheduled_slot_date' => $appointmentDate,
-                'scheduled_slot_time' => $time,
-            ],
+        $queueService->createOrReuseSlotEntry(
+            (int) $data['clinic_id'],
+            (int) $data['doctor_id'],
+            $appointmentDate,
+            $time,
             [
                 'user_id' => Auth::id(),
                 'appointment_id' => $appointment->id,
@@ -417,7 +418,7 @@ class AppointmentController extends Controller
         $doctorBusy = Appointment::where('doctor_id', $appointment->doctor_id)
             ->whereDate('appointment_date', $appointmentDate)
             ->where('appointment_time', $time)
-            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->whereNotIn('status', Appointment::FINAL_STATUSES)
             ->where('id', '!=', $appointment->id)
             ->exists();
 
@@ -430,7 +431,7 @@ class AppointmentController extends Controller
         $patientConflict = Appointment::where('user_id', Auth::id())
             ->whereDate('appointment_date', $appointmentDate)
             ->where('appointment_time', $time)
-            ->whereNotIn('status', ['cancelled', 'no_show', 'rescheduled'])
+            ->whereNotIn('status', Appointment::FINAL_STATUSES)
             ->where('id', '!=', $appointment->id)
             ->exists();
 
@@ -475,16 +476,18 @@ class AppointmentController extends Controller
                 $time
             );
 
-            QueueEntry::create([
-                'clinic_id'           => $appointment->clinic_id,
+            $queueService->createOrReuseSlotEntry(
+                (int) $appointment->clinic_id,
+                (int) $appointment->doctor_id,
+                $appointmentDate,
+                $time,
+                [
                 'user_id'             => Auth::id(),
                 'appointment_id'      => $appointment->id,
-                'doctor_id'           => $appointment->doctor_id,
                 'queue_number'        => $queueNumber,
-                'scheduled_slot_date' => $appointmentDate,
-                'scheduled_slot_time' => $time,
                 'status'              => 'waiting',
-            ]);
+                ]
+            );
         });
 
         return redirect()

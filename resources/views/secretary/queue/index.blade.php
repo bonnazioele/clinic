@@ -644,6 +644,13 @@
                       Walk-In
                     </span>
                   @endif
+
+                  @if($queueEntry->isPriority())
+                    <span class="queue-type bg-warning text-dark">
+                      <i class="bi bi-star-fill"></i>
+                      Priority
+                    </span>
+                  @endif
                 </td>
 
                 <td>
@@ -708,6 +715,19 @@
                     @endif
 
                     @if(in_array($status, ['waiting', 'called'], true))
+                      @unless($queueEntry->isPriority())
+                        <form method="POST"
+                              action="{{ route('secretary.queue.priority', [$clinic, $queueEntry]) }}"
+                              data-confirm="Mark this patient as priority and update queue slots?"
+                              data-confirm-title="Mark As Priority"
+                              data-confirm-btn="Mark Priority">
+                          @csrf
+                          <button class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-star-fill me-1"></i>Priority
+                          </button>
+                        </form>
+                      @endunless
+
                       <button type="button"
                               class="btn btn-sm btn-warning"
                               data-bs-toggle="modal"
@@ -754,6 +774,13 @@
                 {{ $queueEntry->status_label }}
               </span>
             </div>
+
+            @if($queueEntry->isPriority())
+              <span class="queue-type bg-warning text-dark mb-2">
+                <i class="bi bi-star-fill"></i>
+                Priority
+              </span>
+            @endif
 
             @if($queueEntry->display_email)
               <div class="queue-contact">
@@ -822,6 +849,19 @@
               @endif
 
               @if(in_array($status, ['waiting', 'called'], true))
+                @unless($queueEntry->isPriority())
+                  <form method="POST"
+                        action="{{ route('secretary.queue.priority', [$clinic, $queueEntry]) }}"
+                        data-confirm="Mark this patient as priority and update queue slots?"
+                        data-confirm-title="Mark As Priority"
+                        data-confirm-btn="Mark Priority">
+                    @csrf
+                    <button class="btn btn-sm btn-outline-warning">
+                      <i class="bi bi-star-fill me-1"></i>Priority
+                    </button>
+                  </form>
+                @endunless
+
                 <button type="button"
                         class="btn btn-sm btn-warning"
                         data-bs-toggle="modal"

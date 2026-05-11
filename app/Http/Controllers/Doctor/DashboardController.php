@@ -30,20 +30,36 @@ class DashboardController extends Controller
         $activeClinic = $this->activeClinic($request);
         $today = now()->toDateString();
 
+        $services = $doctor->servicesForClinic($activeClinicId)
+            ->orderBy('services.name')
+            ->get(['services.id', 'services.name']);
+
+        $serviceId = (int) $request->query('service_id', 0);
+        if ($serviceId > 0 && ! $services->pluck('id')->contains($serviceId)) {
+            $serviceId = 0;
+        }
+
         $appointments = Appointment::with(['clinic', 'user', 'service'])
             ->where('doctor_id', $doctor->id)
             ->where('clinic_id', $activeClinicId)
             ->whereDate('appointment_date', $today)
+            ->whereIn('status', Appointment::ACTIVE_STATUSES)
+            ->when($serviceId > 0, function ($query) use ($serviceId) {
+                $query->where('service_id', $serviceId);
+            })
             ->orderBy('appointment_time')
             ->get();
-
-        $clinics = collect([$activeClinic]);
 
         $queue = QueueEntry::query()
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinicId)
             ->forDoctor($doctor->id)
             ->whereIn('status', QueueEntry::doctorQueueVisibleStatuses())
+            ->when($serviceId > 0, function ($query) use ($serviceId) {
+                $query->whereHas('appointment', function ($appointmentQuery) use ($serviceId) {
+                    $appointmentQuery->where('service_id', $serviceId);
+                });
+            })
             ->where(function ($query) use ($today) {
                 $query->where(function ($appointmentQueue) use ($today) {
                     $appointmentQueue->whereNotNull('appointment_id')
@@ -70,17 +86,13 @@ class DashboardController extends Controller
             ->orderBy('queue_number')
             ->get();
 
-        $servicesOfferedCount = $doctor->servicesForClinic($activeClinicId)
-            ->distinct('services.id')
-            ->count('services.id');
-
         return view('doctor.dashboard', compact(
             'doctor',
             'appointments',
             'queue',
-            'clinics',
             'activeClinic',
-            'servicesOfferedCount'
+            'services',
+            'serviceId'
         ));
     }
 }

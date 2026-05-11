@@ -116,8 +116,13 @@ class DoctorQueueController extends Controller
                     ?? ($appointmentTime ? $appointmentTime->format('g:i A') : ($visit?->time_in?->format('g:i A') ?? $entry->created_at->format('g:i A'))),
                 'status' => $entry->status_label,
                 'status_key' => $entry->status,
+                'is_priority' => $entry->isPriority(),
                 'active' => in_array($entry->status, ['served', 'in_progress', 'now_serving'], true),
                 'call_url' => route('secretary.queue.call', [
+                    'clinic' => $entry->clinic_id,
+                    'entry' => $entry->id,
+                ]),
+                'priority_url' => route('secretary.queue.priority', [
                     'clinic' => $entry->clinic_id,
                     'entry' => $entry->id,
                 ]),

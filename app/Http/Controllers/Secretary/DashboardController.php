@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureSelectedClinic;
 use App\Http\Middleware\SecretaryMiddleware;
 use App\Models\Clinic;
+use App\Models\PatientVisit;
 use App\Models\QueueEntry;
 use App\Models\Service;
 use App\Models\User;
@@ -73,12 +74,20 @@ class DashboardController extends Controller
             ->withDashboardRelations()
             ->get();
 
+        $walkInVisitsByPatient = PatientVisit::query()
+            ->where('clinic_id', $activeClinicId)
+            ->whereDate('date_of_visit', $today)
+            ->whereIn('patient_id', $queueEntriesToday->where('appointment_id', null)->pluck('patient_id')->filter()->unique())
+            ->latest('time_in')
+            ->get(['patient_id', 'requested_service'])
+            ->groupBy('patient_id');
+
         $serviceStatusCards = $serviceOptions
-            ->map(function ($service) use ($queueEntriesToday) {
+            ->map(function ($service) use ($queueEntriesToday, $walkInVisitsByPatient) {
                 $serviceId = (int) $service->id;
 
                 $serviceEntries = $queueEntriesToday
-                    ->filter(fn ($entry) => (int) ($entry->appointment?->service_id ?? 0) === $serviceId);
+                    ->filter(fn ($entry) => $this->queueEntryMatchesService($entry, $service, $walkInVisitsByPatient));
 
                 $waitingCount = $serviceEntries
                     ->where('status', 'waiting')
@@ -205,5 +214,19 @@ class DashboardController extends Controller
             'serviceTabs' => $serviceTabs,
             'activeServiceTabId' => $activeServiceTabId,
         ]);
+    }
+
+    private function queueEntryMatchesService(QueueEntry $entry, Service $service, $walkInVisitsByPatient): bool
+    {
+        if ((int) ($entry->appointment?->service_id ?? 0) === (int) $service->id) {
+            return true;
+        }
+
+        if (! $entry->is_walk_in || ! $entry->patient_id) {
+            return false;
+        }
+
+        return ($walkInVisitsByPatient->get($entry->patient_id) ?? collect())
+            ->contains(fn (PatientVisit $visit) => $visit->requested_service === $service->name);
     }
 }

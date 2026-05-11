@@ -450,6 +450,11 @@ Route::prefix('secretary')
             ->whereNumber('entry')
             ->name('queue.reschedule');
 
+        Route::post('/clinics/{clinic}/queue/{entry}/priority', [SecretaryQueueController::class, 'markPriority'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
+            ->name('queue.priority');
+
         Route::post('/clinics/{clinic}/queue/{entry}/cancel', [SecretaryQueueController::class, 'cancel'])
             ->whereNumber('clinic')
             ->whereNumber('entry')

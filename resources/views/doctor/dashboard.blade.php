@@ -21,9 +21,9 @@
 
     $appointments = collect($appointments ?? []);
     $queue = collect($queue ?? []);
-    $clinics = collect($clinics ?? []);
+    $services = collect($services ?? []);
+    $serviceId = (int) ($serviceId ?? 0);
     $activeClinic = $activeClinic ?? null;
-    $servicesOfferedCount = $servicesOfferedCount ?? 0;
 
     $formatTime = function ($time) {
         if (!$time) {
@@ -38,21 +38,18 @@
     };
 
     $todayAppointmentsCount = $appointments->count();
-    $activeQueueCount = $queue->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving', 'rescheduled'])->count();
-    $todayQueueCount = $queue->count();
-
-    $nowServingCount = $queue->whereIn('status', ['in_progress', 'now_serving'])->count();
     $waitingCount = $queue->whereIn('status', ['waiting', 'called', 'rescheduled'])->count();
-    $completedQueueCount = $queue->whereIn('status', ['served', 'completed'])->count();
 
-    if ($waitingCount === 0 && $nowServingCount === 0 && $activeQueueCount > 0) {
-        $waitingCount = $activeQueueCount;
-    }
+    $nowServingEntry = $queue->first(function ($entry) {
+      return in_array($entry->status, ['in_progress', 'now_serving'], true);
+    });
 
-    $todayAppointments = $appointments->sortBy('appointment_time')->take(6);
-    $todayQueue = $queue->take(6);
+    $nextQueue = $queue
+      ->filter(fn ($entry) => in_array($entry->status, ['waiting', 'called', 'rescheduled'], true))
+      ->values()
+      ->take(5);
 
-    $nextAppointment = $appointments->sortBy('appointment_time')->first();
+    $showQueueEmptyState = ! $nowServingEntry && $nextQueue->isEmpty();
 @endphp
 
 <style>
@@ -612,18 +609,9 @@
               <h1 class="doctor-hero-title">Good day, {{ $doctorName }}!</h1>
 
               <p class="doctor-hero-text">
-                Here's your quick view of <strong>today's queue</strong>, <strong>today's appointments</strong>, and your assigned clinic so you can work faster without switching pages.
+                Here's your quick view of <strong>today's queue</strong> and your assigned clinic so you can work faster without switching pages.
               </p>
 
-              <div class="d-flex flex-wrap gap-2 mt-4">
-                <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-primary doctor-quick-btn">
-                  <i class="bi bi-list-ol me-2"></i>Open Queue
-                </a>
-
-                <a href="{{ Route::has('doctor.schedules.index') ? route('doctor.schedules.index') : '#' }}" class="btn btn-outline-primary doctor-quick-btn">
-                  <i class="bi bi-calendar2-week me-2"></i>Manage Schedule
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -635,11 +623,20 @@
                 <div class="doctor-highlight-label">Current Clinic</div>
                 <p class="doctor-highlight-value text-truncate">{{ $activeClinic->name ?? 'No clinic assigned' }}</p>
                 <div class="doctor-highlight-sub">
-                  @if($nextAppointment)
-                    Next appointment:
-                    <strong>{{ $formatTime($nextAppointment->appointment_time ?? null) }}</strong>
+                  @if($nowServingEntry)
+                    Now serving:
+                    <strong>
+                      {{ $nowServingEntry->display_name
+                        ?? $nowServingEntry->appointment?->user?->name
+                        ?? $nowServingEntry->patient?->name
+                        ?? $nowServingEntry->user?->name
+                        ?? 'Patient' }}
+                    </strong>
+                    @if($nowServingEntry->queue_number)
+                      <span>(#{{ $nowServingEntry->queue_number }})</span>
+                    @endif
                   @else
-                    No more appointments scheduled today
+                    No patient is being served right now
                   @endif
                 </div>
               </div>
@@ -654,11 +651,26 @@
     </div>
 
     <div class="row g-3 g-lg-4 mb-4">
-      <div class="col-sm-6 col-xl-3">
+      <div class="col-sm-6 col-xl-4">
+        <div class="overview-card glass-panel overview-yellow">
+          <div class="overview-top">
+            <div>
+              <div class="overview-label">Waiting Count</div>
+              <h2 class="overview-value">{{ $waitingCount }}</h2>
+            </div>
+            <span class="overview-icon">
+              <i class="bi bi-hourglass-split"></i>
+            </span>
+          </div>
+          <p class="overview-desc">Patients waiting to be served.</p>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-xl-4">
         <div class="overview-card glass-panel overview-blue">
           <div class="overview-top">
             <div>
-              <div class="overview-label">Today's Appointments</div>
+              <div class="overview-label">Appointments Today</div>
               <h2 class="overview-value">{{ $todayAppointmentsCount }}</h2>
             </div>
             <span class="overview-icon">
@@ -669,73 +681,102 @@
         </div>
       </div>
 
-      <div class="col-sm-6 col-xl-3">
-        <div class="overview-card glass-panel overview-yellow">
-          <div class="overview-top">
-            <div>
-              <div class="overview-label">Today's Queue</div>
-              <h2 class="overview-value">{{ $todayQueueCount }}</h2>
-            </div>
-            <span class="overview-icon">
-              <i class="bi bi-people"></i>
-            </span>
-          </div>
-          <p class="overview-desc">Waiting, serving, and completed patients.</p>
-        </div>
-      </div>
-
-      <div class="col-sm-6 col-xl-3">
+      <div class="col-sm-6 col-xl-4">
         <div class="overview-card glass-panel overview-green">
           <div class="overview-top">
             <div>
-              <div class="overview-label">Now Serving</div>
-              <h2 class="overview-value">{{ $nowServingCount }}</h2>
+              <div class="overview-label">Queue Management</div>
+              <h2 class="overview-value">&nbsp;</h2>
             </div>
             <span class="overview-icon">
-              <i class="bi bi-megaphone"></i>
+              <i class="bi bi-list-ol"></i>
             </span>
           </div>
-          <p class="overview-desc">Patients currently in consultation.</p>
-        </div>
-      </div>
-
-      <div class="col-sm-6 col-xl-3">
-        <div class="overview-card glass-panel overview-cyan">
-          <div class="overview-top">
-            <div>
-              <div class="overview-label">Services Offered</div>
-              <h2 class="overview-value">{{ $servicesOfferedCount }}</h2>
-            </div>
-            <span class="overview-icon">
-              <i class="bi bi-clipboard2-pulse"></i>
-            </span>
-          </div>
-          <p class="overview-desc">Available services in your assignment.</p>
+          <p class="overview-desc">
+            <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-outline-primary doctor-quick-btn">
+              Open Full Queue
+            </a>
+          </p>
         </div>
       </div>
     </div>
 
     <div class="row g-4 align-items-stretch">
-      <div class="col-xl-5">
+      <div class="col-12">
         <div class="section-card glass-panel h-100">
           <div class="section-card-header">
             <div class="section-title-wrap">
               <div>
                 <h3 class="section-title">
                   <i class="bi bi-list-ol"></i>
-                  Today's Queue
+                  Now Serving & Next Patients
                 </h3>
-                <p class="section-subtitle">See who is waiting, being served, or completed today.</p>
+                <p class="section-subtitle">Current patient in the room and the next patients in line.</p>
               </div>
 
-              <span class="section-count yellow">{{ $todayQueueCount }}</span>
+              <span class="section-count yellow">{{ $waitingCount }}</span>
             </div>
+
+            @if($services->count() > 2)
+              <form method="GET" class="mt-3">
+                <label class="queue-label" for="serviceFilter">Service Filter</label>
+                <div class="d-flex flex-wrap gap-2">
+                  <select id="serviceFilter" name="service_id" class="form-select" style="max-width: 280px;" onchange="this.form.submit()">
+                    <option value="">All services</option>
+                    @foreach($services as $service)
+                      <option value="{{ $service->id }}" {{ $serviceId === (int) $service->id ? 'selected' : '' }}>
+                        {{ $service->name }}
+                      </option>
+                    @endforeach
+                  </select>
+                </div>
+              </form>
+            @endif
           </div>
 
           <div class="section-card-body">
-            @if($todayQueue->count())
+            @if($showQueueEmptyState)
+              <div class="doctor-empty">
+                <div class="doctor-empty-icon">
+                  <i class="bi bi-people"></i>
+                </div>
+                <h6>No patients in queue for today</h6>
+                <p>Waiting for the next patient to be called.</p>
+              </div>
+            @elseif($nowServingEntry)
               <div class="doctor-list">
-                @foreach($todayQueue as $q)
+                <div class="doctor-item">
+                  <div class="doctor-item-main">
+                    <div class="doctor-item-left">
+                      <span class="doctor-item-badge green">Now</span>
+
+                      <div class="min-w-0">
+                        <h6 class="doctor-item-title">
+                          {{ $nowServingEntry->display_name
+                            ?? $nowServingEntry->appointment?->user?->name
+                            ?? $nowServingEntry->patient?->name
+                            ?? $nowServingEntry->user?->name
+                            ?? 'Patient' }}
+                        </h6>
+                        <p class="doctor-item-meta">
+                          <i class="bi bi-activity me-1"></i>
+                          Queue #{{ $nowServingEntry->queue_number ?? 'N/A' }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span class="doctor-status serving">
+                      <i class="bi bi-play-circle-fill"></i>
+                      Now Serving
+                    </span>
+                  </div>
+                </div>
+              </div>
+            @endif
+
+            @if($nextQueue->count())
+              <div class="doctor-list mt-3">
+                @foreach($nextQueue as $q)
                   @php
                     $status = $q->status ?? 'waiting';
                     $statusClass = 'default';
@@ -783,164 +824,15 @@
                   </div>
                 @endforeach
               </div>
-
-              @if($todayQueueCount > 6)
-                <div class="text-center mt-3">
-                  <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-outline-warning doctor-quick-btn">
-                    View Full Queue
-                  </a>
-                </div>
-              @endif
-            @else
-              <div class="doctor-empty">
+            @elseif(! $showQueueEmptyState)
+              <div class="doctor-empty mt-3">
                 <div class="doctor-empty-icon">
                   <i class="bi bi-people"></i>
                 </div>
-                <h6>No patients in queue</h6>
-                <p>The queue is clear for today.</p>
+                <h6>No patients waiting</h6>
+                <p>The queue is clear after the current patient.</p>
               </div>
             @endif
-          </div>
-        </div>
-      </div>
-
-      <div class="col-xl-4">
-        <div class="section-card glass-panel h-100">
-          <div class="section-card-header">
-            <div class="section-title-wrap">
-              <div>
-                <h3 class="section-title">
-                  <i class="bi bi-calendar-day"></i>
-                  Today's Appointments
-                </h3>
-                <p class="section-subtitle">Your scheduled consultations for today.</p>
-              </div>
-
-              <span class="section-count">{{ $todayAppointmentsCount }}</span>
-            </div>
-          </div>
-
-          <div class="section-card-body">
-            @if($todayAppointments->count())
-              <div class="doctor-list">
-                @foreach($todayAppointments as $appt)
-                  @php
-                    $appointmentPatientName =
-                        $appt->user?->name
-                        ?? $appt->patient?->name
-                        ?? 'Patient';
-
-                    $appointmentServiceName =
-                        $appt->service?->name
-                        ?? 'Consultation';
-
-                    $appointmentDocument = $appt->medical_document ?? null;
-                  @endphp
-
-                  <div class="doctor-item">
-                    <div class="doctor-item-main">
-                      <div class="doctor-item-left">
-                        <span class="doctor-item-badge blue">
-                          {{ $formatTime($appt->appointment_time ?? null) }}
-                        </span>
-
-                        <div class="min-w-0">
-                          <h6 class="doctor-item-title">{{ $appointmentPatientName }}</h6>
-                          <p class="doctor-item-meta">
-                            <i class="bi bi-gear me-1"></i>
-                            {{ $appointmentServiceName }}
-                          </p>
-                        </div>
-                      </div>
-
-                      @if($appointmentDocument)
-                        <a href="{{ asset('storage/' . $appointmentDocument) }}"
-                           target="_blank"
-                           class="btn btn-sm btn-outline-primary doctor-quick-btn"
-                           style="padding:8px 12px;">
-                          <i class="bi bi-file-earmark-medical"></i>
-                        </a>
-                      @endif
-                    </div>
-                  </div>
-                @endforeach
-              </div>
-            @else
-              <div class="doctor-empty">
-                <div class="doctor-empty-icon">
-                  <i class="bi bi-calendar-x"></i>
-                </div>
-                <h6>No appointments today</h6>
-                <p>You currently have no scheduled consultations for today.</p>
-              </div>
-            @endif
-          </div>
-        </div>
-      </div>
-
-      <div class="col-xl-3">
-        <div class="doctor-side-panel glass-panel h-100">
-          <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
-            <div>
-              <h3 class="section-title mb-0" style="font-size:1.2rem;">
-                <i class="bi bi-building"></i>
-                Clinic Overview
-              </h3>
-              <p class="section-subtitle mb-0" style="margin-top:6px;">Quick reference for your assignment.</p>
-            </div>
-
-            <span class="section-count green">{{ $clinics->count() }}</span>
-          </div>
-
-          <div class="d-grid gap-3">
-            <div class="mini-info">
-              <div class="mini-info-title">Active Clinic</div>
-              <p class="mini-info-value">{{ $activeClinic->name ?? 'No clinic assigned' }}</p>
-              <p class="mini-info-text">This is the clinic currently linked to your dashboard.</p>
-            </div>
-
-            <div class="mini-info">
-              <div class="mini-info-title">Queue Summary</div>
-              <p class="mini-info-value">{{ $waitingCount }} waiting · {{ $nowServingCount }} serving · {{ $completedQueueCount }} completed</p>
-              <p class="mini-info-text">Helpful for checking today's actual workload quickly.</p>
-            </div>
-
-            <div>
-              <div class="mini-info-title mb-2">Assigned Clinic List</div>
-
-              <div class="d-grid gap-2">
-                @forelse($clinics as $c)
-                  <div class="clinic-chip">
-                    <span class="clinic-chip-icon">
-                      <i class="bi bi-hospital"></i>
-                    </span>
-
-                    <div class="min-w-0">
-                      <div class="fw-bold text-dark text-truncate">{{ $c->name ?? 'Clinic' }}</div>
-                      <div class="text-muted small">Assigned clinic</div>
-                    </div>
-                  </div>
-                @empty
-                  <div class="doctor-empty" style="padding:24px 16px;">
-                    <div class="doctor-empty-icon" style="width:58px;height:58px;font-size:1.6rem;margin-bottom:10px;">
-                      <i class="bi bi-building"></i>
-                    </div>
-                    <h6 style="font-size:1rem;">No clinics assigned</h6>
-                    <p style="font-size:0.86rem;">No clinic is currently attached to this doctor account.</p>
-                  </div>
-                @endforelse
-              </div>
-            </div>
-
-            <div class="pt-2">
-              <a href="{{ Route::has('doctor.queue.index') ? route('doctor.queue.index') : '#' }}" class="btn btn-primary w-100 doctor-quick-btn mb-2">
-                <i class="bi bi-list-ol me-2"></i>Go to Queue
-              </a>
-
-              <a href="{{ Route::has('doctor.schedules.index') ? route('doctor.schedules.index') : '#' }}" class="btn btn-outline-primary w-100 doctor-quick-btn">
-                <i class="bi bi-calendar2-week me-2"></i>Go to Schedules
-              </a>
-            </div>
           </div>
         </div>
       </div>

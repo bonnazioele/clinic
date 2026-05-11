@@ -67,16 +67,18 @@ class QueueController extends Controller
             (string) $appointment->getRawOriginal('appointment_time')
         );
 
-        $entry = QueueEntry::create([
-            'clinic_id'           => $clinic->id,
+        $entry = $this->queue->createOrReuseSlotEntry(
+            (int) $clinic->id,
+            (int) $appointment->doctor_id,
+            $appointment?->appointment_date?->toDateString(),
+            (string) $appointment?->getRawOriginal('appointment_time'),
+            [
             'user_id'             => Auth::id(),
             'appointment_id'      => $appointment ? $appointment->id : null,
-            'doctor_id'           => $appointment?->doctor_id,
             'queue_number'        => $number,
-            'scheduled_slot_date' => $appointment?->appointment_date?->toDateString(),
-            'scheduled_slot_time' => $appointment?->getRawOriginal('appointment_time'),
             'status'              => 'waiting',
-        ]);
+            ]
+        );
 
         event(new QueueUpdated($entry, 'created'));
 

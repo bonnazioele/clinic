@@ -10,6 +10,7 @@ use App\Models\QueueEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class QueueController extends Controller
 {
@@ -30,7 +31,7 @@ class QueueController extends Controller
         $activeClinic = $this->activeClinic($request);
         $today = now()->toDateString();
 
-        $waiting = QueueEntry::query()
+        $queue = QueueEntry::query()
             ->withDashboardRelations()
             ->where('clinic_id', $activeClinic->id)
             ->forDoctor($doctor->id)
@@ -39,7 +40,36 @@ class QueueController extends Controller
             ->orderByScheduledSlot()
             ->get();
 
-        return view('doctor.queue.index', compact('waiting'));
+        $nowServingEntry = $queue->first(function ($entry) {
+            return in_array($entry->status, ['in_progress', 'now_serving'], true);
+        });
+
+        $waitingQueue = $queue
+            ->filter(fn ($entry) => in_array($entry->status, ['waiting', 'called'], true))
+            ->values();
+
+        $completedQueue = $queue
+            ->filter(fn ($entry) => in_array($entry->status, ['served', 'completed'], true))
+            ->values();
+
+        $perPage = 8;
+        $page = LengthAwarePaginator::resolveCurrentPage('page');
+        $waitingPage = new LengthAwarePaginator(
+            $waitingQueue->forPage($page, $perPage),
+            $waitingQueue->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        return view('doctor.queue.index', compact(
+            'nowServingEntry',
+            'waitingPage',
+            'completedQueue'
+        ));
     }
 
     /**

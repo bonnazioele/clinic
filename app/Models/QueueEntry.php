@@ -90,7 +90,6 @@ class QueueEntry extends Model
             'in_progress',
             'now_serving',
             'served',
-            'completed',
         ];
     }
 
@@ -116,11 +115,15 @@ class QueueEntry extends Model
         'queue_number',
         'scheduled_slot_date',
         'scheduled_slot_time',
+        'original_scheduled_slot_date',
+        'original_scheduled_slot_time',
         'status',
         'priority_level',
         'priority_rank',
         'delay_notice_at',
         'delay_notice_reason',
+        'priority_marked_at',
+        'priority_marked_by',
         'served_at',
         'called_at',
         'service_started_at',
@@ -130,7 +133,9 @@ class QueueEntry extends Model
 
     protected $casts = [
         'scheduled_slot_date' => 'date',
+        'original_scheduled_slot_date' => 'date',
         'delay_notice_at' => 'datetime',
+        'priority_marked_at' => 'datetime',
         'served_at' => 'datetime',
         'called_at' => 'datetime',
         'service_started_at' => 'datetime',
@@ -163,6 +168,36 @@ class QueueEntry extends Model
     public function appointment()
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    public function priorityMarkedBy()
+    {
+        return $this->belongsTo(User::class, 'priority_marked_by');
+    }
+
+    public function isPriority(): bool
+    {
+        return (int) ($this->priority_rank ?? 5) < 5
+            || in_array(strtolower((string) $this->priority_level), ['priority', 'urgent', 'emergency'], true);
+    }
+
+    public function scopePriority($query)
+    {
+        return $query->where(function ($priorityQuery) {
+            $priorityQuery->where('priority_rank', '<', 5)
+                ->orWhereIn('priority_level', ['priority', 'urgent', 'emergency', 'Urgent', 'Emergency']);
+        });
+    }
+
+    public function scopeRegularPriority($query)
+    {
+        return $query->where(function ($regularQuery) {
+            $regularQuery->whereNull('priority_rank')
+                ->orWhere('priority_rank', '>=', 5);
+        })->where(function ($levelQuery) {
+            $levelQuery->whereNull('priority_level')
+                ->orWhereNotIn('priority_level', ['priority', 'urgent', 'emergency', 'Urgent', 'Emergency']);
+        });
     }
 
     public function getDisplayNameAttribute(): string

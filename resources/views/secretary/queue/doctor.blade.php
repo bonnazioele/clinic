@@ -943,6 +943,9 @@
                   <div class="fw-bold">{{ $row['name'] }}</div>
                   <div class="patient-muted">
                     {{ $row['id'] }} | {{ $row['visit'] }}
+                    @if(! empty($row['is_priority']))
+                      | Priority
+                    @endif
                   </div>
                 </td>
 
@@ -976,6 +979,19 @@
                         @csrf
                         <button class="row-action-link" type="submit">Call</button>
                       </form>
+
+                      @if($isWaiting && empty($row['is_priority']))
+                        <form
+                          method="POST"
+                          action="{{ $row['priority_url'] }}"
+                          data-confirm="Mark this patient as priority and update queue slots?"
+                          data-confirm-title="Mark As Priority"
+                          data-confirm-btn="Mark Priority"
+                          data-keep-enabled>
+                          @csrf
+                          <button class="row-action-link" type="submit">Priority</button>
+                        </form>
+                      @endif
 
                       <form method="POST" action="{{ $row['cancel_url'] }}" data-keep-enabled>
                         @csrf

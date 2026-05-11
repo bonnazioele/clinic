@@ -24,14 +24,26 @@ class ServiceQueueController extends Controller
 
         $service = $serviceQuery->firstOrFail();
 
-        // TODO: Include walk-in counts when walk-in queue integrates with services.
         $queueEntriesForDay = QueueEntry::query()
             ->where('clinic_id', $activeClinicId)
             ->whereIn('status', ['waiting', 'in_progress', 'now_serving', 'served'])
-            ->whereHas('appointment', function ($appointmentQuery) use ($service, $today) {
-                $appointmentQuery
-                    ->where('service_id', $service->id)
-                    ->whereDate('appointment_date', $today);
+            ->where(function ($queueQuery) use ($service, $activeClinicId, $today) {
+                $queueQuery->whereHas('appointment', function ($appointmentQuery) use ($service, $today) {
+                    $appointmentQuery
+                        ->where('service_id', $service->id)
+                        ->whereDate('appointment_date', $today);
+                })->orWhere(function ($walkInQuery) use ($service, $activeClinicId, $today) {
+                    $walkInQuery
+                        ->walkIn()
+                        ->whereExists(function ($visitQuery) use ($service, $activeClinicId, $today) {
+                            $visitQuery->selectRaw('1')
+                                ->from('patient_visits')
+                                ->whereColumn('patient_visits.patient_id', 'queue_entries.patient_id')
+                                ->where('patient_visits.clinic_id', $activeClinicId)
+                                ->whereDate('patient_visits.date_of_visit', $today)
+                                ->where('patient_visits.requested_service', $service->name);
+                        });
+                });
             })
             ->with('appointment:id,doctor_id')
             ->orderByDesc('updated_at')
@@ -46,7 +58,7 @@ class ServiceQueueController extends Controller
         $queueEntries = $queueEntriesForDay
             ->whereIn('status', ['waiting', 'in_progress', 'now_serving'])
             ->groupBy(function ($entry) {
-                return $entry->appointment?->doctor_id;
+                return $entry->doctor_id ?: $entry->appointment?->doctor_id;
             });
 
         $doctorSelect = ['users.id', 'users.name'];

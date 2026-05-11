@@ -226,10 +226,13 @@ class WalkInRegistrationController extends Controller
                 'status' => 'Registered',
             ]);
 
-            $queueEntry = QueueEntry::create([
-                'clinic_id' => $clinicId,
+            $queueEntry = $this->queueService->createOrReuseSlotEntry(
+                (int) $clinicId,
+                (int) $doctor->id,
+                now()->toDateString(),
+                $slot['time_with_seconds'],
+                [
                 'patient_id' => $patient->id,
-                'doctor_id' => $doctor->id,
                 'user_id' => null,
                 'appointment_id' => null,
                 'queue_number' => $this->queueService->getSlotQueueNumber(
@@ -239,10 +242,11 @@ class WalkInRegistrationController extends Controller
                     now(),
                     $slot['time_with_seconds']
                 ),
-                'scheduled_slot_date' => now()->toDateString(),
-                'scheduled_slot_time' => $slot['time_with_seconds'],
                 'status' => 'waiting',
-            ]);
+                'priority_level' => $this->queuePriorityLevel($data['priority_level'] ?? 'Normal'),
+                'priority_rank' => $this->queuePriorityRank($data['priority_level'] ?? 'Normal'),
+                ]
+            );
 
             DB::commit();
 
@@ -357,5 +361,19 @@ class WalkInRegistrationController extends Controller
             'emergency_contact_relationship' => $data['emergency_contact_relationship'] ?? null,
             'emergency_contact_number' => $data['emergency_contact_number'] ?? null,
         ]);
+    }
+
+    private function queuePriorityLevel(string $visitPriority): string
+    {
+        return in_array($visitPriority, ['Urgent', 'Emergency'], true) ? 'priority' : 'regular';
+    }
+
+    private function queuePriorityRank(string $visitPriority): int
+    {
+        return match ($visitPriority) {
+            'Emergency' => 0,
+            'Urgent' => 1,
+            default => 5,
+        };
     }
 }

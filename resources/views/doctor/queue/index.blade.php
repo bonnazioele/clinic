@@ -3,6 +3,30 @@
 @section('title', 'Doctor Queue')
 
 @section('doctor-content')
+@php
+  $nowServingEntry = $nowServingEntry ?? null;
+  $waitingPage = $waitingPage ?? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 8);
+  $completedQueue = $completedQueue ?? collect();
+
+  $activeCount = $waitingPage->total() + ($nowServingEntry ? 1 : 0);
+  $completedCount = $completedQueue->count();
+
+  $completedSorted = $completedQueue->sortByDesc(function ($entry) {
+    return $entry->doctor_completed_at
+      ?? $entry->served_at
+      ?? $entry->updated_at
+      ?? $entry->created_at;
+  });
+
+  $formatCompletedTime = function ($entry) {
+    $time = $entry->doctor_completed_at
+      ?? $entry->served_at
+      ?? $entry->updated_at
+      ?? $entry->created_at;
+
+    return $time ? \Carbon\Carbon::parse($time)->format('h:i A') : 'N/A';
+  };
+@endphp
 <style>
   .doctor-queue-page {
     width: 100%;
@@ -397,8 +421,8 @@
           <div class="queue-summary-card">
             <div class="d-flex align-items-center justify-content-between gap-3">
               <div>
-                <div class="queue-summary-label">Today's Patients</div>
-                <h2 class="queue-summary-value">{{ $waiting->count() }}</h2>
+                <div class="queue-summary-label">Active Queue</div>
+                <h2 class="queue-summary-value">{{ $activeCount }}</h2>
               </div>
 
               <span class="patient-avatar" style="background:rgba(245,158,11,0.18);color:#92400e;">
@@ -424,32 +448,29 @@
           </div>
 
           <span class="queue-count-pill">
-            {{ $waiting->count() }}
+            {{ $activeCount }}
           </span>
         </div>
       </div>
 
-      @forelse($waiting as $entry)
+      @if($nowServingEntry)
         @php
-          $patientName = $entry->display_name;
-          $patientEmail = $entry->display_email;
-          $patientPhone = $entry->display_phone;
-          $isWalkIn = $entry->is_walk_in;
-          $serviceName = $entry->appointment?->service?->name ?? 'Walk-in service';
-          $appointmentTime = $entry->appointment?->appointment_time;
-          $slotTime = $entry->formatted_scheduled_slot_time;
-          $isInProgress = in_array($entry->status, ['in_progress', 'now_serving'], true);
-          $isServed = $entry->status === 'served';
-          $isCompleted = $entry->status === 'completed';
-          $canServe = in_array($entry->status, ['in_progress', 'now_serving'], true);
+          $patientName = $nowServingEntry->display_name;
+          $patientEmail = $nowServingEntry->display_email;
+          $patientPhone = $nowServingEntry->display_phone;
+          $isWalkIn = $nowServingEntry->is_walk_in;
+          $appointmentTime = $nowServingEntry->appointment?->appointment_time;
+          $slotTime = $nowServingEntry->formatted_scheduled_slot_time;
+          $isServed = $nowServingEntry->status === 'served';
+          $isCompleted = $nowServingEntry->status === 'completed';
+          $canServe = in_array($nowServingEntry->status, ['in_progress', 'now_serving'], true);
         @endphp
 
-        <div class="queue-row {{ $isInProgress ? 'now-serving' : '' }} {{ ($isServed || $isCompleted) ? 'completed' : '' }}">
+        <div class="queue-row now-serving">
           <div class="row align-items-center g-3">
-
             <div class="col-12 col-lg-1">
               <span class="queue-number">
-                #{{ $entry->queue_number }}
+                #{{ $nowServingEntry->queue_number }}
               </span>
             </div>
 
@@ -476,7 +497,7 @@
                     @elseif($patientPhone)
                       {{ $patientPhone }}
                     @else
-                      {{ $entry->created_at ? $entry->created_at->diffForHumans() : 'Queue entry' }}
+                      {{ $nowServingEntry->created_at ? $nowServingEntry->created_at->diffForHumans() : 'Queue entry' }}
                     @endif
                   </p>
                 </div>
@@ -502,17 +523,17 @@
             <div class="col-6 col-lg-2">
               <div class="queue-label">Status</div>
 
-              <span class="status-pill bg-{{ $entry->status_badge_class }} {{ in_array($entry->status_badge_class, ['warning', 'info']) ? 'text-dark' : 'text-white' }}">
-                <i class="bi {{ ($isServed || $isCompleted) ? 'bi-check2-circle' : ($isInProgress ? 'bi-megaphone-fill' : 'bi-clock-history') }}"></i>
-                {{ $entry->status_label }}
+              <span class="status-pill bg-info text-dark">
+                <i class="bi bi-megaphone-fill"></i>
+                Now Serving
               </span>
             </div>
 
             <div class="col-6 col-lg-1">
               <div class="queue-label">Document</div>
 
-              @if($entry->appointment?->medical_document)
-                <a href="{{ asset('storage/' . $entry->appointment->medical_document) }}"
+              @if($nowServingEntry->appointment?->medical_document)
+                <a href="{{ asset('storage/' . $nowServingEntry->appointment->medical_document) }}"
                    target="_blank"
                    class="btn btn-sm btn-outline-secondary action-btn">
                   <i class="bi bi-file-earmark-medical"></i>
@@ -538,9 +559,9 @@
                         class="btn btn-primary action-btn serve-btn"
                         data-bs-toggle="modal"
                         data-bs-target="#serveModal"
-                        data-action-url="{{ route('doctor.queue.serve', $entry) }}"
+                        data-action-url="{{ route('doctor.queue.serve', $nowServingEntry) }}"
                         data-patient="{{ $patientName }}"
-                        data-queue="#{{ $entry->queue_number }}">
+                        data-queue="#{{ $nowServingEntry->queue_number }}">
                   <i class="bi bi-person-check me-1"></i>
                   Serve
                 </button>
@@ -551,23 +572,212 @@
                 </span>
               @endif
             </div>
-
           </div>
         </div>
-      @empty
+      @else
         <div class="empty-queue">
           <div class="empty-queue-icon">
             <i class="bi bi-people"></i>
           </div>
 
-          <h5>No waiting patients</h5>
-          <p>The queue is currently clear.</p>
+          <h5>No patient is being served</h5>
+          <p>Call the next patient to begin the consultation.</p>
         </div>
-      @endforelse
+      @endif
+
+      @if($waitingPage->count())
+        @foreach($waitingPage as $entry)
+          @php
+            $patientName = $entry->display_name;
+            $patientEmail = $entry->display_email;
+            $patientPhone = $entry->display_phone;
+            $isWalkIn = $entry->is_walk_in;
+            $appointmentTime = $entry->appointment?->appointment_time;
+            $slotTime = $entry->formatted_scheduled_slot_time;
+            $isServed = $entry->status === 'served';
+            $isCompleted = $entry->status === 'completed';
+            $canServe = in_array($entry->status, ['in_progress', 'now_serving'], true);
+            $statusLabel = $entry->status === 'called' ? 'Called' : 'Waiting';
+            $statusIcon = $entry->status === 'called' ? 'bi-megaphone-fill' : 'bi-hourglass-split';
+            $statusClass = $entry->status === 'called' ? 'bg-primary text-white' : 'bg-warning text-dark';
+          @endphp
+
+          <div class="queue-row">
+            <div class="row align-items-center g-3">
+              <div class="col-12 col-lg-1">
+                <span class="queue-number">
+                  #{{ $entry->queue_number }}
+                </span>
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <div class="d-flex align-items-center gap-3">
+                  <span class="patient-avatar">
+                    <i class="bi {{ $isWalkIn ? 'bi-person-plus' : 'bi-person' }}"></i>
+                  </span>
+
+                  <div class="min-w-0">
+                    <h6 class="patient-name text-truncate">
+                      {{ $patientName }}
+                    </h6>
+
+                    <p class="queue-meta">
+                      @if($isWalkIn)
+                        <span class="badge bg-info text-dark rounded-pill me-1">Guest Walk-In</span>
+                      @else
+                        <span class="badge bg-primary rounded-pill me-1">Appointment</span>
+                      @endif
+
+                      @if($patientEmail)
+                        {{ $patientEmail }}
+                      @elseif($patientPhone)
+                        {{ $patientPhone }}
+                      @else
+                        {{ $entry->created_at ? $entry->created_at->diffForHumans() : 'Queue entry' }}
+                      @endif
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-6 col-lg-2">
+                <div class="queue-label">Schedule</div>
+
+                <div class="fw-bold text-dark">
+                  @if($slotTime)
+                    <i class="bi bi-clock text-primary me-1"></i>
+                    {{ $slotTime }}
+                  @elseif($appointmentTime)
+                    <i class="bi bi-clock text-primary me-1"></i>
+                    {{ function_exists('time12') ? time12($appointmentTime) : \Carbon\Carbon::parse($appointmentTime)->format('h:i A') }}
+                  @else
+                    Walk-in
+                  @endif
+                </div>
+              </div>
+
+              <div class="col-6 col-lg-2">
+                <div class="queue-label">Status</div>
+
+                <span class="status-pill {{ $statusClass }}">
+                  <i class="bi {{ $statusIcon }}"></i>
+                  {{ $statusLabel }}
+                </span>
+              </div>
+
+              <div class="col-6 col-lg-1">
+                <div class="queue-label">Document</div>
+
+                @if($entry->appointment?->medical_document)
+                  <a href="{{ asset('storage/' . $entry->appointment->medical_document) }}"
+                     target="_blank"
+                     class="btn btn-sm btn-outline-secondary action-btn">
+                    <i class="bi bi-file-earmark-medical"></i>
+                  </a>
+                @else
+                  <span class="text-muted fw-bold">N/A</span>
+                @endif
+              </div>
+
+              <div class="col-6 col-lg-2 text-lg-end">
+                @if($isCompleted)
+                  <span class="status-pill bg-success text-white">
+                    <i class="bi bi-check2-circle"></i>
+                    Completed
+                  </span>
+                @elseif($isServed)
+                  <span class="btn btn-outline-primary action-btn disabled">
+                    <i class="bi bi-hourglass-split me-1"></i>
+                    Awaiting Secretary
+                  </span>
+                @elseif($canServe)
+                  <button type="button"
+                          class="btn btn-primary action-btn serve-btn"
+                          data-bs-toggle="modal"
+                          data-bs-target="#serveModal"
+                          data-action-url="{{ route('doctor.queue.serve', $entry) }}"
+                          data-patient="{{ $patientName }}"
+                          data-queue="#{{ $entry->queue_number }}">
+                    <i class="bi bi-person-check me-1"></i>
+                    Serve
+                  </button>
+                @else
+                  <span class="btn btn-outline-secondary action-btn disabled">
+                    <i class="bi bi-lock me-1"></i>
+                    Locked
+                  </span>
+                @endif
+              </div>
+            </div>
+          </div>
+        @endforeach
+
+        @if($waitingPage->hasPages())
+          <div class="px-4 py-3">
+            {{ $waitingPage->withQueryString()->links() }}
+          </div>
+        @endif
+      @endif
     </div>
 
   </div>
 </div>
+
+<details class="queue-board mt-4">
+  <summary class="queue-board-header" style="cursor:pointer;">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+      <div>
+        <h3 class="queue-board-title">
+          <i class="bi bi-check2-circle"></i>
+          Today's Completed
+        </h3>
+        <p class="queue-board-subtitle">Patients already completed today.</p>
+      </div>
+
+      <span class="queue-count-pill">
+        {{ $completedCount }}
+      </span>
+    </div>
+  </summary>
+
+  <div>
+    @if($completedSorted->count())
+      @foreach($completedSorted as $entry)
+        <div class="queue-row completed">
+          <div class="row align-items-center g-3">
+            <div class="col-12 col-lg-2">
+              <span class="queue-number">
+                #{{ $entry->queue_number }}
+              </span>
+            </div>
+
+            <div class="col-12 col-lg-6">
+              <h6 class="patient-name text-truncate">
+                {{ $entry->display_name }}
+              </h6>
+            </div>
+
+            <div class="col-12 col-lg-4">
+              <div class="queue-label">Completed At</div>
+              <div class="fw-bold text-dark">
+                <i class="bi bi-clock-history text-success me-1"></i>
+                {{ $formatCompletedTime($entry) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      @endforeach
+    @else
+      <div class="empty-queue">
+        <div class="empty-queue-icon">
+          <i class="bi bi-check2-circle"></i>
+        </div>
+        <h5>No completed patients yet</h5>
+        <p>Finish a consultation to see it logged here.</p>
+      </div>
+    @endif
+  </div>
+</details>
 
 <div class="modal fade" id="serveModal" tabindex="-1" aria-labelledby="serveModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">

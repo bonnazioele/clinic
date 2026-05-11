@@ -11,9 +11,11 @@ use App\Models\QueueEntry;
 use App\Notifications\AppointmentStatusChanged;
 use App\Notifications\QueueActionNotification;
 use App\Services\MoceanSmsService;
+use App\Services\QueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class QueueController extends Controller
 {
@@ -349,6 +351,27 @@ class QueueController extends Controller
         }
 
         return back()->with($messageType, $message ?? 'Queue entry updated.');
+    }
+
+    public function markPriority(Request $request, Clinic $clinic, QueueEntry $entry, QueueService $queueService)
+    {
+        $activeClinicId = $this->assertRouteClinicMatchesActive($request, $clinic);
+        $this->assertEntryBelongsToActiveClinic($entry, $activeClinicId);
+
+        try {
+            $result = $queueService->markEntryPriorityAndReflow($entry, (int) $request->user()->id);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        foreach ($result['affected'] as $affectedEntry) {
+            event(new QueueUpdated($affectedEntry, (int) $affectedEntry->id === (int) $entry->id ? 'priority' : 'rescheduled'));
+        }
+
+        return back()->with(
+            'status',
+            "Queue #{$result['entry']->queue_number} marked as priority and queue slots were updated."
+        );
     }
 
     public function cancel(Request $request, Clinic $clinic, QueueEntry $entry, MoceanSmsService $sms)
