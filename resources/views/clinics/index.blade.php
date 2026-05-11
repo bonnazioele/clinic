@@ -593,6 +593,75 @@
         font-weight: 650;
     }
 
+
+    .doctor-queue-card {
+        margin: .15rem .95rem .8rem;
+        padding: .75rem;
+        border-radius: 17px;
+        border: 1px solid rgba(13, 110, 253, .15);
+        background: linear-gradient(135deg, rgba(13, 110, 253, .06), rgba(248, 250, 252, .98));
+    }
+
+    .doctor-queue-card.is-personal {
+        border-color: rgba(22, 163, 74, .22);
+        background: linear-gradient(135deg, rgba(22, 163, 74, .08), rgba(248, 250, 252, .98));
+    }
+
+    .doctor-queue-heading {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        margin-bottom: .6rem;
+        color: #0f172a;
+        font-size: .78rem;
+        font-weight: 950;
+    }
+
+    .doctor-queue-heading i {
+        color: #0d6efd;
+    }
+
+    .doctor-queue-card.is-personal .doctor-queue-heading i {
+        color: #16a34a;
+    }
+
+    .doctor-queue-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .5rem;
+    }
+
+    .doctor-queue-box {
+        padding: .55rem;
+        border-radius: 13px;
+        border: 1px solid rgba(226, 232, 240, .92);
+        background: rgba(255, 255, 255, .92);
+    }
+
+    .doctor-queue-box span {
+        display: block;
+        margin-bottom: .12rem;
+        color: #64748b;
+        font-size: .68rem;
+        font-weight: 850;
+    }
+
+    .doctor-queue-box strong {
+        display: block;
+        color: #0f172a;
+        font-size: .82rem;
+        font-weight: 950;
+        overflow-wrap: anywhere;
+    }
+
+    .doctor-queue-note {
+        margin-top: .55rem;
+        color: #64748b;
+        font-size: .72rem;
+        line-height: 1.45;
+        font-weight: 650;
+    }
+
     @media (max-width: 900px) {
         .clinics-page {
             width: 100%;
@@ -658,7 +727,7 @@
                 $clinic->id => [
                     'id' => $clinic->id,
                     'name' => $clinic->name,
-                    'doctors' => collect($clinic->doctors ?? [])->map(function ($doctor) {
+                    'doctors' => collect($clinic->doctors ?? [])->map(function ($doctor) use ($clinic) {
                         return [
                             'id' => $doctor->id,
                             'name' => $doctor->name ?: trim(($doctor->first_name ?? '') . ' ' . ($doctor->last_name ?? '')),
@@ -680,6 +749,13 @@
                                     'clinic_id' => $schedule->clinic_id ?? null,
                                 ];
                             })->values(),
+                            'queue_by_service' => collect($clinic->doctor_service_queue_snapshots ?? [])
+                                ->mapWithKeys(function ($doctorSnapshots, $serviceId) use ($doctor) {
+                                    return [
+                                        $serviceId => data_get($doctorSnapshots, $doctor->id),
+                                    ];
+                                })
+                                ->filter(),
                         ];
                     })->values(),
                 ],
@@ -851,7 +927,7 @@
                                             </div>
 
                                             <div class="service-hint">
-                                                Click a service to view assigned doctors.
+                                                Click a service to view assigned doctors and doctor-based queue status.
                                             </div>
                                         @else
                                             <div class="text-muted small">
@@ -998,10 +1074,119 @@
             return `${hour}:${minute} ${ampm}`;
         }
 
-        function renderDoctorCard(doctor, clinicId, index) {
+        function formatStatus(value) {
+            if (!value) {
+                return 'Waiting';
+            }
+
+            return String(value)
+                .replaceAll('_', ' ')
+                .replace(/\b\w/g, function (char) {
+                    return char.toUpperCase();
+                });
+        }
+
+        function renderQueueSnapshot(doctor, serviceId) {
+            const queueByService = doctor.queue_by_service || {};
+            const snapshot = queueByService[serviceId] || queueByService[String(serviceId)] || null;
+
+            if (!snapshot) {
+                return `
+                    <div class="doctor-queue-card">
+                        <div class="doctor-queue-heading">
+                            <i class="bi bi-people"></i>
+                            Queue Status Today
+                        </div>
+                        <div class="doctor-queue-note mt-0">
+                            No queue data is available for this doctor and service yet.
+                        </div>
+                    </div>
+                `;
+            }
+
+            const hasPersonalQueue = Boolean(snapshot.has_personal_queue);
+            const title = hasPersonalQueue ? 'My Queue Status' : 'Queue Status Today';
+            const icon = hasPersonalQueue ? 'bi-person-check' : 'bi-people';
+
+            if (hasPersonalQueue) {
+                return `
+                    <div class="doctor-queue-card is-personal">
+                        <div class="doctor-queue-heading">
+                            <i class="bi ${icon}"></i>
+                            ${title}
+                        </div>
+
+                        <div class="doctor-queue-grid">
+                            <div class="doctor-queue-box">
+                                <span>Queue Number</span>
+                                <strong>#${escapeHtml(snapshot.queue_number || '-')}</strong>
+                            </div>
+
+                            <div class="doctor-queue-box">
+                                <span>People Ahead</span>
+                                <strong>${escapeHtml(snapshot.people_ahead ?? 0)}</strong>
+                            </div>
+
+                            <div class="doctor-queue-box">
+                                <span>Status</span>
+                                <strong>${escapeHtml(formatStatus(snapshot.queue_status))}</strong>
+                            </div>
+
+                            <div class="doctor-queue-box">
+                                <span>Next Available Slot</span>
+                                <strong>${escapeHtml(snapshot.next_available_slot || 'No slot today')}</strong>
+                            </div>
+                        </div>
+
+                        <div class="doctor-queue-note">
+                            People Ahead is based only on this doctor and this service.
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="doctor-queue-card">
+                    <div class="doctor-queue-heading">
+                        <i class="bi ${icon}"></i>
+                        ${title}
+                    </div>
+
+                    <div class="doctor-queue-grid">
+                        <div class="doctor-queue-box">
+                            <span>Waiting Patients</span>
+                            <strong>${escapeHtml(snapshot.waiting_patients ?? 0)}</strong>
+                        </div>
+
+                        <div class="doctor-queue-box">
+                            <span>Currently Serving</span>
+                            <strong>${escapeHtml(snapshot.currently_serving ?? 0)}</strong>
+                        </div>
+
+                        <div class="doctor-queue-box">
+                            <span>Available Slots Today</span>
+                            <strong>${escapeHtml(snapshot.available_slots_today ?? 0)}</strong>
+                        </div>
+
+                        <div class="doctor-queue-box">
+                            <span>Next Available Slot</span>
+                            <strong>${escapeHtml(snapshot.next_available_slot || 'No slot today')}</strong>
+                        </div>
+                    </div>
+
+                    <div class="doctor-queue-note">
+                        This count is for this doctor and this selected service only.
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDoctorCard(doctor, clinicId, serviceId, index) {
             const schedules = doctor.schedules.filter(function (schedule) {
                 return schedule.clinic_id === null || Number(schedule.clinic_id) === clinicId;
             });
+
+            const queueSnapshotHtml = renderQueueSnapshot(doctor, serviceId);
 
             const schedulesHtml = schedules.length
                 ? schedules.map(function (schedule) {
@@ -1050,6 +1235,8 @@
                             <i class="bi bi-chevron-down"></i>
                         </div>
                     </button>
+
+                    ${queueSnapshotHtml}
 
                     <div class="modal-schedule-panel">
                         <div class="schedule-inner">
@@ -1113,12 +1300,12 @@
                 content.innerHTML = `
                     <div class="doctor-click-hint">
                         <i class="bi bi-info-circle me-1"></i>
-                        Select a doctor card below to show or hide the schedule.
+                        Each doctor card shows the queue for this selected service only. Click a doctor card to show or hide the schedule.
                     </div>
 
                     <div class="modal-doctor-list">
                         ${doctors.map(function (doctor, index) {
-                            return renderDoctorCard(doctor, clinicId, index);
+                            return renderDoctorCard(doctor, clinicId, serviceId, index);
                         }).join('')}
                     </div>
                 `;

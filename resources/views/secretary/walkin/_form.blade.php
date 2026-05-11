@@ -449,15 +449,6 @@
             </div>
 
             <div class="col-lg-3 col-md-6">
-              <label class="form-label">Priority Level</label>
-              <select class="form-select" name="priority_level" id="walkin_priority_level">
-                <option value="Normal" selected>Normal</option>
-                <option value="Urgent">Urgent</option>
-                <option value="Emergency">Emergency</option>
-              </select>
-            </div>
-
-            <div class="col-lg-3 col-md-6">
               <label class="form-label">Reason for Visit</label>
               <input type="text" class="form-control" name="reason_for_visit" id="walkin_reason_for_visit" placeholder="Optional">
             </div>

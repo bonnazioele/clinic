@@ -11,64 +11,55 @@
 
   {{-- STATS --}}
   <div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
-      <div class="stat-card stat-blue">
-        <div class="stat-content">
-          <div class="stat-icon">
-            <i class="bi bi-calendar-check"></i>
-          </div>
-          <div>
-            <div class="stat-value">{{ $upcoming->count() }}</div>
-            <div class="stat-title">Upcoming Appointments</div>
-            <p class="stat-sub">You have {{ $upcoming->count() }} scheduled appointment(s)</p>
+    <div class="col-xl-4 col-md-6">
+      <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}" class="text-decoration-none">
+        <div class="stat-card stat-blue">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <i class="bi bi-calendar-check"></i>
+            </div>
+            <div>
+              <div class="stat-value">{{ $upcoming->count() }}</div>
+              <div class="stat-title">Upcoming Appointments</div>
+              <p class="stat-sub">You have {{ $upcoming->count() }} scheduled appointment(s)</p>
+            </div>
           </div>
         </div>
-      </div>
+      </a>
     </div>
 
-    <div class="col-xl-3 col-md-6">
-      <div class="stat-card stat-green">
-        <div class="stat-content">
-          <div class="stat-icon">
-            <i class="bi bi-clock-history"></i>
-          </div>
-          <div>
-            <div class="stat-value">{{ $past->count() }}</div>
-            <div class="stat-title">Past Visits</div>
-            <p class="stat-sub">Your completed appointments</p>
+    <div class="col-xl-4 col-md-6">
+      <a href="{{ Route::has('appointments.index') ? route('appointments.index') : url('/appointments') }}" class="text-decoration-none">
+        <div class="stat-card stat-green">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+              <div class="stat-value">{{ $past->count() }}</div>
+              <div class="stat-title">Past Visits</div>
+              <p class="stat-sub">Your completed appointments</p>
+            </div>
           </div>
         </div>
-      </div>
+      </a>
     </div>
 
-    <div class="col-xl-3 col-md-6">
-      <div class="stat-card stat-yellow">
-        <div class="stat-content">
-          <div class="stat-icon">
-            <i class="bi bi-hospital"></i>
-          </div>
-          <div>
-            <div class="stat-value">{{ \App\Models\Clinic::count() }}</div>
-            <div class="stat-title">Available Clinics</div>
-            <p class="stat-sub">Clinics ready to serve you</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6">
-      <div class="stat-card stat-cyan">
-        <div class="stat-content">
-          <div class="stat-icon">
-            <i class="bi bi-stethoscope"></i>
-          </div>
-          <div>
-            <div class="stat-value">{{ \App\Models\Service::count() }}</div>
-            <div class="stat-title">Available Services</div>
-            <p class="stat-sub">Healthcare services available</p>
+    <div class="col-xl-4 col-md-6">
+      <a href="{{ Route::has('clinics.index') ? route('clinics.index') : url('/clinics') }}" class="text-decoration-none">
+        <div class="stat-card stat-yellow">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <i class="bi bi-hospital"></i>
+            </div>
+            <div>
+              <div class="stat-value">{{ \App\Models\Clinic::count() }}</div>
+              <div class="stat-title">Available Clinics</div>
+              <p class="stat-sub">Clinics ready to serve you</p>
+            </div>
           </div>
         </div>
-      </div>
+      </a>
     </div>
   </div>
 

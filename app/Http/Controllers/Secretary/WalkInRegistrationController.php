@@ -217,7 +217,7 @@ class WalkInRegistrationController extends Controller
                 'requested_service' => $data['requested_service'],
                 'assigned_department' => $data['assigned_department'] ?? $data['requested_service'],
                 'patient_type' => $data['patient_type'] ?? ($patient->wasRecentlyCreated ? 'New' : 'Returning'),
-                'priority_level' => $data['priority_level'] ?? 'Normal',
+                'priority_level' => 'Normal',
 
                 'consent_to_data_collection' => (bool) ($data['consent_to_data_collection'] ?? false),
                 'patient_signature' => $data['patient_signature'] ?? null,
@@ -243,8 +243,8 @@ class WalkInRegistrationController extends Controller
                     $slot['time_with_seconds']
                 ),
                 'status' => 'waiting',
-                'priority_level' => $this->queuePriorityLevel($data['priority_level'] ?? 'Normal'),
-                'priority_rank' => $this->queuePriorityRank($data['priority_level'] ?? 'Normal'),
+                'priority_level' => 'regular',
+                'priority_rank' => 5,
                 ]
             );
 
@@ -363,17 +363,4 @@ class WalkInRegistrationController extends Controller
         ]);
     }
 
-    private function queuePriorityLevel(string $visitPriority): string
-    {
-        return in_array($visitPriority, ['Urgent', 'Emergency'], true) ? 'priority' : 'regular';
-    }
-
-    private function queuePriorityRank(string $visitPriority): int
-    {
-        return match ($visitPriority) {
-            'Emergency' => 0,
-            'Urgent' => 1,
-            default => 5,
-        };
-    }
 }

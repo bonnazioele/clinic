@@ -56,7 +56,7 @@
   $queueUrl = safe_secretary_route('secretary.queue.index', '/secretary/dashboard');
   $doctorsUrl = safe_secretary_route('secretary.doctors.index', '/secretary/dashboard');
   $servicesUrl = safe_secretary_route('secretary.services.index', '/secretary/dashboard');
-  $clinicSettingsUrl = safe_secretary_route('secretary.clinic.edit', '/secretary/dashboard');
+  $clinicSettingsUrl = safe_secretary_route('secretary.clinic.show', '/secretary/dashboard');
 
   $activeClinicServices = collect();
   if ($secretaryClinicId) {

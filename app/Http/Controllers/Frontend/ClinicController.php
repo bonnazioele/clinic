@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
+use App\Models\QueueEntry;
+use App\Models\PatientVisit;
 use App\Models\User;
 use App\Notifications\ClinicRegistrationSubmitted;
 use App\Models\Service;
+use App\Services\QueueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -15,79 +18,81 @@ use Illuminate\Support\Facades\Storage;
 
 class ClinicController extends Controller
 {
-    public function index(Request $req)
-{
-    $services = Service::orderBy('name')->get();
+    public function index(Request $req, QueueService $queueService)
+    {
+        $services = Service::orderBy('name')->get();
 
-    $query = Clinic::with([
-            'services',
-            'doctors' => function ($q) {
-                $q->where('is_doctor', true)
-                    ->where('is_active', true)
-                    ->with([
-                        'services',
-                        'doctorSchedules',
-                    ])
-                    ->orderBy('name');
-            },
-        ])
-        ->whereIn('status', ['approved', 'active']);
+        $query = Clinic::with([
+                'services',
+                'doctors' => function ($q) {
+                    $q->where('is_doctor', true)
+                        ->where('is_active', true)
+                        ->with([
+                            'services',
+                            'doctorSchedules',
+                        ])
+                        ->orderBy('name');
+                },
+            ])
+            ->whereIn('status', ['approved', 'active']);
 
-    if ($req->filled('search')) {
-        $search = trim($req->search);
+        if ($req->filled('search')) {
+            $search = trim($req->search);
 
-        $query->where(function ($q) use ($search) {
-            $q->where('clinics.name', 'like', '%' . $search . '%')
-                ->orWhere('clinics.address', 'like', '%' . $search . '%')
-                ->orWhere('clinics.contact_number', 'like', '%' . $search . '%')
-                ->orWhere('clinics.email', 'like', '%' . $search . '%')
-                ->orWhereHas('services', function ($serviceQuery) use ($search) {
-                    $serviceQuery->where('services.name', 'like', '%' . $search . '%');
-                })
-                ->orWhereHas('doctors', function ($doctorQuery) use ($search) {
-                    $doctorQuery->where('users.name', 'like', '%' . $search . '%')
-                        ->orWhere('users.first_name', 'like', '%' . $search . '%')
-                        ->orWhere('users.last_name', 'like', '%' . $search . '%')
-                        ->orWhere('users.email', 'like', '%' . $search . '%')
-                        ->orWhere('users.phone', 'like', '%' . $search . '%')
-                        ->orWhereHas('services', function ($doctorServiceQuery) use ($search) {
-                            $doctorServiceQuery->where('services.name', 'like', '%' . $search . '%');
-                        });
-                });
-        });
-    }
+            $query->where(function ($q) use ($search) {
+                $q->where('clinics.name', 'like', '%' . $search . '%')
+                    ->orWhere('clinics.address', 'like', '%' . $search . '%')
+                    ->orWhere('clinics.contact_number', 'like', '%' . $search . '%')
+                    ->orWhere('clinics.email', 'like', '%' . $search . '%')
+                    ->orWhereHas('services', function ($serviceQuery) use ($search) {
+                        $serviceQuery->where('services.name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('doctors', function ($doctorQuery) use ($search) {
+                        $doctorQuery->where('users.name', 'like', '%' . $search . '%')
+                            ->orWhere('users.first_name', 'like', '%' . $search . '%')
+                            ->orWhere('users.last_name', 'like', '%' . $search . '%')
+                            ->orWhere('users.email', 'like', '%' . $search . '%')
+                            ->orWhere('users.phone', 'like', '%' . $search . '%')
+                            ->orWhereHas('services', function ($doctorServiceQuery) use ($search) {
+                                $doctorServiceQuery->where('services.name', 'like', '%' . $search . '%');
+                            });
+                    });
+            });
+        }
 
-    if ($req->filled('lat') && $req->filled('lng')) {
-        $lat = (float) $req->lat;
-        $lng = (float) $req->lng;
-        $radiusKm = $req->filled('radius') ? (float) $req->radius : 10;
+        if ($req->filled('lat') && $req->filled('lng')) {
+            $lat = (float) $req->lat;
+            $lng = (float) $req->lng;
+            $radiusKm = $req->filled('radius') ? (float) $req->radius : 10;
 
-        $distanceSql = "(6371 * acos(
-            cos(radians(?)) * cos(radians(gps_latitude))
-            * cos(radians(gps_longitude) - radians(?))
-            + sin(radians(?)) * sin(radians(gps_latitude))
-        ))";
+            $distanceSql = "(6371 * acos(
+                cos(radians(?)) * cos(radians(gps_latitude))
+                * cos(radians(gps_longitude) - radians(?))
+                + sin(radians(?)) * sin(radians(gps_latitude))
+            ))";
 
-        $query->whereNotNull('gps_latitude')
+            $query->whereNotNull('gps_latitude')
+                ->whereNotNull('gps_longitude')
+                ->select('clinics.*')
+                ->selectRaw($distanceSql . ' as distance_km', [$lat, $lng, $lat])
+                ->having('distance_km', '<=', $radiusKm)
+                ->orderBy('distance_km');
+        } else {
+            $query->latest('id');
+        }
+
+        $mapClinics = (clone $query)
+            ->whereNotNull('gps_latitude')
             ->whereNotNull('gps_longitude')
-            ->select('clinics.*')
-            ->selectRaw($distanceSql . ' as distance_km', [$lat, $lng, $lat])
-            ->having('distance_km', '<=', $radiusKm)
-            ->orderBy('distance_km');
-    } else {
-        $query->latest('id');
+            ->limit(200)
+            ->get();
+
+        $clinics = $query->paginate(10)->withQueryString();
+
+        $this->attachDoctorServiceQueueSnapshotsToClinics($clinics->getCollection(), $queueService);
+
+        return view('clinics.index', compact('clinics', 'services', 'mapClinics'));
     }
-
-    $mapClinics = (clone $query)
-        ->whereNotNull('gps_latitude')
-        ->whereNotNull('gps_longitude')
-        ->limit(200)
-        ->get();
-
-    $clinics = $query->paginate(10)->withQueryString();
-
-    return view('clinics.index', compact('clinics', 'services', 'mapClinics'));
-}
 
     public function create()
     {
@@ -292,6 +297,168 @@ class ClinicController extends Controller
         return redirect()
             ->route('secretary.clinic.edit', $clinic)
             ->with('success', 'Clinic updated successfully.');
+    }
+
+
+    private function attachDoctorServiceQueueSnapshotsToClinics($clinics, QueueService $queueService): void
+    {
+        $today = now()->toDateString();
+        $userId = Auth::id();
+
+        foreach ($clinics as $clinic) {
+            $snapshots = [];
+
+            foreach (collect($clinic->doctors ?? []) as $doctor) {
+                $doctorServices = collect($doctor->services ?? [])
+                    ->filter(function ($service) use ($clinic) {
+                        $pivotClinicId = $service->pivot->clinic_id ?? null;
+
+                        return $pivotClinicId === null || (int) $pivotClinicId === (int) $clinic->id;
+                    })
+                    ->values();
+
+                foreach ($doctorServices as $service) {
+                    $snapshots[(int) $service->id][(int) $doctor->id] = $this->buildDoctorServiceQueueSnapshot(
+                        $clinic,
+                        (int) $doctor->id,
+                        (int) $service->id,
+                        $queueService,
+                        $today,
+                        $userId
+                    );
+                }
+            }
+
+            $clinic->setAttribute('doctor_service_queue_snapshots', $snapshots);
+        }
+    }
+
+    private function buildDoctorServiceQueueSnapshot(
+        Clinic $clinic,
+        int $doctorId,
+        int $serviceId,
+        QueueService $queueService,
+        string $date,
+        ?int $userId
+    ): array {
+        $doctorQueueEntries = QueueEntry::query()
+            ->with(['appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,status'])
+            ->where('clinic_id', $clinic->id)
+            ->forDashboardDay($date)
+            ->forDoctor($doctorId)
+            ->whereIn('status', QueueEntry::activePatientStatuses())
+            ->orderByScheduledSlot()
+            ->get();
+
+        $serviceQueueEntries = $doctorQueueEntries
+            ->filter(function (QueueEntry $entry) use ($clinic, $serviceId, $date) {
+                return (int) $this->serviceIdForQueueEntry($entry, (int) $clinic->id, $date) === (int) $serviceId;
+            })
+            ->values();
+
+        $waitingPatients = $serviceQueueEntries
+            ->whereIn('status', ['waiting', 'called'])
+            ->count();
+
+        $currentlyServing = $serviceQueueEntries
+            ->whereIn('status', ['in_progress', 'now_serving'])
+            ->count();
+
+        $activePatientQueue = null;
+        $peopleAhead = null;
+
+        if ($userId) {
+            $activePatientQueue = $serviceQueueEntries
+                ->first(function (QueueEntry $entry) use ($userId) {
+                    return (int) ($entry->user_id ?? 0) === (int) $userId
+                        || (int) ($entry->appointment?->user_id ?? 0) === (int) $userId;
+                });
+
+            if ($activePatientQueue) {
+                $peopleAhead = $serviceQueueEntries
+                    ->takeUntil(fn (QueueEntry $candidate) => (int) $candidate->id === (int) $activePatientQueue->id)
+                    ->count();
+            }
+        }
+
+        $availability = $this->getDoctorServiceAvailabilitySummary(
+            $clinic,
+            $doctorId,
+            $serviceId,
+            $queueService,
+            $date
+        );
+
+        return [
+            'has_personal_queue' => (bool) $activePatientQueue,
+            'queue_number' => $activePatientQueue?->queue_number,
+            'queue_status' => $activePatientQueue?->status,
+            'people_ahead' => $peopleAhead,
+            'waiting_patients' => $waitingPatients,
+            'currently_serving' => $currentlyServing,
+            'available_slots_today' => $availability['available_slots_today'],
+            'next_available_slot' => $availability['next_available_slot'],
+        ];
+    }
+
+    private function serviceIdForQueueEntry(QueueEntry $entry, int $clinicId, string $date): ?int
+    {
+        if ($entry->appointment?->service_id) {
+            return (int) $entry->appointment->service_id;
+        }
+
+        if (! $entry->patient_id) {
+            return null;
+        }
+
+        $visit = PatientVisit::query()
+            ->where('clinic_id', $clinicId)
+            ->where('patient_id', $entry->patient_id)
+            ->whereDate('date_of_visit', $entry->scheduledSlotDateString() ?? $date)
+            ->latest('time_in')
+            ->first();
+
+        if (! $visit?->requested_service) {
+            return null;
+        }
+
+        return Service::query()
+            ->forClinics([$clinicId])
+            ->where('name', $visit->requested_service)
+            ->value('services.id');
+    }
+
+    private function getDoctorServiceAvailabilitySummary(
+        Clinic $clinic,
+        int $doctorId,
+        int $serviceId,
+        QueueService $queueService,
+        string $date
+    ): array {
+        try {
+            $availableSlots = $queueService->availableSlots(
+                (int) $clinic->id,
+                $doctorId,
+                $serviceId,
+                $date
+            )
+                ->where('available', true)
+                ->filter(fn ($slot) => filled($slot['time'] ?? null))
+                ->unique(fn ($slot) => ($slot['date'] ?? $date) . '|' . ($slot['time'] ?? ''))
+                ->sortBy('start_at')
+                ->values();
+        } catch (\Throwable $e) {
+            $availableSlots = collect();
+        }
+
+        $nextSlot = $availableSlots->first();
+
+        return [
+            'available_slots_today' => $availableSlots->count(),
+            'next_available_slot' => $nextSlot
+                ? ($nextSlot['display'] ?? $nextSlot['time'])
+                : null,
+        ];
     }
 
     private function geocodeAddress(string $address): ?array

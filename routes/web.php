@@ -449,7 +449,12 @@ Route::prefix('secretary')
         Route::get('/appointments/{appointment}/edit', [SecretaryAppointmentController::class, 'edit'])
             ->whereNumber('appointment')
             ->name('appointments.edit');
-
+        
+        Route::post('/clinics/{clinic}/queue/{entry}/priority', [SecretaryQueueController::class, 'markPriority'])
+            ->whereNumber('clinic')
+            ->whereNumber('entry')
+            ->name('queue.priority');
+            
         Route::put('/appointments/{appointment}', [SecretaryAppointmentController::class, 'update'])
             ->whereNumber('appointment')
             ->name('appointments.update');
