@@ -2124,6 +2124,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const serviceLabel = escapeHtml(arg.event.extendedProps.serviceLabel || arg.event.title);
         const timeLabel = escapeHtml(arg.event.extendedProps.timeLabel || '');
         const overnightLabel = escapeHtml(arg.event.extendedProps.overnightLabel || '');
+        const continuationUntilLabel = escapeHtml(arg.event.extendedProps.continuationUntilLabel || '');
+        const continuationSegment = Boolean(arg.event.extendedProps.continuationSegment);
         const midnightBoundary = Boolean(arg.event.extendedProps.midnightBoundary);
         const title = escapeHtml(arg.event.title);
 

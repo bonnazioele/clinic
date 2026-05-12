@@ -16,7 +16,9 @@ return new class extends Migration
             ALTER TABLE queue_entries
             MODIFY COLUMN status ENUM(
                 'waiting',
+                'called',
                 'in_progress',
+                'now_serving',
                 'served',
                 'completed',
                 'no_show',
@@ -37,10 +39,18 @@ return new class extends Migration
     public function down(): void
     {
         DB::statement("
+            UPDATE queue_entries
+            SET status = 'served'
+            WHERE status = 'completed'
+        ");
+
+        DB::statement("
             ALTER TABLE queue_entries
             MODIFY COLUMN status ENUM(
                 'waiting',
+                'called',
                 'in_progress',
+                'now_serving',
                 'served',
                 'no_show',
                 'cancelled',
