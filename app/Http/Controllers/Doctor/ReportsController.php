@@ -155,7 +155,7 @@ class ReportsController extends Controller
 
         $previousPatientStats = $this->patientStats($previousAppointments, $previousPatientVisits);
 
-        // Schedule <Utilization></Utilization>
+        // Schedule Utilization
         $schedules = DoctorSchedule::where('doctor_id', $doctorId)
             ->where('clinic_id', $clinicId)
             ->when($serviceFilter, function ($query) use ($serviceFilter) {
@@ -206,7 +206,10 @@ class ReportsController extends Controller
             $clinicId,
             $doctorId
         );
-        $previousUtilizationRate = $previousTotalSlots > 0 ? round(($previousAppointments->count() / $previousTotalSlots) * 100, 2) : 0;
+
+        $previousUtilizationRate = $previousTotalSlots > 0
+            ? round(($previousAppointments->count() / $previousTotalSlots) * 100, 2)
+            : 0;
 
         $comparisons = [
             'appointments_total' => $this->calculateDelta($appointmentStats['total'], $previousAppointmentStats['total']),
@@ -246,7 +249,7 @@ class ReportsController extends Controller
             })->values();
         }
 
-        // Appointments Over Time (daily for the period)
+        // Appointments Over Time
         $appointmentCountsByDate = $appointments->groupBy(function ($appointment) {
             return $appointment->appointment_date->format('Y-m-d');
         })->map->count();
@@ -261,11 +264,11 @@ class ReportsController extends Controller
         // Weekly and monthly trends
         $weeklyAppointments = $appointments->groupBy(function ($a) {
             return Carbon::parse($a->appointment_date)->startOfWeek()->format('Y-m-d');
-        })->map(fn($apps, $week) => ['week_start' => $week, 'count' => $apps->count()])->values();
+        })->map(fn ($apps, $week) => ['week_start' => $week, 'count' => $apps->count()])->values();
 
         $monthlyAppointments = $appointments->groupBy(function ($a) {
             return Carbon::parse($a->appointment_date)->startOfMonth()->format('Y-m');
-        })->map(fn($apps, $month) => ['month' => $month, 'count' => $apps->count()])->values();
+        })->map(fn ($apps, $month) => ['month' => $month, 'count' => $apps->count()])->values();
 
         // Peak Hours
         $appointmentCountsByHour = $appointments->groupBy(function ($appointment) {
@@ -281,12 +284,12 @@ class ReportsController extends Controller
             ];
         })->values();
 
-        // No-show analysis (trend by day)
+        // No-show analysis
         $noShowTrend = $appointments->where('status', 'no_show')->groupBy(function ($a) {
             return $a->appointment_date->format('Y-m-d');
-        })->map(fn($apps, $d) => ['date' => $d, 'no_shows' => $apps->count()])->values();
+        })->map(fn ($apps, $d) => ['date' => $d, 'no_shows' => $apps->count()])->values();
 
-        // Patient demographics for those visits
+        // Patient demographics
         $appointmentPatientIds = Patient::query()
             ->whereIn('user_id', $appointments->pluck('user_id')->filter()->unique()->values())
             ->pluck('id');
@@ -296,23 +299,37 @@ class ReportsController extends Controller
             ->unique()
             ->filter()
             ->values();
+
         $patientAges = [];
+
         if ($patientIds->isNotEmpty()) {
             $patients = Patient::whereIn('id', $patientIds)->get();
+
             $ageGroups = [
                 '0-17' => 0,
                 '18-35' => 0,
                 '36-60' => 0,
                 '61+' => 0,
             ];
+
             foreach ($patients as $p) {
                 $age = $p->age;
-                if ($age === null) continue;
-                if ($age <= 17) $ageGroups['0-17']++;
-                elseif ($age <= 35) $ageGroups['18-35']++;
-                elseif ($age <= 60) $ageGroups['36-60']++;
-                else $ageGroups['61+']++;
+
+                if ($age === null) {
+                    continue;
+                }
+
+                if ($age <= 17) {
+                    $ageGroups['0-17']++;
+                } elseif ($age <= 35) {
+                    $ageGroups['18-35']++;
+                } elseif ($age <= 60) {
+                    $ageGroups['36-60']++;
+                } else {
+                    $ageGroups['61+']++;
+                }
             }
+
             $patientAges = $ageGroups;
         }
 
@@ -357,6 +374,7 @@ class ReportsController extends Controller
     {
         $doctorId = auth()->id();
         $clinicId = $this->activeClinicId($request);
+
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
@@ -375,11 +393,16 @@ class ReportsController extends Controller
         $q = Appointment::where('doctor_id', $doctorId)
             ->where('clinic_id', $clinicId)
             ->whereBetween('appointment_date', [$startDate, $endDate]);
-        if ($serviceFilter) $q->where('service_id', $serviceFilter);
 
-        $appointments = $q->with(['user', 'service'])->orderBy('appointment_date')->get();
+        if ($serviceFilter) {
+            $q->where('service_id', $serviceFilter);
+        }
 
-        $filename = 'appointments-'.$doctorId.'-'.$startDate->format('Ymd').'-'.$endDate->format('Ymd').'.csv';
+        $appointments = $q->with(['user', 'service'])
+            ->orderBy('appointment_date')
+            ->get();
+
+        $filename = 'appointments-' . $doctorId . '-' . $startDate->format('Ymd') . '-' . $endDate->format('Ymd') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -388,7 +411,9 @@ class ReportsController extends Controller
 
         $callback = function () use ($appointments) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['ID','Date','Time','Patient','Service','Status']);
+
+            fputcsv($handle, ['ID', 'Date', 'Time', 'Patient', 'Service', 'Status']);
+
             foreach ($appointments as $a) {
                 fputcsv($handle, [
                     $a->id,
@@ -399,6 +424,7 @@ class ReportsController extends Controller
                     $a->status,
                 ]);
             }
+
             fclose($handle);
         };
 
@@ -502,17 +528,22 @@ class ReportsController extends Controller
                 ->merge($walkInPatientKeys)
                 ->unique()
                 ->count(),
+
             'repeat_patients' => $patientEncounters
                 ->countBy()
                 ->filter(fn ($count) => $count > 1)
                 ->count(),
+
             'total_visits' => $appointments->count() + $patientVisits->count(),
         ];
     }
 
     private function percent($value, $total): int
     {
-        if ($total <= 0) return 0;
+        if ($total <= 0) {
+            return 0;
+        }
+
         return (int) round(($value / $total) * 100);
     }
 
@@ -528,6 +559,106 @@ class ReportsController extends Controller
         }
 
         return $dates;
+    }
+
+    private function calculateScheduleSlotsForPeriod($schedules, Carbon $startDate, Carbon $endDate, int $clinicId, int $doctorId): int
+    {
+        $totalSlots = 0;
+        $cursor = $startDate->copy()->startOfDay();
+        $lastDate = $endDate->copy()->startOfDay();
+
+        while ($cursor->lte($lastDate)) {
+            $dayName = strtolower($cursor->format('l'));
+
+            foreach ($schedules as $schedule) {
+                if (! $this->scheduleAppliesToDate($schedule, $cursor, $dayName)) {
+                    continue;
+                }
+
+                $startTime = $schedule->start_time ?? $schedule->available_from ?? null;
+                $endTime = $schedule->end_time ?? $schedule->available_to ?? null;
+
+                if (! $startTime || ! $endTime) {
+                    continue;
+                }
+
+                $durationMinutes = $this->scheduleDurationMinutes($startTime, $endTime);
+
+                if ($durationMinutes <= 0) {
+                    continue;
+                }
+
+                $slotMinutes = (int) (
+                    $schedule->slot_duration
+                    ?? $schedule->slot_duration_minutes
+                    ?? $schedule->appointment_duration
+                    ?? $schedule->consultation_duration
+                    ?? 30
+                );
+
+                if ($slotMinutes <= 0) {
+                    $slotMinutes = 30;
+                }
+
+                $totalSlots += (int) floor($durationMinutes / $slotMinutes);
+            }
+
+            $cursor->addDay();
+        }
+
+        return $totalSlots;
+    }
+
+    private function scheduleAppliesToDate($schedule, Carbon $date, string $dayName): bool
+    {
+        if (! empty($schedule->start_date) && Carbon::parse($schedule->start_date)->startOfDay()->gt($date->copy()->startOfDay())) {
+            return false;
+        }
+
+        if (! empty($schedule->end_date) && Carbon::parse($schedule->end_date)->startOfDay()->lt($date->copy()->startOfDay())) {
+            return false;
+        }
+
+        $possibleDayValues = [
+            $schedule->day_of_week ?? null,
+            $schedule->day ?? null,
+            $schedule->weekday ?? null,
+        ];
+
+        foreach ($possibleDayValues as $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (is_numeric($value)) {
+                $numericDay = (int) $value;
+
+                // Supports both Carbon dayOfWeek format: Sunday = 0
+                // and ISO dayOfWeek format: Monday = 1, Sunday = 7.
+                if ($numericDay === (int) $date->dayOfWeek || $numericDay === (int) $date->isoWeekday()) {
+                    return true;
+                }
+
+                return false;
+            }
+
+            return strtolower((string) $value) === $dayName;
+        }
+
+        if (! empty($schedule->days)) {
+            $days = is_array($schedule->days)
+                ? $schedule->days
+                : json_decode($schedule->days, true);
+
+            if (is_array($days)) {
+                return collect($days)
+                    ->map(fn ($day) => strtolower((string) $day))
+                    ->contains($dayName);
+            }
+        }
+
+        // If the schedule has no day column, assume it applies to the date range already filtered by query.
+        return true;
     }
 
     private function scheduleDurationMinutes($startTime, $endTime): int
@@ -570,7 +701,9 @@ class ReportsController extends Controller
                 return $called && $served->greaterThanOrEqualTo($called);
             });
 
-        if ($servedEntries->isEmpty()) return 0;
+        if ($servedEntries->isEmpty()) {
+            return 0;
+        }
 
         $totalWaitTime = $servedEntries->sum(function ($entry) {
             $called = $this->queueCalledAt($entry);
@@ -620,6 +753,7 @@ class ReportsController extends Controller
         $currentValue = (float) $current;
         $previousValue = (float) $previous;
         $difference = round($currentValue - $previousValue, 2);
+
         $percent = $previousValue == 0.0
             ? ($currentValue > 0 ? 100.0 : 0.0)
             : round(($difference / $previousValue) * 100, 1);
@@ -634,6 +768,7 @@ class ReportsController extends Controller
     private function resolveReportPeriod(Carbon $startDate, Carbon $endDate, ?string $requestedPeriod = null): array
     {
         $today = now();
+
         $periods = [
             'today' => [
                 'label' => 'Today',
