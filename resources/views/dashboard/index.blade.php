@@ -53,7 +53,7 @@
               <i class="bi bi-hospital"></i>
             </div>
             <div>
-              <div class="stat-value">{{ \App\Models\Clinic::count() }}</div>
+              <div class="stat-value">{{ \App\Models\Clinic::whereIn('status', ['approved', 'active'])->count() }}</div>
               <div class="stat-title">Available Clinics</div>
               <p class="stat-sub">Clinics ready to serve you</p>
             </div>

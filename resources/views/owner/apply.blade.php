@@ -566,7 +566,7 @@
 
             <div class="mb-3 mt-4">
               <label class="form-label">
-                <i class="bi bi-gear me-1"></i>Services Offered
+                <i class="bi bi-gear me-1"></i>Services Offered (if one service is not available, you can add the service after approval)
               </label>
 
               <div class="dropdown">
