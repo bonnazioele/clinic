@@ -169,6 +169,39 @@ class QueueService
             ->values();
     }
 
+    private function recycleBlockedCompletedSlotTimes(int $clinicId, int $doctorId, Carbon|string $date): Collection
+    {
+        $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
+        $dateString = $date->toDateString();
+
+        $latestBlockingTime = QueueEntry::query()
+            ->where('clinic_id', $clinicId)
+            ->where('doctor_id', $doctorId)
+            ->whereDate('scheduled_slot_date', $dateString)
+            ->whereNotNull('scheduled_slot_time')
+            ->whereIn('status', QueueEntry::blockingSlotStatuses())
+            ->max('scheduled_slot_time');
+
+        if (! $latestBlockingTime) {
+            return collect();
+        }
+
+        $latestBlockingTime = $this->normalizeTimeLabel($latestBlockingTime);
+
+        return QueueEntry::query()
+            ->where('clinic_id', $clinicId)
+            ->where('doctor_id', $doctorId)
+            ->whereDate('scheduled_slot_date', $dateString)
+            ->whereNotNull('scheduled_slot_time')
+            ->whereIn('status', QueueEntry::finalPatientStatuses())
+            ->where('scheduled_slot_time', '<=', $latestBlockingTime . ':00')
+            ->pluck('scheduled_slot_time')
+            ->map(fn ($time) => $this->normalizeTimeLabel($time))
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
     public function availableSlots(
         int $clinicId,
         int $doctorId,
@@ -178,6 +211,7 @@ class QueueService
     ): Collection {
         $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
         $occupied = $this->occupiedSlotTimes($clinicId, $doctorId, $date);
+        $recycleBlocked = $this->recycleBlockedCompletedSlotTimes($clinicId, $doctorId, $date);
         $cutoff = $date->isToday()
             ? now()->addMinutes($bufferMinutes)
             : ($date->isPast() ? now() : null);
@@ -191,8 +225,9 @@ class QueueService
                  */
                 return ! $cutoff || $slot['start_at']->gt($cutoff);
             })
-            ->map(function (array $slot) use ($occupied) {
+            ->map(function (array $slot) use ($occupied, $recycleBlocked) {
                 $isOccupied = $occupied->contains($slot['time']);
+                $isRecycleBlocked = $recycleBlocked->contains($slot['time']);
                 $outsideClinicHours = (bool) ($slot['outside_clinic_hours'] ?? false);
                 $insideClinicBreak = (bool) ($slot['inside_clinic_break'] ?? false);
 
@@ -200,6 +235,8 @@ class QueueService
 
                 if ($isOccupied) {
                     $reason = 'Booked';
+                } elseif ($isRecycleBlocked) {
+                    $reason = 'Queue still active';
                 } elseif ($outsideClinicHours) {
                     $reason = 'Outside clinic hours';
                 } elseif ($insideClinicBreak) {
@@ -207,9 +244,9 @@ class QueueService
                 }
 
                 return array_merge($slot, [
-                    'occupied' => $isOccupied,
+                    'occupied' => $isOccupied || $isRecycleBlocked,
                     'expired' => false,
-                    'available' => ! $isOccupied && ! $outsideClinicHours && ! $insideClinicBreak,
+                    'available' => ! $isOccupied && ! $isRecycleBlocked && ! $outsideClinicHours && ! $insideClinicBreak,
                     'reason' => $reason,
                 ]);
             })
@@ -265,6 +302,10 @@ class QueueService
                 throw new RuntimeException('This queue slot is already in use.');
             }
 
+            if ($slot->status === 'completed' && $this->slotRecycleBlockedByDownstreamQueue($clinicId, $doctorId, $date, $time)) {
+                throw new RuntimeException('This completed queue slot cannot be reused while later patients are still waiting or being served.');
+            }
+
             $slot->forceFill(array_merge([
                 'user_id' => null,
                 'patient_id' => null,
@@ -286,6 +327,18 @@ class QueueService
 
             return $slot->fresh();
         });
+    }
+
+    private function slotRecycleBlockedByDownstreamQueue(int $clinicId, int $doctorId, string $date, string $time): bool
+    {
+        return QueueEntry::query()
+            ->where('clinic_id', $clinicId)
+            ->where('doctor_id', $doctorId)
+            ->whereDate('scheduled_slot_date', $date)
+            ->whereNotNull('scheduled_slot_time')
+            ->where('scheduled_slot_time', '>=', $time)
+            ->whereIn('status', QueueEntry::blockingSlotStatuses())
+            ->exists();
     }
 
     public function findEarliestWalkInSlot(
