@@ -54,12 +54,16 @@ class ClinicController extends Controller
     public function create()
     {
         $services = Service::orderBy('name')->get(['id', 'name']);
-        return view('admin.clinics.create', compact('services'));
+        $permitTypes = config('clinic_permits.types', []);
+
+        return view('admin.clinics.create', compact('services', 'permitTypes'));
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $permitTypes = collect(config('clinic_permits.types', []));
+
+        $rules = [
             'contact_first_name' => ['required', 'string', 'max:255'],
             'contact_last_name' => ['required', 'string', 'max:255'],
             'contact_person_email' => ['required', 'email', 'max:255'],
@@ -68,19 +72,58 @@ class ClinicController extends Controller
             'clinic_contact' => ['required', 'string', 'max:50'],
             'branch_code' => ['required', 'string', 'max:255', Rule::unique('clinics', 'branch_code')->whereNull('deleted_at')],
             'clinic_email' => ['required', 'email', 'max:255', Rule::unique('clinics', 'email')->whereNull('deleted_at')],
-            'latitude' => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'gps_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'gps_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'service_ids' => ['nullable', 'array'],
             'service_ids.*' => ['integer', 'exists:services,id'],
+        ];
+
+        $permitTypes->each(function ($permit) use (&$rules) {
+            $key = $permit['key'];
+
+            $rules["permits.$key.permit_number"] = ($permit['requires_number'] ?? false)
+                ? ['required', 'string', 'max:255', Rule::unique('clinic_permits', 'permit_number')->where('permit_type', $key)]
+                : ['nullable', 'string', 'max:255', Rule::unique('clinic_permits', 'permit_number')->where('permit_type', $key)];
+
+            $rules["permits.$key.issued_at"] = ($permit['requires_issue_date'] ?? false)
+                ? ['required', 'date']
+                : ['nullable', 'date'];
+
+            $rules["permits.$key.expires_at"] = ($permit['requires_expiry_date'] ?? false)
+                ? ['required', 'date', 'after_or_equal:permits.' . $key . '.issued_at']
+                : ['nullable', 'date'];
+
+            $rules["permits.$key.file"] = [
+                'required',
+                'file',
+                'mimes:pdf,jpeg,jpg,png',
+                'max:5120',
+            ];
+        });
+
+        $data = $request->validate($rules, [
+            'permits.*.permit_number.unique' => 'This permit number is already registered.',
+            'permits.*.permit_number.required' => 'Permit number is required for this document.',
         ]);
+
+        $latitude = $request->input('latitude') ?? $request->input('gps_latitude');
+        $longitude = $request->input('longitude') ?? $request->input('gps_longitude');
+
+        if (blank($latitude) || blank($longitude)) {
+            return back()
+                ->withErrors(['gps_latitude' => 'Please pin the clinic location on the map.'])
+                ->withInput();
+        }
 
         $logoPath = null;
         if ($request->hasFile('logo')) {
             $logoPath = $request->file('logo')->store('clinic-logos', 'public');
         }
 
-        $clinic = \DB::transaction(function () use ($data, $logoPath) {
+        $clinic = \DB::transaction(function () use ($data, $request, $logoPath, $latitude, $longitude, $permitTypes) {
             $clinic = Clinic::create([
                 'name' => $data['clinic_name'],
                 'branch_code' => $data['branch_code'],
@@ -91,12 +134,26 @@ class ClinicController extends Controller
                 'contact_last_name' => $data['contact_last_name'],
                 'contact_person_email' => $data['contact_person_email'],
                 'logo' => $logoPath,
-                'gps_latitude' => $data['latitude'],
-                'gps_longitude' => $data['longitude'],
+                'gps_latitude' => $latitude,
+                'gps_longitude' => $longitude,
                 'status' => 'approved',
             ]);
 
             $clinic->services()->sync($data['service_ids'] ?? []);
+
+            $permitTypes->each(function ($permit) use ($request, $clinic) {
+                $key = $permit['key'];
+                $payload = $request->input("permits.$key", []);
+                $file = $request->file("permits.$key.file");
+
+                $clinic->permits()->create([
+                    'permit_type' => $key,
+                    'permit_number' => $payload['permit_number'] ?? null,
+                    'issued_at' => $payload['issued_at'] ?? null,
+                    'expires_at' => $payload['expires_at'] ?? null,
+                    'attachment_path' => $file ? $file->store('clinic-permits', 'public') : null,
+                ]);
+            });
 
             return $clinic;
         });

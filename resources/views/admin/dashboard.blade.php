@@ -642,42 +642,72 @@
             <p class="text-muted" style="font-size:0.86rem">No queue activity today.</p>
             @endforelse
 
-            {{-- Service catalog donut --}}
+            {{-- Service demand donut --}}
             <p class="admin-stat-label mt-4 mb-2">
-              <i class="bi bi-grid-1x2"></i> Service catalog breakdown
+              <i class="bi bi-grid-1x2"></i> Services by queue activity
+              <span class="ms-1" style="font-weight:400;color:#94a3b8">today</span>
             </p>
             <div class="donut-wrap">
+              @php
+                $demandTotal = max($totalServices, 1);
+                $highArc = round(($highDemandServices / $demandTotal) * 188);
+                $mediumArc = round(($mediumDemandServices / $demandTotal) * 188);
+                $lowArc = round(($lowDemandServices / $demandTotal) * 188);
+              @endphp
               <svg viewBox="0 0 80 80" width="80" height="80" style="flex-shrink:0;overflow:visible">
                 <circle cx="40" cy="40" r="30" fill="none" stroke="rgba(15,23,42,0.07)" stroke-width="11"/>
-                <circle cx="40" cy="40" r="30" fill="none" stroke="#1677ff" stroke-width="11"
-                  stroke-dasharray="{{ round(($generalServices / max($totalServices,1)) * 188) }} 188"
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#ef4444" stroke-width="11"
+                  stroke-dasharray="{{ $highArc }} 188"
                   stroke-dashoffset="0" transform="rotate(-90 40 40)"/>
-                <circle cx="40" cy="40" r="30" fill="none" stroke="#10b981" stroke-width="11"
-                  stroke-dasharray="{{ round(($specialtyServices / max($totalServices,1)) * 188) }} 188"
-                  stroke-dashoffset="-{{ round(($generalServices / max($totalServices,1)) * 188) }}"
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#1677ff" stroke-width="11"
+                  stroke-dasharray="{{ $mediumArc }} 188"
+                  stroke-dashoffset="-{{ $highArc }}"
                   transform="rotate(-90 40 40)"/>
-                <circle cx="40" cy="40" r="30" fill="none" stroke="#f59e0b" stroke-width="11"
-                  stroke-dasharray="{{ round(($diagnosticServices / max($totalServices,1)) * 188) }} 188"
-                  stroke-dashoffset="-{{ round((($generalServices + $specialtyServices) / max($totalServices,1)) * 188) }}"
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#94a3b8" stroke-width="11"
+                  stroke-dasharray="{{ $lowArc }} 188"
+                  stroke-dashoffset="-{{ $highArc + $mediumArc }}"
                   transform="rotate(-90 40 40)"/>
                 <text x="40" y="44" text-anchor="middle" font-size="13" font-weight="900"
                   fill="#0f172a" font-family="inherit">{{ $totalServices }}</text>
               </svg>
               <div class="donut-legend">
                 <div class="legend-item">
+                  <span class="legend-dot" style="background:#ef4444"></span>
+                  High demand ({{ $highDemandServices }})
+                </div>
+                <div class="legend-item">
                   <span class="legend-dot" style="background:#1677ff"></span>
-                  General ({{ $generalServices }})
+                  Medium demand ({{ $mediumDemandServices }})
                 </div>
                 <div class="legend-item">
-                  <span class="legend-dot" style="background:#10b981"></span>
-                  Specialty ({{ $specialtyServices }})
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot" style="background:#f59e0b"></span>
-                  Diagnostic ({{ $diagnosticServices }})
+                  <span class="legend-dot" style="background:#94a3b8"></span>
+                  Low demand ({{ $lowDemandServices }})
                 </div>
               </div>
             </div>
+
+            @php
+              $topServiceMaxQueue = $topServicesByQueue->max('queue_activity') ?? 0;
+            @endphp
+            <p class="admin-stat-label mt-4 mb-3">
+              <i class="bi bi-list-ol"></i> Most requested services
+            </p>
+            @if($topServiceMaxQueue > 0)
+              @foreach($topServicesByQueue as $service)
+                @php
+                  $pct = $topServiceMaxQueue > 0 ? ($service->queue_activity / $topServiceMaxQueue) * 100 : 0;
+                @endphp
+                <div class="bar-chart-row">
+                  <span class="bar-chart-label" title="{{ $service->name }}">{{ $service->name }}</span>
+                  <div class="bar-chart-track">
+                    <div class="bar-chart-fill" style="width: {{ round($pct) }}%"></div>
+                  </div>
+                  <span class="bar-chart-val">{{ $service->queue_activity }}</span>
+                </div>
+              @endforeach
+            @else
+              <p class="text-muted" style="font-size:0.86rem">No service queue activity today.</p>
+            @endif
 
           </div>
         </div>

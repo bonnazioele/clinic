@@ -81,9 +81,10 @@ class DashboardController extends Controller
             'rejectedClinics' => $rejectedClinics,
             'topClinicsByQueue' => $topClinicsByQueue,
             'totalServices' => $totalServices,
-            'generalServices' => $serviceBreakdown['general'],
-            'specialtyServices' => $serviceBreakdown['specialty'],
-            'diagnosticServices' => $serviceBreakdown['diagnostic'],
+            'highDemandServices' => $serviceBreakdown['high_demand'],
+            'mediumDemandServices' => $serviceBreakdown['medium_demand'],
+            'lowDemandServices' => $serviceBreakdown['low_demand'],
+            'topServicesByQueue' => $serviceBreakdown['top_services'],
             'registrationTrend' => $registrationTrend,
             'sparklinePoints' => $sparklinePoints,
             'sparklineFillPath' => $sparklineFillPath,
@@ -93,30 +94,55 @@ class DashboardController extends Controller
 
     private function serviceBreakdown(): array
     {
+        // Extended time range: last 7 days for better data distribution
+        $startDate = now()->subDays(7)->toDateString();
+        $endDate = now()->toDateString();
+        $queueStatuses = array_merge(QueueEntry::activePatientStatuses(), ['completed']);
+
+        // Count UNIQUE appointments per service (not queue entry rows)
+        $appointmentCountsByService = Appointment::query()
+            ->whereNotNull('service_id')
+            ->whereBetween('appointment_date', [$startDate, $endDate])
+            ->whereHas('queueEntries', function ($q) use ($queueStatuses) {
+                $q->whereIn('status', $queueStatuses);
+            })
+            ->groupBy('service_id')
+            ->selectRaw('service_id, COUNT(DISTINCT id) as appointment_count')
+            ->pluck('appointment_count', 'service_id');
+
+        // Fetch all services and assign their activity counts
+        $services = Service::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(function (Service $service) use ($appointmentCountsByService) {
+                $service->queue_activity = (int) ($appointmentCountsByService[$service->id] ?? 0);
+
+                return $service;
+            })
+            ->sortByDesc('queue_activity')
+            ->values();
+
+        // Calculate dynamic thresholds based on percentiles
+        $activityValues = $services->pluck('queue_activity')->sort()->values()->toArray();
+        $count = count($activityValues);
+
+        if ($count > 0) {
+            // 33rd percentile (low → medium threshold)
+            $percentile33 = $activityValues[(int)($count * 0.33)];
+            // 66th percentile (medium → high threshold)
+            $percentile66 = $activityValues[(int)($count * 0.66)];
+        } else {
+            // Fallback if no services
+            $percentile33 = 2;
+            $percentile66 = 5;
+        }
+
         $breakdown = [
-            'general' => 0,
-            'specialty' => 0,
-            'diagnostic' => 0,
+            'high_demand' => $services->where('queue_activity', '>', $percentile66)->count(),
+            'medium_demand' => $services->whereBetween('queue_activity', [$percentile33 + 1, $percentile66])->count(),
+            'low_demand' => $services->where('queue_activity', '<=', $percentile33)->count(),
+            'top_services' => $services->take(5),
         ];
-
-        Service::query()
-            ->select('name')
-            ->get()
-            ->each(function (Service $service) use (&$breakdown) {
-                $name = strtolower($service->name ?? '');
-
-                if (preg_match('/lab|x-?ray|ultrasound|diagnostic|test|scan|blood|imaging/', $name)) {
-                    $breakdown['diagnostic']++;
-                    return;
-                }
-
-                if (preg_match('/cardio|derma|pedia|ortho|ob|gyne|neuro|dental|eye|ent|psych|surgery|therapy/', $name)) {
-                    $breakdown['specialty']++;
-                    return;
-                }
-
-                $breakdown['general']++;
-            });
 
         return $breakdown;
     }
