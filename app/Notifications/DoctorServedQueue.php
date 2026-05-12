@@ -23,7 +23,7 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
     public function toDatabase($notifiable): array
     {
         return [
-            'message' => "Doctor has finished serving appointment (#{$this->appointment->id}). Secretary may now call the next patient.",
+            'message' => "The doctor has completed this appointment. You can now call the next patient.",
             'appointment_id' => $this->appointment->id,
             'role' => 'secretary'
         ];
@@ -39,7 +39,7 @@ class DoctorServedQueue extends Notification implements ShouldBroadcast
     public function toArray($notifiable): array
     {
         return [
-            'message' => "Doctor has finished serving appointment (#{$this->appointment->id}). Secretary may now call the next patient.",
+            'message' => "The doctor has completed this appointment. You can now call the next patient.",
             'appointment_id' => $this->appointment->id,
             'role' => 'secretary'
         ];

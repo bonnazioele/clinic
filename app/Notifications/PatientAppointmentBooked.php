@@ -25,7 +25,7 @@ class PatientAppointmentBooked extends Notification implements ShouldBroadcast
     public function toDatabase($notifiable): array
     {
         return [
-            'message'        => "Appointment (#{$this->appointment->id}) confirmed for {$this->formatDateTime()}.",
+            'message'        => "Your appointment is confirmed for {$this->formatDateTime()}.",
             'appointment_id' => $this->appointment->id,
             'role'           => 'patient'
         ];
@@ -39,7 +39,7 @@ class PatientAppointmentBooked extends Notification implements ShouldBroadcast
     public function toArray($notifiable)
     {
         return [
-            'message'        => "Appointment (#{$this->appointment->id}) confirmed for {$this->formatDateTime()}.",
+            'message'        => "Your appointment is confirmed for {$this->formatDateTime()}.",
             'appointment_id' => $this->appointment->id,
             'role'           => 'patient'
         ];

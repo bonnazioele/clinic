@@ -39,10 +39,10 @@ class QueueActionNotification extends Notification implements ShouldBroadcast
         $clinic = $this->entry->clinic?->name;
 
         $messages = [
-            'call'   => "You are being called for your turn (#{$this->entry->queue_number}) at {$clinic}.",
-            'start'  => "Your queue (#{$this->entry->queue_number}) at {$clinic} is now in progress.",
-            'resched'=> "Your queue (#{$this->entry->queue_number}) at {$clinic} has been rescheduled.",
-            'done'   => "Your consultation at {$clinic} is marked as done. Thank you!",
+            'call'   => "Your turn is coming up at {$clinic}. Please prepare.",
+            'start'  => "Your appointment is starting at {$clinic}.",
+            'resched'=> "Your appointment has been rescheduled at {$clinic}.",
+            'done'   => "Your appointment is complete. Thank you!",
         ];
 
         return [

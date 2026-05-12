@@ -29,7 +29,7 @@ class QueueNotification extends Notification implements ShouldQueue, ShouldBroad
     public function toArray($notifiable)
     {
         return [
-            'message' => "You're up next at {$this->entry->clinic->name}, Queue #{$this->entry->queue_number}",
+            'message' => "It's your turn! Please head to {$this->entry->clinic->name} now.",
             'role'    => 'patient',
         ];
     }
@@ -37,7 +37,7 @@ class QueueNotification extends Notification implements ShouldQueue, ShouldBroad
     public function toBroadcast($notifiable)
     {
         return new BroadcastMessage([
-            'message' => "You're up next at {$this->entry->clinic->name}, Queue #{$this->entry->queue_number}",
+            'message' => "It's your turn! Please head to {$this->entry->clinic->name} now.",
             'role'    => 'patient',
         ]);
     }
