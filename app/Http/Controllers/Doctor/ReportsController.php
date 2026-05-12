@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Patient;
 use App\Models\Service as ServiceModel;
 use Illuminate\Support\Facades\Response;
+use App\Services\QueueService;
 
 class ReportsController extends Controller
 {
@@ -73,11 +74,11 @@ class ReportsController extends Controller
 
         $appointments = $appointmentsQuery->get();
 
-        $queueEntries = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $startDate, $endDate)
+        $queueEntries = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $startDate, $endDate, $serviceFilter)
             ->with(['appointment:id,appointment_date,appointment_time'])
             ->get();
 
-        $doctorPatientIds = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $startDate, $endDate)
+        $doctorPatientIds = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $startDate, $endDate, $serviceFilter)
             ->whereNotNull('patient_id')
             ->pluck('patient_id')
             ->unique()
@@ -122,10 +123,10 @@ class ReportsController extends Controller
             'no_show' => $queueEntries->where('status', 'no_show')->count(),
             'waiting' => $queueEntries->where('status', 'waiting')->count(),
             'cancelled' => $queueEntries->where('status', 'cancelled')->count(),
-            'average_wait_time' => $this->calculateAverageWaitTime($queueEntries),
+            'average_wait_time' => $this->calculateAverageWaitTime($queueEntries, $startDate, $endDate),
         ];
 
-        $previousQueueEntries = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $previousStartDate, $previousEndDate)
+        $previousQueueEntries = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $previousStartDate, $previousEndDate, $serviceFilter)
             ->with(['appointment:id,appointment_date,appointment_time'])
             ->get();
 
@@ -135,13 +136,13 @@ class ReportsController extends Controller
             'no_show' => $previousQueueEntries->where('status', 'no_show')->count(),
             'waiting' => $previousQueueEntries->where('status', 'waiting')->count(),
             'cancelled' => $previousQueueEntries->where('status', 'cancelled')->count(),
-            'average_wait_time' => $this->calculateAverageWaitTime($previousQueueEntries),
+            'average_wait_time' => $this->calculateAverageWaitTime($previousQueueEntries, $previousStartDate, $previousEndDate),
         ];
 
         // Patient Insights
         $patientStats = $this->patientStats($appointments, $patientVisits);
 
-        $previousDoctorPatientIds = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $previousStartDate, $previousEndDate)
+        $previousDoctorPatientIds = $this->doctorQueueEntriesForPeriod($doctorId, $clinicId, $previousStartDate, $previousEndDate, $serviceFilter)
             ->whereNotNull('patient_id')
             ->pluck('patient_id')
             ->unique()
@@ -157,6 +158,9 @@ class ReportsController extends Controller
         // Schedule <Utilization></Utilization>
         $schedules = DoctorSchedule::where('doctor_id', $doctorId)
             ->where('clinic_id', $clinicId)
+            ->when($serviceFilter, function ($query) use ($serviceFilter) {
+                $query->where('service_id', $serviceFilter);
+            })
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where(function ($dateQuery) use ($endDate) {
                     $dateQuery->whereNull('start_date')
@@ -168,48 +172,22 @@ class ReportsController extends Controller
             })
             ->get();
 
-        $slotLengthMinutes = 30;
-        $totalSlots = 0;
-
-        foreach ($schedules as $schedule) {
-            $effectiveStart = $startDate->copy();
-            if (! empty($schedule->start_date)) {
-                $scheduleStart = Carbon::parse($schedule->start_date)->startOfDay();
-                if ($scheduleStart->greaterThan($effectiveStart)) $effectiveStart = $scheduleStart;
-            }
-            $effectiveEnd = $endDate->copy();
-            if (! empty($schedule->end_date)) {
-                $scheduleEnd = Carbon::parse($schedule->end_date)->endOfDay();
-                if ($scheduleEnd->lessThan($effectiveEnd)) $effectiveEnd = $scheduleEnd;
-            }
-            if ($effectiveEnd->lessThan($effectiveStart)) continue;
-
-            if ($schedule->schedule_type === 'one_time') {
-                $dates = [ Carbon::parse($schedule->start_date) ];
-            } else {
-                $dates = [];
-                $scheduleDay = (int) $schedule->day_of_week;
-                $daysUntilScheduleDay = ($scheduleDay - (int) $effectiveStart->dayOfWeek + 7) % 7;
-                $cursor = $effectiveStart->copy()->addDays($daysUntilScheduleDay);
-                while ($cursor->lte($effectiveEnd)) {
-                    $dates[] = $cursor->copy();
-                    $cursor->addWeek();
-                }
-            }
-
-            foreach ($dates as $d) {
-                if (empty($schedule->start_time) || empty($schedule->end_time)) continue;
-                $minutes = $this->scheduleDurationMinutes($schedule->start_time, $schedule->end_time);
-                if ($minutes <= 0) continue;
-                $totalSlots += max(0, floor($minutes / $slotLengthMinutes));
-            }
-        }
+        $totalSlots = $this->calculateScheduleSlotsForPeriod(
+            $schedules,
+            $startDate,
+            $endDate,
+            $clinicId,
+            $doctorId
+        );
 
         $bookedSlots = $appointments->count();
         $utilizationRate = $totalSlots > 0 ? round(($bookedSlots / $totalSlots) * 100, 2) : 0;
 
         $previousSchedules = DoctorSchedule::where('doctor_id', $doctorId)
             ->where('clinic_id', $clinicId)
+            ->when($serviceFilter, function ($query) use ($serviceFilter) {
+                $query->where('service_id', $serviceFilter);
+            })
             ->where(function ($q) use ($previousStartDate, $previousEndDate) {
                 $q->where(function ($dateQuery) use ($previousEndDate) {
                     $dateQuery->whereNull('start_date')
@@ -221,40 +199,13 @@ class ReportsController extends Controller
             })
             ->get();
 
-        $previousTotalSlots = 0;
-        foreach ($previousSchedules as $schedule) {
-            $effectiveStart = $previousStartDate->copy();
-            if (! empty($schedule->start_date)) {
-                $scheduleStart = Carbon::parse($schedule->start_date)->startOfDay();
-                if ($scheduleStart->greaterThan($effectiveStart)) $effectiveStart = $scheduleStart;
-            }
-            $effectiveEnd = $previousEndDate->copy();
-            if (! empty($schedule->end_date)) {
-                $scheduleEnd = Carbon::parse($schedule->end_date)->endOfDay();
-                if ($scheduleEnd->lessThan($effectiveEnd)) $effectiveEnd = $scheduleEnd;
-            }
-            if ($effectiveEnd->lessThan($effectiveStart)) continue;
-
-            if ($schedule->schedule_type === 'one_time') {
-                $dates = [ Carbon::parse($schedule->start_date) ];
-            } else {
-                $dates = [];
-                $scheduleDay = (int) $schedule->day_of_week;
-                $daysUntilScheduleDay = ($scheduleDay - (int) $effectiveStart->dayOfWeek + 7) % 7;
-                $cursor = $effectiveStart->copy()->addDays($daysUntilScheduleDay);
-                while ($cursor->lte($effectiveEnd)) {
-                    $dates[] = $cursor->copy();
-                    $cursor->addWeek();
-                }
-            }
-
-            foreach ($dates as $d) {
-                if (empty($schedule->start_time) || empty($schedule->end_time)) continue;
-                $minutes = $this->scheduleDurationMinutes($schedule->start_time, $schedule->end_time);
-                if ($minutes <= 0) continue;
-                $previousTotalSlots += max(0, floor($minutes / $slotLengthMinutes));
-            }
-        }
+        $previousTotalSlots = $this->calculateScheduleSlotsForPeriod(
+            $previousSchedules,
+            $previousStartDate,
+            $previousEndDate,
+            $clinicId,
+            $doctorId
+        );
         $previousUtilizationRate = $previousTotalSlots > 0 ? round(($previousAppointments->count() / $previousTotalSlots) * 100, 2) : 0;
 
         $comparisons = [
@@ -598,15 +549,23 @@ class ReportsController extends Controller
         return ($hour * 60) + $minute;
     }
 
-    private function calculateAverageWaitTime($queueEntries)
+    private function calculateAverageWaitTime($queueEntries, ?Carbon $startDate = null, ?Carbon $endDate = null)
     {
         $servedEntries = $queueEntries
             ->where('status', 'served')
             ->whereNotNull('served_at')
             ->whereNotNull('called_at')
-            ->filter(function ($entry) {
+            ->filter(function ($entry) use ($startDate, $endDate) {
                 $called = $this->queueCalledAt($entry);
                 $served = Carbon::parse($entry->served_at);
+
+                if ($startDate && $served->lt($startDate)) {
+                    return false;
+                }
+
+                if ($endDate && $served->gt($endDate)) {
+                    return false;
+                }
 
                 return $called && $served->greaterThanOrEqualTo($called);
             });
@@ -623,11 +582,16 @@ class ReportsController extends Controller
         return round($totalWaitTime / $servedEntries->count(), 2);
     }
 
-    private function doctorQueueEntriesForPeriod(int $doctorId, int $clinicId, Carbon $startDate, Carbon $endDate)
+    private function doctorQueueEntriesForPeriod(int $doctorId, int $clinicId, Carbon $startDate, Carbon $endDate, ?int $serviceId = null)
     {
         return QueueEntry::query()
             ->forDoctor($doctorId)
             ->where('clinic_id', $clinicId)
+            ->when($serviceId, function ($query) use ($serviceId) {
+                $query->whereHas('appointment', function ($appointmentQuery) use ($serviceId) {
+                    $appointmentQuery->where('service_id', $serviceId);
+                });
+            })
             ->where(function ($periodQuery) use ($startDate, $endDate) {
                 $periodQuery->where(function ($appointmentQueue) use ($startDate, $endDate) {
                     $appointmentQueue->whereNotNull('appointment_id')

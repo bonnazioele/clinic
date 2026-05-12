@@ -355,8 +355,10 @@
 
   .fc .fc-toolbar-title {
     color: #111827;
-    font-size: 1.35rem;
+    font-size: 1.55rem;
     font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
   }
 
   .fc .fc-button {
@@ -387,11 +389,80 @@
     overflow: hidden;
   }
 
+  .fc .fc-dayGridMonth-view .fc-scrollgrid {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-col-header-cell {
+    border: 0;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+    padding: 10px 0;
+  }
+
   .fc .fc-col-header-cell-cushion,
   .fc .fc-daygrid-day-number {
     color: #334155;
     text-decoration: none;
     font-weight: 900;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-col-header-cell-cushion {
+    font-size: 0.95rem;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-day-sun .fc-col-header-cell-cushion,
+  .fc .fc-dayGridMonth-view .fc-day-sat .fc-col-header-cell-cushion,
+  .fc .fc-dayGridMonth-view .fc-day-sun .fc-daygrid-day-number,
+  .fc .fc-dayGridMonth-view .fc-day-sat .fc-daygrid-day-number {
+    color: #dc2626;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-day {
+    border-left: 0;
+    border-right: 0;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-day-frame {
+    min-height: 132px;
+    padding: 8px 5px 10px;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-day-top {
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-day-number {
+    min-width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 1.02rem;
+    line-height: 1;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-day-other .fc-daygrid-day-number {
+    color: #cbd5e1;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-day-today {
+    background: rgba(37, 99, 235, 0.035) !important;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-day-today .fc-daygrid-day-number {
+    background: #111827;
+    color: #ffffff;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-day.selected-month-day .fc-daygrid-day-frame {
+    border: 2px solid rgba(15, 23, 42, 0.18);
+    border-radius: 14px;
+    background: rgba(248, 250, 252, 0.82);
   }
 
   .fc-event {
@@ -419,25 +490,33 @@
   }
 
   .fc-month-clean-event {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 5px;
     max-width: 100%;
-    padding: 4px 7px;
-    border-radius: 999px;
+    padding: 4px 7px 4px 8px;
+    border-radius: 7px;
     background: var(--schedule-soft, rgba(37, 99, 235, 0.08));
-    color: var(--schedule-color, #1d4ed8);
+    color: var(--schedule-ink, #1e3a8a);
     font-weight: 900;
-    font-size: 0.72rem;
-    line-height: 1;
+    font-size: 0.73rem;
+    line-height: 1.05;
     overflow: hidden;
+    border-left: 4px solid var(--schedule-color, #2563eb);
+  }
+
+  .fc-month-clean-event.month-midnight-boundary {
+    border-left-style: dashed;
+    background: color-mix(in srgb, var(--schedule-soft, #dbeafe) 76%, #ffffff);
+    opacity: 0.96;
+  }
+
+  .fc-month-clean-event.month-midnight-boundary span:last-child {
+    color: var(--schedule-ink, #1e3a8a);
   }
 
   .fc-month-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: var(--schedule-color, #2563eb);
+    display: none;
     flex-shrink: 0;
   }
 
@@ -477,6 +556,25 @@
     font-weight: 700;
   }
 
+  .fc-week-clean-event.midnight-boundary {
+    justify-content: center;
+    gap: 0;
+    min-height: 100%;
+    padding: 2px 6px;
+    border-left-width: 4px;
+    font-size: 0.68rem;
+    background: color-mix(in srgb, var(--schedule-soft, #dbeafe) 82%, #ffffff);
+  }
+
+  .fc-week-clean-event.midnight-boundary strong {
+    font-size: 0.68rem;
+  }
+
+  .fc-timegrid-event.midnight-boundary-event {
+    border-style: dashed !important;
+    opacity: 0.96;
+  }
+
   .fc-daygrid-more-link {
     margin-left: 6px;
     color: #2563eb !important;
@@ -490,6 +588,87 @@
 
   .fc-daygrid-event-harness {
     margin-top: 1px !important;
+  }
+
+  .schedule-day-modal .modal-content {
+    border: 0;
+    border-radius: 30px;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.2);
+  }
+
+  .schedule-day-modal .modal-header {
+    padding: 24px 26px 14px;
+    border: 0;
+  }
+
+  .schedule-day-title {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  .schedule-day-number {
+    color: #020617;
+    font-size: 2.3rem;
+    font-weight: 950;
+    line-height: 1;
+  }
+
+  .schedule-day-name {
+    color: #020617;
+    font-size: 1.45rem;
+    font-weight: 950;
+  }
+
+  .schedule-day-subtitle {
+    color: #94a3b8;
+    font-weight: 800;
+    margin: 8px 0 0;
+  }
+
+  .schedule-day-list {
+    display: grid;
+    gap: 12px;
+    padding: 0 26px 26px;
+  }
+
+  .schedule-day-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    border-radius: 18px;
+    padding: 16px;
+    background: var(--schedule-soft, #dbeafe);
+    color: var(--schedule-ink, #1e3a8a);
+    border-left: 5px solid var(--schedule-color, #2563eb);
+  }
+
+  .schedule-day-item i {
+    color: var(--schedule-color, #2563eb);
+    font-size: 1.1rem;
+    margin-top: 2px;
+  }
+
+  .schedule-day-item strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 950;
+  }
+
+  .schedule-day-item span {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-weight: 800;
+  }
+
+  .schedule-day-empty {
+    border-radius: 18px;
+    padding: 18px;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 800;
+    text-align: center;
   }
 
   .saved-schedule-card {
@@ -725,21 +904,6 @@
 <div class="doctor-schedule-page">
   <div class="doctor-schedule-shell">
 
-    @if ($errors->any())
-      <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">
-        <div class="fw-bold mb-1">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Please fix the highlighted errors.
-        </div>
-
-        <ul class="mb-0">
-          @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-          @endforeach
-        </ul>
-      </div>
-    @endif
-
     <div class="schedule-hero">
       <div class="row align-items-center g-4">
         <div class="col-xl-8">
@@ -940,8 +1104,6 @@
                   Active schedule
                 </label>
               </div>
-
-              <div id="scheduleFormMessage" class="alert alert-warning rounded-4 d-none"></div>
 
               <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary schedule-main-btn flex-grow-1" id="submitBtn">
@@ -1172,34 +1334,42 @@
   </div>
 </div>
 
-<div class="modal fade" id="deleteScheduleModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade schedule-day-modal" id="scheduleDayModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content schedule-modal">
+    <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold">
-          <i class="bi bi-trash3 me-2"></i>
-          Remove schedule?
-        </h5>
+        <div>
+          <div class="schedule-day-title">
+            <span class="schedule-day-number" id="scheduleDayNumber">--</span>
+            <span class="schedule-day-name" id="scheduleDayName">Day</span>
+          </div>
+          <p class="schedule-day-subtitle" id="scheduleDaySubtitle">Schedules for this date.</p>
+        </div>
 
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <div class="modal-body p-4">
-        <p class="mb-0 text-muted">
-          This schedule entry will be permanently removed. This action cannot be undone.
-        </p>
+      <div class="schedule-day-list" id="scheduleDayList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade schedule-day-modal" id="scheduleDayModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="schedule-day-title">
+            <span class="schedule-day-number" id="scheduleDayNumber">--</span>
+            <span class="schedule-day-name" id="scheduleDayName">Day</span>
+          </div>
+          <p class="schedule-day-subtitle" id="scheduleDaySubtitle">Schedules for this date.</p>
+        </div>
+
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <div class="modal-footer border-0 pt-0 px-4 pb-4">
-        <button type="button" class="btn btn-outline-secondary schedule-outline-btn" data-bs-dismiss="modal">
-          Cancel
-        </button>
-
-        <button type="button" class="btn btn-danger schedule-main-btn" id="confirmDeleteScheduleBtn">
-          <i class="bi bi-trash3 me-1"></i>
-          Remove
-        </button>
-      </div>
+      <div class="schedule-day-list" id="scheduleDayList"></div>
     </div>
   </div>
 </div>
@@ -1216,7 +1386,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const scheduleType = document.getElementById('schedule_type');
   const submitLabel = document.getElementById('submitLabel');
   const cancelEdit = document.getElementById('cancelEdit');
-  const messageBox = document.getElementById('scheduleFormMessage');
   const days = document.querySelectorAll('input[name="days[]"]');
   const selectedDaysPreview = document.getElementById('selectedDaysPreview');
   const limitRecurringPeriod = document.getElementById('limitRecurringPeriod');
@@ -1227,12 +1396,15 @@ document.addEventListener('DOMContentLoaded', function () {
   const isActive = document.getElementById('is_active');
   const timeBlocksWrap = document.getElementById('timeBlocksWrap');
   const addTimeBlockBtn = document.getElementById('addTimeBlockBtn');
+  const scheduleDayModal = document.getElementById('scheduleDayModal');
+  const scheduleDayNumber = document.getElementById('scheduleDayNumber');
+  const scheduleDayName = document.getElementById('scheduleDayName');
+  const scheduleDaySubtitle = document.getElementById('scheduleDaySubtitle');
+  const scheduleDayList = document.getElementById('scheduleDayList');
 
   const storeAction = @json(route('doctor.schedules.store'));
   const updateActionBase = @json(url('/doctor/schedules'));
   const schedules = @json($calendarSchedules);
-
-  let deleteForm = null;
 
   function updateSelectedDaysPreview() {
     const selected = Array.from(days)
@@ -1363,13 +1535,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function showMessage(text) {
-    messageBox.textContent = text;
-    messageBox.classList.remove('d-none');
+    if (window.showDoctorToast) {
+      window.showDoctorToast(text, 'warning');
+    }
   }
 
   function hideMessage() {
-    messageBox.textContent = '';
-    messageBox.classList.add('d-none');
+    return;
   }
 
   function resetForm() {
@@ -1423,6 +1595,112 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function nextDayIndex(dayIndex) {
     return (parseInt(dayIndex, 10) + 1) % 7;
+  }
+
+  function addDaysToDateString(dateString, daysToAdd) {
+    if (!dateString) return undefined;
+
+    const date = new Date(`${dateString}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) return undefined;
+
+    date.setDate(date.getDate() + daysToAdd);
+
+    return date.toISOString().slice(0, 10);
+  }
+
+  function formatDateForDetail(dateString) {
+    const date = new Date(`${dateString}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      return {
+        dayNumber: '--',
+        dayName: 'Day',
+        subtitle: 'Schedules for this date.'
+      };
+    }
+
+    return {
+      dayNumber: String(date.getDate()),
+      dayName: date.toLocaleDateString(undefined, { weekday: 'long' }),
+      subtitle: date.toLocaleDateString(undefined, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    };
+  }
+
+  function eventMatchesDate(eventData, dateString) {
+    const date = new Date(`${dateString}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) return false;
+
+    const dayIndex = String(date.getDay());
+    const daysOfWeek = (eventData.daysOfWeek || []).map(String);
+
+    if (!daysOfWeek.includes(dayIndex)) return false;
+    if (eventData.startRecur && dateString < eventData.startRecur) return false;
+    if (eventData.endRecur && dateString >= eventData.endRecur) return false;
+
+    return true;
+  }
+
+  function selectMonthDay(dateString) {
+    if (!calendarEl) return;
+
+    calendarEl.querySelectorAll('.selected-month-day').forEach(function (day) {
+      day.classList.remove('selected-month-day');
+    });
+
+    const dayCell = calendarEl.querySelector(`.fc-daygrid-day[data-date="${dateString}"]`);
+
+    if (dayCell) {
+      dayCell.classList.add('selected-month-day');
+    }
+  }
+
+  function openScheduleDay(dateString, calendarEvents) {
+    if (!scheduleDayModal || !scheduleDayList) return;
+
+    const detailDate = formatDateForDetail(dateString);
+    const dayEvents = calendarEvents
+      .filter(eventData => eventMatchesDate(eventData, dateString))
+      .sort(function (first, second) {
+        return String(first.startTime || '').localeCompare(String(second.startTime || ''));
+      });
+
+    scheduleDayNumber.textContent = detailDate.dayNumber;
+    scheduleDayName.textContent = detailDate.dayName;
+    scheduleDaySubtitle.textContent = detailDate.subtitle;
+
+    if (!dayEvents.length) {
+      scheduleDayList.innerHTML = '<div class="schedule-day-empty">No active schedule blocks for this day.</div>';
+    } else {
+      scheduleDayList.innerHTML = dayEvents.map(function (eventData) {
+        const props = eventData.extendedProps || {};
+        const serviceLabel = escapeHtml(props.serviceLabel || eventData.title || 'Schedule');
+        const timeLabel = escapeHtml(props.timeLabel || '');
+        const overnightLabel = escapeHtml(props.overnightLabel || '');
+
+        return `
+          <article class="schedule-day-item"
+                   style="--schedule-color: ${escapeHtml(props.scheduleColor || '#2563eb')}; --schedule-soft: ${escapeHtml(props.scheduleSoft || '#dbeafe')}; --schedule-ink: ${escapeHtml(props.scheduleInk || '#1e3a8a')};">
+            <i class="bi bi-calendar2-check"></i>
+            <div>
+              <strong>${serviceLabel}</strong>
+              <span>${timeLabel}${overnightLabel ? ` - ${overnightLabel}` : ''}</span>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    selectMonthDay(dateString);
+
+    if (window.bootstrap && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(scheduleDayModal).show();
+    }
   }
 
   const schedulePalette = [
@@ -1568,21 +1846,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.querySelectorAll('.delete-schedule-btn').forEach(function (button) {
     button.addEventListener('click', function () {
-      deleteForm = button.closest('form');
+      const deleteForm = button.closest('form');
 
-      if (window.bootstrap && bootstrap.Modal) {
-        const modal = new bootstrap.Modal(document.getElementById('deleteScheduleModal'));
-        modal.show();
-      } else if (confirm('Remove this schedule?')) {
-        deleteForm.submit();
+      if (!deleteForm) {
+        window.showDoctorToast?.('Unable to find the schedule delete form.', 'danger');
+        return;
       }
-    });
-  });
 
-  document.getElementById('confirmDeleteScheduleBtn').addEventListener('click', function () {
-    if (deleteForm) {
-      deleteForm.submit();
-    }
+      if (!window.confirmDoctorToast) {
+        deleteForm.submit();
+        return;
+      }
+
+      window.confirmDoctorToast({
+        title: 'Remove schedule?',
+        message: 'This schedule entry will be permanently removed. This action cannot be undone.',
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        type: 'danger',
+        onConfirm: function () {
+          deleteForm.submit();
+        }
+      });
+    });
   });
 
   const calendarEl = document.getElementById('doctorScheduleCalendar');
@@ -1593,17 +1879,20 @@ document.addEventListener('DOMContentLoaded', function () {
     schedules.forEach(function (schedule) {
       if (!schedule.is_active) return;
 
-      const isOvernight = schedule.start_time > schedule.end_time;
-      const fullTitle = `${schedule.service} - ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`;
+      const startTime = String(schedule.start_time || '').slice(0, 5);
+      const endTime = String(schedule.end_time || '').slice(0, 5);
+      const endsAtMidnight = endTime === '00:00';
+      const isOvernight = startTime > endTime || (startTime !== '00:00' && endsAtMidnight);
+      const fullTitle = `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`;
       const colors = eventColors(schedule);
-      const timeLabel = `${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`;
+      const timeLabel = `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`;
 
       if (!isOvernight) {
         calendarEvents.push({
           title: fullTitle,
           daysOfWeek: [String(schedule.day_of_week)],
-          startTime: schedule.start_time,
-          endTime: schedule.end_time,
+          startTime: startTime,
+          endTime: endTime,
           startRecur: schedule.start_date || undefined,
           endRecur: schedule.end_date || undefined,
           extendedProps: {
@@ -1615,15 +1904,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       } else {
         calendarEvents.push({
-          title: `${schedule.service} - ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)} overnight`,
+          title: `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)} overnight`,
           daysOfWeek: [String(schedule.day_of_week)],
-          startTime: schedule.start_time,
-          endTime: '23:59',
+          startTime: startTime,
+          endTime: endsAtMidnight ? '24:00:00' : '23:59',
           startRecur: schedule.start_date || undefined,
           endRecur: schedule.end_date || undefined,
           extendedProps: {
             serviceLabel: schedule.service,
-            timeLabel: `${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`,
+            timeLabel: `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
             overnightLabel: 'Continues overnight',
             scheduleId: schedule.id,
             ...colors
@@ -1631,17 +1920,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         calendarEvents.push({
-          title: `${schedule.service} - ${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)} overnight`,
+          title: `${schedule.service} ends at 12:00 AM`,
           daysOfWeek: [String(nextDayIndex(schedule.day_of_week))],
           startTime: '00:00',
-          endTime: schedule.end_time,
+          endTime: endsAtMidnight ? '00:30' : endTime,
           startRecur: schedule.start_date || undefined,
-          endRecur: schedule.end_date || undefined,
+          endRecur: addDaysToDateString(schedule.end_date, 1) || undefined,
+          classNames: endsAtMidnight ? ['midnight-boundary-event'] : [],
+          display: 'block',
           extendedProps: {
             serviceLabel: schedule.service,
-            timeLabel: `${formatTimeForDisplay(schedule.start_time)} - ${formatTimeForDisplay(schedule.end_time)}`,
-            overnightLabel: 'Continues from previous day',
+            timeLabel: endsAtMidnight ? 'Ends 12:00 AM' : `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
+            overnightLabel: endsAtMidnight ? 'Ends from previous day' : 'Continues from previous day',
             scheduleId: schedule.id,
+            midnightBoundary: endsAtMidnight,
             ...colors
           }
         });
@@ -1654,8 +1946,8 @@ document.addEventListener('DOMContentLoaded', function () {
       events: calendarEvents,
 
       allDaySlot: false,
-      dayMaxEvents: 1,
-      dayMaxEventRows: 1,
+      dayMaxEvents: 2,
+      dayMaxEventRows: 2,
       displayEventTime: false,
       eventDisplay: 'block',
       slotMinTime: '00:00:00',
@@ -1676,7 +1968,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       views: {
         dayGridMonth: {
-          dayMaxEvents: 1,
+          dayMaxEvents: 2,
+          dayMaxEventRows: 2,
           displayEventTime: false
         },
         timeGridWeek: {
@@ -1690,14 +1983,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const serviceLabel = escapeHtml(arg.event.extendedProps.serviceLabel || arg.event.title);
         const timeLabel = escapeHtml(arg.event.extendedProps.timeLabel || '');
         const overnightLabel = escapeHtml(arg.event.extendedProps.overnightLabel || '');
+        const midnightBoundary = Boolean(arg.event.extendedProps.midnightBoundary);
         const title = escapeHtml(arg.event.title);
 
         if (isMonthView) {
+          const monthLabel = midnightBoundary ? 'Ends 12 AM' : serviceLabel;
+
           return {
             html: `
-              <div class="fc-month-clean-event" title="${title}">
+              <div class="fc-month-clean-event ${midnightBoundary ? 'month-midnight-boundary' : ''}" title="${title}">
                 <span class="fc-month-dot"></span>
-                <span>Available</span>
+                <span>${monthLabel}</span>
+              </div>
+            `
+          };
+        }
+
+        if (midnightBoundary) {
+          return {
+            html: `
+              <div class="fc-week-clean-event midnight-boundary" title="${title}">
+                <strong>${timeLabel}</strong>
+                <small>${overnightLabel}</small>
               </div>
             `
           };
@@ -1725,6 +2032,24 @@ document.addEventListener('DOMContentLoaded', function () {
         info.el.style.setProperty('--schedule-soft', props.scheduleSoft || '#dbeafe');
         info.el.style.setProperty('--schedule-border', props.scheduleBorder || '#93c5fd');
         info.el.style.setProperty('--schedule-ink', props.scheduleInk || '#1e3a8a');
+      },
+
+      dateClick: function (info) {
+        if (info.view.type !== 'dayGridMonth') return;
+
+        openScheduleDay(info.dateStr, calendarEvents);
+      },
+
+      eventClick: function (info) {
+        if (info.view.type !== 'dayGridMonth') return;
+
+        info.jsEvent.preventDefault();
+
+        const dateString = (info.event.startStr || '').slice(0, 10);
+
+        if (dateString) {
+          openScheduleDay(dateString, calendarEvents);
+        }
       }
     });
 

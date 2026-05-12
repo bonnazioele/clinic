@@ -51,7 +51,7 @@ class DashboardController extends Controller
             ->get();
 
         $queue = QueueEntry::query()
-            ->withDashboardRelations()
+            ->withDashboardRelations(true)
             ->where('clinic_id', $activeClinicId)
             ->forDoctor($doctor->id)
             ->whereIn('status', QueueEntry::doctorQueueVisibleStatuses())

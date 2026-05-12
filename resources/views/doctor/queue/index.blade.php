@@ -371,35 +371,6 @@
 <div class="doctor-queue-page">
   <div class="doctor-queue-shell">
 
-    @if(session('status'))
-      <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">
-        <i class="bi bi-check2-circle me-2"></i>
-        {{ session('status') }}
-      </div>
-    @endif
-
-    @if(session('success'))
-      <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4">
-        <i class="bi bi-check2-circle me-2"></i>
-        {{ session('success') }}
-      </div>
-    @endif
-
-    @if($errors->any())
-      <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4">
-        <div class="fw-bold mb-1">
-          <i class="bi bi-exclamation-triangle me-2"></i>
-          Something went wrong.
-        </div>
-
-        <ul class="mb-0">
-          @foreach($errors->all() as $error)
-            <li>{{ $error }}</li>
-          @endforeach
-        </ul>
-      </div>
-    @endif
-
     <div class="queue-hero mb-4">
       <div class="row align-items-center g-4">
         <div class="col-lg-8">
@@ -557,8 +528,6 @@
               @elseif($canServe)
                 <button type="button"
                         class="btn btn-primary action-btn serve-btn"
-                        data-bs-toggle="modal"
-                        data-bs-target="#serveModal"
                         data-action-url="{{ route('doctor.queue.serve', $nowServingEntry) }}"
                         data-patient="{{ $patientName }}"
                         data-queue="#{{ $nowServingEntry->queue_number }}">
@@ -693,8 +662,6 @@
                 @elseif($canServe)
                   <button type="button"
                           class="btn btn-primary action-btn serve-btn"
-                          data-bs-toggle="modal"
-                          data-bs-target="#serveModal"
                           data-action-url="{{ route('doctor.queue.serve', $entry) }}"
                           data-patient="{{ $patientName }}"
                           data-queue="#{{ $entry->queue_number }}">
@@ -779,56 +746,9 @@
   </div>
 </details>
 
-<div class="modal fade" id="serveModal" tabindex="-1" aria-labelledby="serveModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form method="POST" class="modal-content serve-modal-content" id="serveForm">
-      @csrf
-
-      <div class="modal-header serve-modal-header">
-        <h5 class="modal-title fw-bold" id="serveModalLabel">
-          <i class="bi bi-person-check me-2"></i>
-          Mark Patient as Served
-        </h5>
-
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body serve-modal-body">
-        <div class="serve-modal-icon">
-          <i class="bi bi-person-check" style="color:#2563eb;font-size:2.3rem;"></i>
-        </div>
-
-        <h5 class="serve-modal-title">Mark this patient as served?</h5>
-
-        <p class="serve-modal-text">
-          This will notify the secretary to finalize and advance the queue. The patient will remain visible until the secretary clicks <strong>Done &amp; Next</strong>.
-        </p>
-
-        <div class="serve-patient-box">
-          <div class="serve-patient-name" id="servePatientName">Patient</div>
-          <p class="serve-queue-number" id="serveQueueNumber">Queue number</p>
-        </div>
-      </div>
-
-      <div class="modal-footer serve-modal-footer">
-        <button type="button" class="btn btn-outline-secondary serve-modal-btn" data-bs-dismiss="modal">
-          Cancel
-        </button>
-
-        <button type="submit" class="btn btn-primary serve-modal-btn">
-          <i class="bi bi-person-check me-1"></i>
-          Yes, Mark as Served
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const serveForm = document.getElementById('serveForm');
-    const servePatientName = document.getElementById('servePatientName');
-    const serveQueueNumber = document.getElementById('serveQueueNumber');
+    const csrfToken = @json(csrf_token());
 
     document.querySelectorAll('.serve-btn').forEach(function (button) {
       button.addEventListener('click', function () {
@@ -836,9 +756,26 @@
         const patientName = button.getAttribute('data-patient') || 'Patient';
         const queueNumber = button.getAttribute('data-queue') || 'Queue';
 
-        serveForm.setAttribute('action', actionUrl);
-        servePatientName.textContent = patientName;
-        serveQueueNumber.textContent = queueNumber;
+        if (!actionUrl) {
+          window.showDoctorToast?.('Missing serve action for this patient.', 'danger');
+          return;
+        }
+
+        window.confirmDoctorToast({
+          title: 'Mark Patient as Served',
+          message: `${queueNumber} - ${patientName}. The secretary will finalize and advance the queue after this.`,
+          confirmText: 'Mark Served',
+          cancelText: 'Cancel',
+          type: 'warning',
+          onConfirm: function () {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = actionUrl;
+            form.innerHTML = `<input type="hidden" name="_token" value="${csrfToken}">`;
+            document.body.appendChild(form);
+            form.submit();
+          }
+        });
       });
     });
   });
