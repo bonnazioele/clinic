@@ -536,7 +536,7 @@
                   </span>
                 @endif
                 <div>
-                  <h3 class="doctor-service-card__name">{{ $doctorName }}</h3>
+                  <h3 class="doctor-service-card__name">Dr. {{ $doctorName }}</h3>
                   <p class="doctor-service-card__meta">{{ $specialty }}</p>
                 </div>
               </div>

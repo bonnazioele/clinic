@@ -606,7 +606,7 @@
                 Doctor Dashboard
               </div>
 
-              <h1 class="doctor-hero-title">Good day, {{ $doctorName }}!</h1>
+              <h1 class="doctor-hero-title">Good day, Dr. {{ $doctorName }}!</h1>
 
               <p class="doctor-hero-text">
                 Here's your quick view of <strong>today's queue</strong> and your assigned clinic so you can work faster without switching pages.

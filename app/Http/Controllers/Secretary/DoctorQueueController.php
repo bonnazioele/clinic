@@ -10,8 +10,10 @@ use App\Models\PatientVisit;
 use App\Models\QueueEntry;
 use App\Models\Service;
 use App\Notifications\AppointmentStatusChanged;
+use App\Services\MoceanSmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class DoctorQueueController extends Controller
@@ -40,6 +42,24 @@ class DoctorQueueController extends Controller
         if (Schema::hasColumn('users', 'avatar_url')) {
             $doctorSelect[] = 'users.avatar_url';
         }
+
+        if (Schema::hasColumn('users', 'specialty')) {
+            $doctorSelect[] = 'users.specialty';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Browser-like doctor tabs
+        |--------------------------------------------------------------------------
+        | The doctor queue view uses this list to show all doctors assigned to the
+        | selected service. Clicking a tab opens the same queue page but switches
+        | the doctor_id in the route.
+        */
+        $doctorTabs = $service->doctors()
+            ->wherePivot('clinic_id', $activeClinicId)
+            ->where('users.is_active', true)
+            ->orderBy('users.name')
+            ->get($doctorSelect);
 
         $doctor = $service->doctors()
             ->wherePivot('clinic_id', $activeClinicId)
@@ -175,6 +195,7 @@ class DoctorQueueController extends Controller
             'service' => $service,
             'serviceName' => $service->name,
             'doctor' => $doctor,
+            'doctorTabs' => $doctorTabs,
             'clinicId' => $activeClinicId,
 
             'nowServing' => $nowServing,
@@ -209,7 +230,7 @@ class DoctorQueueController extends Controller
             ->where('id', $service_id)
             ->firstOrFail();
 
-        $service->doctors()
+        $doctor = $service->doctors()
             ->wherePivot('clinic_id', $activeClinicId)
             ->where('users.id', $doctor_id)
             ->firstOrFail();
@@ -285,12 +306,49 @@ class DoctorQueueController extends Controller
                 ->get();
         });
 
+        // ── Resolve doctor display name ──────────────────────────────────────
+        // Prefer "First Last" from the pivot result; fall back to the name column.
+        $doctorName = trim(
+            ($doctor->first_name ?? '') . ' ' . ($doctor->last_name ?? '')
+        ) ?: ($doctor->name ?? 'the doctor');
+
+        // ── Send SMS to every affected patient ───────────────────────────────
+        $sms = app(MoceanSmsService::class);
+
+        // Collect phone numbers we have already notified to avoid duplicate SMS
+        // when a patient appears in both the appointment list and the entry list.
+        $notifiedPhones = [];
+
+        // 1. Appointment patients (have a CliniQ user account → use user.phone)
         foreach ($cancelledAppointments as $appointment) {
             if ($appointment->user) {
                 $appointment->user->notify(new AppointmentStatusChanged($appointment));
             }
+
+            $phone = $appointment->user?->phone ?? null;
+
+            if ($phone && !in_array($phone, $notifiedPhones, true)) {
+                $patientName = $appointment->user?->name ?? 'Patient';
+                $this->sendCancellationSms($sms, $phone, $patientName, $doctorName);
+                $notifiedPhones[] = $phone;
+            }
         }
 
+        // 2. Walk-in patients (linked via Patient record → use patient.mobile_number)
+        foreach ($cancelledEntries->filter(fn (QueueEntry $e) => $e->is_walk_in) as $entry) {
+            $phone = $entry->patient?->mobile_number ?? null;
+
+            if ($phone && !in_array($phone, $notifiedPhones, true)) {
+                $patientName = $entry->patient
+                    ? trim(($entry->patient->first_name ?? '') . ' ' . ($entry->patient->last_name ?? ''))
+                    : 'Patient';
+
+                $this->sendCancellationSms($sms, $phone, $patientName ?: 'Patient', $doctorName);
+                $notifiedPhones[] = $phone;
+            }
+        }
+
+        // ── Broadcast queue updates ──────────────────────────────────────────
         foreach ($cancelledEntries as $entry) {
             event(new QueueUpdated($entry, 'cancelled'));
         }
@@ -305,6 +363,33 @@ class DoctorQueueController extends Controller
             $count > 0 ? 'status' : 'warning',
             $count > 0 ? $message : 'No active queue entries were available to cancel.'
         );
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Send the standard doctor-unavailable cancellation SMS.
+     */
+    private function sendCancellationSms(
+        MoceanSmsService $sms,
+        string $phone,
+        string $patientName,
+        string $doctorName
+    ): void {
+        $message = "Hello {$patientName}, this is from CliniQ. "
+            . "Dr. {$doctorName} is unavailable today. "
+            . "Kindly check CliniQ for available slots and choose to book with the same doctor "
+            . "on another date or another available doctor. "
+            . "Thank you for your understanding.";
+
+        $sent = $sms->send($phone, $message);
+
+        Log::info('Cancellation SMS dispatch.', [
+            'to'        => $phone,
+            'patient'   => $patientName,
+            'doctor'    => $doctorName,
+            'sent'      => $sent,
+        ]);
     }
 
     private function todayDoctorServiceQueueQuery(int $activeClinicId, Service $service, int $doctorId, string $today)

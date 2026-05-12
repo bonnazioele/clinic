@@ -407,11 +407,11 @@
         <span>Manage Services</span>
       </a>
 
-      <a href="{{ $secretaryClinicId ? route('secretary.services.create', ['clinic' => $secretaryClinicId]) : $servicesUrl }}"
+      <!-- <a href="{{ $secretaryClinicId ? route('secretary.services.create', ['clinic' => $secretaryClinicId]) : $servicesUrl }}"
          class="secretary-sidebar-service-link {{ request()->routeIs('secretary.services.create') ? 'active' : '' }}">
         <i class="bi bi-plus-circle"></i>
         <span>Add New Service</span>
-      </a>
+      </a> -->
 
       @if($activeClinicServices->isNotEmpty())
         <div style="margin: 4px 12px 4px 12px; border-top: 1px solid rgba(255,255,255,0.08);"></div>

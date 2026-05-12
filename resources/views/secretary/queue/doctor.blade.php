@@ -37,6 +37,20 @@
           'entry' => $nowServing->id,
       ])
       : null;
+
+  /*
+    Browser-like doctor tabs.
+    The controller may pass any of these: $doctorTabs, $serviceDoctors, or $doctors.
+    If none is passed yet, the page still works and shows the current doctor as the only tab.
+  */
+  $doctorTabs = collect($doctorTabs ?? $serviceDoctors ?? $doctors ?? ($service->doctors ?? []));
+
+  if ($doctorTabs->isEmpty() && isset($doctor)) {
+      $doctorTabs = collect([$doctor]);
+  }
+
+  $currentDoctorId = (string) ($doctor->id ?? $doctor->doctor_id ?? request()->route('doctor_id'));
+  $serviceIdForTabs = $service->id ?? request()->route('service_id');
 @endphp
 
 <style>
@@ -628,6 +642,156 @@
     filter: invert(1);
   }
 
+
+
+  /* ── Browser-like shell for doctor queue management ── */
+  .dq-browser {
+    border-radius: 24px;
+    border: 1px solid rgba(191, 219, 254, 0.95);
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(37, 99, 235, 0.13);
+    overflow: hidden;
+  }
+
+  .dq-browser-chrome {
+    background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+    border-bottom: 1px solid #bfdbfe;
+    padding-top: 0.85rem;
+  }
+
+  .dq-browser-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.75rem 1rem 0;
+  }
+
+  .dq-browser-lights {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    flex: 0 0 auto;
+  }
+
+  .dq-browser-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  }
+
+  .dq-browser-light.red { background: #ff5f57; }
+  .dq-browser-light.yellow { background: #ffbd2e; }
+  .dq-browser-light.green { background: #28c840; }
+
+  .dq-addressbar {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid #bfdbfe;
+    background: rgba(255, 255, 255, 0.86);
+    border-radius: 999px;
+    padding: 0.42rem 0.85rem;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .dq-addressbar span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dq-browser-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.8rem;
+    padding: 0 1.25rem 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .dq-browser-tabs::-webkit-scrollbar { display: none; }
+
+  .dq-browser-tab {
+    min-width: 245px;
+    max-width: 310px;
+    min-height: 86px;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1rem 1.2rem;
+    border-radius: 22px 22px 0 0;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: #475569;
+    text-decoration: none;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .dq-browser-tab:hover {
+    background: rgba(255, 255, 255, 0.82);
+    color: #0f172a;
+    transform: translateY(-2px);
+  }
+
+  .dq-browser-tab.active {
+    background: #ffffff;
+    border-color: #93c5fd;
+    color: #0f172a;
+    margin-bottom: -1px;
+    box-shadow: 0 -6px 22px rgba(37, 99, 235, 0.12);
+  }
+
+  .dq-browser-tab-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 17px;
+    display: grid;
+    place-items: center;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 1rem;
+    font-weight: 950;
+    flex: 0 0 52px;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.1);
+  }
+
+  .dq-browser-tab.active .dq-browser-tab-icon {
+    background: linear-gradient(135deg, #0d6efd, #178bff);
+    color: #ffffff;
+  }
+
+  .dq-browser-tab-text { min-width: 0; }
+
+  .dq-browser-tab-name {
+    display: block;
+    font-size: 1.08rem;
+    font-weight: 950;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dq-browser-tab-sub {
+    display: block;
+    margin-top: 0.28rem;
+    font-size: 0.84rem;
+    font-weight: 850;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dq-browser-tab.active .dq-browser-tab-sub { color: #2563eb; }
+
+  .dq-browser-body { padding: 1.25rem; }
+
   @media (max-width: 1200px) {
     .queue-grid {
       grid-template-columns: 1fr;
@@ -672,7 +836,51 @@
 </style>
 
 <div class="doctor-queue-page">
-  <nav class="mt-2 mb-3" aria-label="Queue navigation">
+  <div class="dq-browser">
+    <div class="dq-browser-chrome">
+      <div class="dq-browser-tabs" role="tablist" aria-label="Doctor queue lanes">
+        @forelse($doctorTabs as $doctorTab)
+          @php
+            $tabId = (string) (data_get($doctorTab, 'id') ?? data_get($doctorTab, 'doctor_id') ?? '');
+            $tabName = data_get($doctorTab, 'name')
+                ?? trim((data_get($doctorTab, 'first_name') ?? '') . ' ' . (data_get($doctorTab, 'last_name') ?? ''))
+                ?: 'Doctor';
+            $tabInitials = collect(explode(' ', str_replace('Dr.', '', $tabName)))
+                ->filter()
+                ->take(2)
+                ->map(fn($part) => strtoupper(mb_substr($part, 0, 1)))
+                ->implode('') ?: 'DR';
+            $isCurrentDoctorTab = $tabId === $currentDoctorId;
+            $tabUrl = Route::has('secretary.services.doctors.queue')
+                ? route('secretary.services.doctors.queue', ['service_id' => $serviceIdForTabs, 'doctor_id' => $tabId])
+                : url('/secretary/services/' . $serviceIdForTabs . '/doctors/' . $tabId . '/queue');
+          @endphp
+
+          <a
+            class="dq-browser-tab {{ $isCurrentDoctorTab ? 'active' : '' }}"
+            href="{{ $tabUrl }}"
+            role="tab"
+            aria-selected="{{ $isCurrentDoctorTab ? 'true' : 'false' }}">
+            <span class="dq-browser-tab-icon">{{ $tabInitials }}</span>
+            <span class="dq-browser-tab-text">
+              <span class="dq-browser-tab-name"> Dr. {{ $tabName }}</span>
+              <span class="dq-browser-tab-sub">Queue management</span>
+            </span>
+          </a>
+        @empty
+          <span class="dq-browser-tab active" role="tab" aria-selected="true">
+            <span class="dq-browser-tab-icon">DR</span>
+            <span class="dq-browser-tab-text">
+              <span class="dq-browser-tab-name">No doctors</span>
+              <span class="dq-browser-tab-sub">No queue lane available</span>
+            </span>
+          </span>
+        @endforelse
+      </div>
+    </div>
+
+    <div class="dq-browser-body">
+      <nav class="mt-2 mb-3" aria-label="Queue navigation">
     <a href="{{ $dashboardUrl }}">Dashboard</a> \ <a href="{{ $serviceQueueUrl }}">{{ $serviceName }}</a>
   </nav>
 
@@ -1033,6 +1241,8 @@
       </div>
     </div>
   </section>
+    </div>
+  </div>
 </div>
 
 <div class="modal fade resched-modal" id="reschedModal" tabindex="-1" aria-hidden="true">

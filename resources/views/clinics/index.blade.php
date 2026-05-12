@@ -505,14 +505,29 @@
         overflow-wrap: anywhere;
     }
 
+    .modal-doctor-right {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        flex-shrink: 0;
+    }
+
     .modal-doctor-instruction {
         display: inline-flex;
         align-items: center;
-        gap: .35rem;
-        margin-top: .45rem;
+        gap: .4rem;
         color: #0b5ed7;
-        font-size: .73rem;
+        font-size: .88rem;
         font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .modal-doctor-instruction i {
+        font-size: 1rem;
+    }
+
+    .modal-doctor-card.is-open .modal-doctor-instruction {
+        display: none;
     }
 
     .modal-doctor-arrow {
@@ -1224,15 +1239,18 @@
                                     ${doctor.phone ? escapeHtml(doctor.phone) : escapeHtml(doctor.email || 'No contact provided')}
                                 </div>
 
-                                <div class="modal-doctor-instruction">
-                                    <i class="bi bi-hand-index-thumb"></i>
-                                    Click to show schedule
-                                </div>
                             </div>
                         </div>
 
-                        <div class="modal-doctor-arrow">
-                            <i class="bi bi-chevron-down"></i>
+                        <div class="modal-doctor-right">
+                            <div class="modal-doctor-instruction">
+                                <i class="bi bi-hand-index-thumb"></i>
+                                Click to show schedule
+                            </div>
+
+                            <div class="modal-doctor-arrow">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
                         </div>
                     </button>
 

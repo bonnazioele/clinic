@@ -881,7 +881,7 @@
           Service Statuses
         </h2>
         <div class="workspace-subtitle">
-          Select a service, choose a doctor lane, then manage the active queue.
+          Select a service to open its browser-like doctor queue lanes.
         </div>
       </div>
 
@@ -894,7 +894,11 @@
     <div class="row g-4">
       @forelse ($serviceStatusCards ?? [] as $serviceCard)
         @php
-          $serviceLink = route('secretary.services.queue.index', ['service_id' => $serviceCard['route_key']]);
+          $serviceId = $serviceCard['route_key'] ?? $serviceCard['id'] ?? null;
+
+          $serviceLink = Route::has('secretary.services.queue.index')
+              ? route('secretary.services.queue.index', ['service_id' => $serviceId])
+              : url('/secretary/services/' . $serviceId);
         @endphp
 
         <div class="col-md-6 col-xl-4 mb-4">
@@ -907,13 +911,13 @@
               <div class="cliniq-service-card__stats">
                 <div class="cliniq-service-card__stat">
                   <span class="cliniq-service-card__stat-label">WAITING</span>
-                  <span class="cliniq-service-card__stat-value">{{ number_format($serviceCard['waiting_count']) }}</span>
+                  <span class="cliniq-service-card__stat-value">{{ number_format($serviceCard['waiting_count'] ?? 0) }}</span>
                 </div>
 
                 <div class="cliniq-service-card__stat cliniq-service-card__stat--right">
                   <span class="cliniq-service-card__stat-label">SERVING</span>
                   <span class="cliniq-service-card__stat-value cliniq-service-card__stat-value--primary">
-                    {{ number_format($serviceCard['serving_doctors']) }}
+                    {{ number_format($serviceCard['serving_doctors'] ?? 0) }}
                   </span>
                 </div>
               </div>

@@ -156,7 +156,7 @@
                     <i class="bi bi-person-badge"></i>
                     Doctor
                 </span>
-                <strong>{{ $doctorName }}</strong>
+                <strong>Dr. {{ $doctorName }}</strong>
             </div>
 
             <div class="appointment-detail">

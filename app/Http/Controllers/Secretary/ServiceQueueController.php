@@ -18,12 +18,49 @@ class ServiceQueueController extends Controller
         $activeClinicId = $this->activeClinicId($request);
         $today = now()->toDateString();
 
-        $serviceQuery = Service::query()
+        $service = Service::query()
             ->forClinics([$activeClinicId])
-            ->where('id', $service_id);
+            ->where('id', $service_id)
+            ->firstOrFail();
 
-        $service = $serviceQuery->firstOrFail();
+        $doctorSelect = ['users.id', 'users.name', 'users.is_active'];
 
+        if (Schema::hasColumn('users', 'avatar_url')) {
+            $doctorSelect[] = 'users.avatar_url';
+        }
+
+        if (Schema::hasColumn('users', 'specialty')) {
+            $doctorSelect[] = 'users.specialty';
+        }
+
+        $doctors = $service->doctors()
+            ->wherePivot('clinic_id', $activeClinicId)
+            ->where('users.is_active', true)
+            ->orderBy('users.name')
+            ->get($doctorSelect);
+
+        /*
+        |--------------------------------------------------------------------------
+        | New flow
+        |--------------------------------------------------------------------------
+        | Dashboard -> click service -> open queue management immediately.
+        | The doctor queue page already has browser-like doctor tabs on top, so we
+        | redirect to the first active doctor for this service.
+        */
+        if ($doctors->isNotEmpty()) {
+            return redirect()->route('secretary.services.doctors.queue', [
+                'service_id' => $service->id,
+                'doctor_id' => $doctors->first()->id,
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Fallback only when the service has no active doctors
+        |--------------------------------------------------------------------------
+        | This prevents an error if a secretary clicks a service with no assigned
+        | doctor yet.
+        */
         $queueEntriesForDay = QueueEntry::query()
             ->where('clinic_id', $activeClinicId)
             ->whereIn('status', ['waiting', 'in_progress', 'now_serving', 'served'])
@@ -55,48 +92,16 @@ class ServiceQueueController extends Controller
             ->count();
         $completedToday = $queueEntriesForDay->where('status', 'served')->count();
 
-        $queueEntries = $queueEntriesForDay
-            ->whereIn('status', ['waiting', 'in_progress', 'now_serving'])
-            ->groupBy(function ($entry) {
-                return $entry->doctor_id ?: $entry->appointment?->doctor_id;
-            });
-
-        $doctorSelect = ['users.id', 'users.name'];
-        if (Schema::hasColumn('users', 'avatar_url')) {
-            $doctorSelect[] = 'users.avatar_url';
-        }
-
-        $doctors = $service->doctors()
-            ->wherePivot('clinic_id', $activeClinicId)
-            ->where('users.is_active', true)
-            ->get($doctorSelect);
-
-        $doctorCards = $doctors->map(function ($doctor) use ($queueEntries) {
-            $entries = $queueEntries->get($doctor->id, collect());
-            $nowServingEntry = $entries->first(fn ($entry) => in_array($entry->status, ['in_progress', 'now_serving'], true));
-            $waiting = $entries->where('status', 'waiting')->count();
-
-            return [
-                'doctor_id' => $doctor->id,
-                'name' => $doctor->name,
-                'status' => 'active',
-                'now_serving' => $nowServingEntry ? '#' . $nowServingEntry->queue_number : '---',
-                'waiting' => $waiting,
-                'avatar_url' => $doctor->avatar_url ?? null,
-                'specialty' => $doctor->specialty ?? null,
-            ];
-        })->values();
-
         return view('secretary.queue.service-overview', [
             'service' => $service,
             'serviceName' => $service->name,
             'serviceDescription' => $service->description,
             'waitingCount' => $waitingCount,
             'nowServing' => $nowServingCount,
-            'activeDoctors' => $doctorCards->count(),
+            'activeDoctors' => 0,
             'completedToday' => $completedToday,
             'dailyProgress' => 0,
-            'doctors' => $doctorCards,
+            'doctors' => collect(),
             'serviceId' => $service->id,
             'clinicId' => $activeClinicId,
         ]);
