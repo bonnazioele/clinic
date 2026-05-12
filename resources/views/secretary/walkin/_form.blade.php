@@ -370,22 +370,22 @@
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label">Last Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="last_name" id="walkin_last_name" required placeholder="Enter your last name">
+              <input type="text" class="form-control" name="last_name" id="walkin_last_name" required>
             </div>
 
             <div class="col-md-4">
               <label class="form-label">First Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="first_name" id="walkin_first_name" required placeholder="Enter your first name">
+              <input type="text" class="form-control" name="first_name" id="walkin_first_name" required>
             </div>
 
             <div class="col-md-4">
               <label class="form-label">Middle Name</label>
-              <input type="text" class="form-control" name="middle_name" id="walkin_middle_name" placeholder="Enter your middle name">
+              <input type="text" class="form-control" name="middle_name" id="walkin_middle_name">
             </div>
 
             <div class="col-md-4">
               <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
-              <input type="tel" class="form-control" name="mobile_number" id="walkin_mobile_number" required placeholder="Enter your cellphone number">
+              <input type="tel" class="form-control" name="mobile_number" id="walkin_mobile_number" placeholder="Mobile number" required>
             </div>
           </div>
         </div>
@@ -509,12 +509,8 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold" data-bs-dismiss="modal">
-          Register Another Guest
-        </button>
-
-        <button type="button" class="btn btn-outline-primary rounded-pill fw-bold" id="walkinSuccessViewButton">
-          <i class="bi bi-file-earmark-text me-1"></i>View Confirmation
+        <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold" id="walkinSuccessRegisterAnotherButton">
+          <i class="bi bi-arrow-clockwise me-1"></i>Register Another Patient
         </button>
 
         <button type="button" class="btn btn-success rounded-pill fw-bold" id="walkinSuccessQueueButton">
@@ -610,7 +606,7 @@
     const successQueueNumber = document.getElementById('walkinSuccessQueueNumber');
     const successDoctorName = document.getElementById('walkinSuccessDoctorName');
     const successVisitNumber = document.getElementById('walkinSuccessVisitNumber');
-    const successViewBtn = document.getElementById('walkinSuccessViewButton');
+    const successRegisterAnotherBtn = document.getElementById('walkinSuccessRegisterAnotherButton');
     const successQueueBtn = document.getElementById('walkinSuccessQueueButton');
 
     const successModal = successModalEl && typeof bootstrap !== 'undefined'
@@ -660,7 +656,6 @@
         visitNumberField.value = data.data.visit_number;
 
         const queueUrl = data.data.queue_url || null;
-        const confirmationUrl = data.data.confirmation_url || null;
 
         if (successModal) {
           successPatientName.textContent = data.data.patient_name;
@@ -675,11 +670,9 @@
             successDoctorName.textContent = data.data.doctor_name || '—';
           }
 
-          if (successViewBtn) {
-            successViewBtn.onclick = () => {
-              if (confirmationUrl) {
-                window.location.href = confirmationUrl;
-              }
+          if (successRegisterAnotherBtn) {
+            successRegisterAnotherBtn.onclick = () => {
+              window.location.reload();
             };
           }
 
@@ -694,8 +687,6 @@
           successModal.show();
         } else if (queueUrl) {
           window.location.href = queueUrl;
-        } else if (confirmationUrl) {
-          window.location.href = confirmationUrl;
         }
       })
       .catch(error => {

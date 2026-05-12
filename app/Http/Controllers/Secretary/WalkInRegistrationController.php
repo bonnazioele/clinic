@@ -264,8 +264,11 @@ class WalkInRegistrationController extends Controller
                     'visit_id' => $visit->id,
                     'queue_entry_id' => $queueEntry->id,
                     'queue_number' => $queueEntry->queue_number,
-                    'queue_url' => route('secretary.queue.index', $clinicId),
-                    'confirmation_url' => route('secretary.walkin.confirmation', $visit->id),
+                    'queue_url' => route('secretary.services.queue.index', [
+                        'service_id' => (int) $service->id,
+                    ]) . '?' . http_build_query([
+                        'doctor_id' => (int) $doctor->id,
+                    ]),
                 ],
             ]);
         } catch (\Throwable $e) {
