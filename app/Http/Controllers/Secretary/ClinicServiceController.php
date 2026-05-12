@@ -53,6 +53,16 @@ class ClinicServiceController extends Controller
         abort(403, 'Active clinic context is required.');
     }
 
+
+    private function findExistingServiceByName(string $name): ?Service
+    {
+        $normalizedName = mb_strtolower(trim(preg_replace('/\s+/', ' ', $name)));
+
+        return Service::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalizedName])
+            ->first();
+    }
+
     public function index(Request $request)
     {
         $clinic = $this->getActiveClinic($request);
@@ -139,8 +149,16 @@ class ClinicServiceController extends Controller
     {
         $clinic = $this->getActiveClinic($request);
 
+        $attachedIds = $clinic->services()->pluck('services.id');
+
+        $availableServices = Service::query()
+            ->whereNotIn('id', $attachedIds)
+            ->orderBy('name')
+            ->get();
+
         return view('secretary.services.create', [
             'clinic' => $clinic,
+            'availableServices' => $availableServices,
         ]);
     }
 
@@ -153,16 +171,36 @@ class ClinicServiceController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
-        $service = Service::create([
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-        ]);
+        $cleanName = trim(preg_replace('/\s+/', ' ', $data['name']));
+        $description = $data['description'] ?? null;
 
-        $clinic->services()->syncWithoutDetaching([$service->id]);
+        $service = DB::transaction(function () use ($clinic, $cleanName, $description) {
+            $existingService = $this->findExistingServiceByName($cleanName);
+
+            if ($existingService) {
+                $clinic->services()->syncWithoutDetaching([$existingService->id]);
+
+                return $existingService;
+            }
+
+            $newService = Service::create([
+                'name' => $cleanName,
+                'description' => $description,
+            ]);
+
+            $clinic->services()->syncWithoutDetaching([$newService->id]);
+
+            return $newService;
+        });
 
         return redirect()
             ->route('secretary.services.index', ['clinic' => $clinic->id])
-            ->with('status', 'Service created and attached to your clinic.');
+            ->with(
+                'status',
+                $service->wasRecentlyCreated
+                    ? 'Service created and attached to your clinic.'
+                    : 'Existing service found in the masterlist and attached to your clinic.'
+            );
     }
 
     public function edit(Request $request, Clinic $clinic, Service $service)

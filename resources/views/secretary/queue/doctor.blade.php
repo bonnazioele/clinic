@@ -893,7 +893,7 @@
           alt="{{ $doctorName }}">
 
         <div>
-          <h1 class="doctor-queue-title">{{ $doctorName }}</h1>
+          <h1 class="doctor-queue-title">Dr. {{ $doctorName }}</h1>
           <p class="doctor-queue-subtitle">
             Manage the patient queue for this doctor
           </p>
@@ -1336,3 +1336,7 @@
   });
 </script>
 @endsection
+
+@push('scripts')
+  @include('partials.secretary-doctor-served-toast')
+@endpush
