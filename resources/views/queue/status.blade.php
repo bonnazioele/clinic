@@ -790,7 +790,7 @@
               <div>
                 <h1 class="queue-title">My Queue Status</h1>
                 <p class="queue-subtitle">
-                  Quickly check your queue number, waiting status, visit date, and estimated call time.
+                  Quickly check your queue slot number, waiting status, visit date, and estimated call time.
                 </p>
               </div>
             </div>
@@ -896,7 +896,7 @@
 
               <div class="queue-main-status">
                 <div class="queue-number-panel">
-                  <div class="queue-number-label">Your Queue Number</div>
+                  <div class="queue-number-label">Your Queue Slot Number</div>
                   <div class="queue-number">#{{ $entry->queue_number }}</div>
 
                   @if($isWaiting || $isCalled)
@@ -909,7 +909,7 @@
                     </div>
                   @else
                     <div class="queue-number-help">
-                      This queue number has already been completed.
+                      This queue slot number has already been completed.
                     </div>
                   @endif
                 </div>
@@ -1038,7 +1038,7 @@
                     <div>
                       <div class="detail-note-title">Listen for your number</div>
                       <div class="detail-note-text">
-                        Staff may call your queue number when it is your turn.
+                        Staff may call your queue slot number when it is your turn.
                       </div>
                     </div>
                   </div>

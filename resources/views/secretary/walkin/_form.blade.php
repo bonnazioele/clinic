@@ -496,7 +496,7 @@
         </div>
 
         <div class="walkin-success-tile mb-3">
-          <div class="small">Queue Number</div>
+          <div class="small">Queue Slot Number</div>
           <div class="value" id="walkinSuccessQueueNumber">&nbsp;</div>
         </div>
 
