@@ -267,6 +267,42 @@ class QueueService
             ->contains(fn (array $slot) => $slot['time'] === $time && $slot['available']);
     }
 
+    public function peopleAheadForEntry(QueueEntry $entry): int
+    {
+        $entry->loadMissing(['appointment']);
+
+        $doctorId = (int) ($entry->doctor_id ?: $entry->appointment?->doctor_id ?: 0);
+        $serviceId = $this->serviceIdForEntry($entry);
+        $date = $entry->scheduledSlotDateString();
+
+        if ($doctorId <= 0 || ! $serviceId || ! $date) {
+            return 0;
+        }
+
+        $entries = QueueEntry::query()
+            ->with(['appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,status'])
+            ->where('clinic_id', $entry->clinic_id)
+            ->forDashboardDay($date)
+            ->forDoctor($doctorId)
+            ->where(function ($statusQuery) use ($entry) {
+                $statusQuery->whereIn('status', ['waiting', 'in_progress'])
+                    ->orWhere('queue_entries.id', $entry->id);
+            })
+            ->orderByScheduledSlot()
+            ->get()
+            ->filter(fn (QueueEntry $candidate) => (int) $this->serviceIdForEntry($candidate) === (int) $serviceId)
+            ->values();
+
+        if (! $entries->contains(fn (QueueEntry $candidate) => (int) $candidate->id === (int) $entry->id)) {
+            return 0;
+        }
+
+        return $entries
+            ->takeUntil(fn (QueueEntry $candidate) => (int) $candidate->id === (int) $entry->id)
+            ->whereIn('status', ['waiting', 'in_progress'])
+            ->count();
+    }
+
     public function createOrReuseSlotEntry(
         int $clinicId,
         int $doctorId,

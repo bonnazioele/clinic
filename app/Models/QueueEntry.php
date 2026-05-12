@@ -469,21 +469,7 @@ class QueueEntry extends Model
             return 0;
         }
 
-        $entries = $this->clinic->queueEntries()
-            ->whereIn('status', self::activePatientStatuses())
-            ->orderByScheduledSlot()
-            ->get([
-                'id',
-                'queue_number',
-                'scheduled_slot_date',
-                'scheduled_slot_time',
-            ]);
-
-        $ahead = $entries
-            ->takeUntil(fn ($entry) => (int) $entry->id === (int) $this->id)
-            ->count();
-
-        return $ahead * 15;
+        return app(\App\Services\QueueService::class)->peopleAheadForEntry($this) * 15;
     }
 
     public function getFormattedScheduledSlotTimeAttribute(): ?string

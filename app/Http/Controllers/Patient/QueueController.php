@@ -102,12 +102,7 @@ class QueueController extends Controller
             $ahead = 0;
 
             if (in_array($entry->status, QueueEntry::activePatientStatuses(), true)) {
-                $ahead = QueueEntry::where('clinic_id', $entry->clinic_id)
-                    ->whereIn('status', QueueEntry::activePatientStatuses())
-                    ->orderByScheduledSlot()
-                    ->get(['id', 'queue_number', 'scheduled_slot_date', 'scheduled_slot_time'])
-                    ->takeUntil(fn ($candidate) => (int) $candidate->id === (int) $entry->id)
-                    ->count();
+                $ahead = $this->queue->peopleAheadForEntry($entry);
             }
 
             return view('queue.status', compact('entry', 'ahead'));

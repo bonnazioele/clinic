@@ -375,9 +375,7 @@ class ClinicController extends Controller
                 });
 
             if ($activePatientQueue) {
-                $peopleAhead = $serviceQueueEntries
-                    ->takeUntil(fn (QueueEntry $candidate) => (int) $candidate->id === (int) $activePatientQueue->id)
-                    ->count();
+                $peopleAhead = $queueService->peopleAheadForEntry($activePatientQueue);
             }
         }
 

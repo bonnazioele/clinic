@@ -1080,11 +1080,7 @@
             <h2 class="queue-panel-title">
               <i class="bi bi-arrow-right-circle-fill"></i>
               Queue Next
-            </h2>
-            <span class="queue-pill">
-              <i class="bi bi-hourglass-split"></i>
-              Call
-            </span>
+            </h2> 
           </div>
 
           <div class="d-flex align-items-center gap-3">
@@ -1185,7 +1181,7 @@
                     @if ($isWaiting || $isWithDoctor)
                       <form method="POST" action="{{ $row['call_url'] }}" data-keep-enabled>
                         @csrf
-                        <button class="row-action-link" type="submit">Call</button>
+                        <button class="row-action-link" type="submit">Notify</button>
                       </form>
 
                       @if($isWaiting && empty($row['is_priority']))
