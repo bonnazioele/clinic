@@ -476,6 +476,22 @@
     padding: 0 !important;
   }
 
+  .fc .fc-dayGridMonth-view .fc-daygrid-event.overnight-source-event {
+    margin-right: -6px !important;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-event.overnight-continuation-event {
+    margin-left: -6px !important;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-event-harness.overnight-source-harness {
+    margin-right: 0 !important;
+  }
+
+  .fc .fc-dayGridMonth-view .fc-daygrid-event-harness.overnight-continuation-harness {
+    margin-left: 0 !important;
+  }
+
   .fc .fc-timegrid-event,
   .fc .fc-timegrid-more-link {
     border: 0 !important;
@@ -505,10 +521,27 @@
     border-left: 4px solid var(--schedule-color, #2563eb);
   }
 
+  .fc-month-clean-event.month-overnight-source {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-right: -4px;
+    padding-right: 10px;
+  }
+
   .fc-month-clean-event.month-midnight-boundary {
     border-left-style: dashed;
     background: color-mix(in srgb, var(--schedule-soft, #dbeafe) 76%, #ffffff);
     opacity: 0.96;
+  }
+
+  .fc-month-clean-event.month-overnight-continuation {
+    border-left: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background: var(--schedule-soft, rgba(37, 99, 235, 0.08));
+    opacity: 0.98;
+    margin-left: -4px;
+    padding-left: 7px;
   }
 
   .fc-month-clean-event.month-midnight-boundary span:last-child {
@@ -1609,6 +1642,32 @@ document.addEventListener('DOMContentLoaded', function () {
     return date.toISOString().slice(0, 10);
   }
 
+  function parseDateString(dateString) {
+    if (!dateString) return null;
+
+    const date = new Date(`${dateString}T00:00:00`);
+
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function cloneDateAtMidnight(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function addDaysToDate(date, daysToAdd) {
+    const nextDate = cloneDateAtMidnight(date);
+    nextDate.setDate(nextDate.getDate() + daysToAdd);
+    return nextDate;
+  }
+
+  function toDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
   function formatDateForDetail(dateString) {
     const date = new Date(`${dateString}T00:00:00`);
 
@@ -1632,6 +1691,15 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function eventMatchesDate(eventData, dateString) {
+    if (eventData.start) {
+      const startDate = toDateKey(cloneDateAtMidnight(new Date(eventData.start)));
+      const endDate = eventData.end
+        ? toDateKey(cloneDateAtMidnight(new Date(eventData.end)))
+        : addDaysToDateString(startDate, 1);
+
+      return dateString >= startDate && dateString < endDate;
+    }
+
     const date = new Date(`${dateString}T00:00:00`);
 
     if (Number.isNaN(date.getTime())) return false;
@@ -1667,7 +1735,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const dayEvents = calendarEvents
       .filter(eventData => eventMatchesDate(eventData, dateString))
       .sort(function (first, second) {
-        return String(first.startTime || '').localeCompare(String(second.startTime || ''));
+        const firstSort = String(first.startTime || first.extendedProps?.sortTime || '');
+        const secondSort = String(second.startTime || second.extendedProps?.sortTime || '');
+
+        return firstSort.localeCompare(secondSort);
       });
 
     scheduleDayNumber.textContent = detailDate.dayNumber;
@@ -1874,76 +1945,146 @@ document.addEventListener('DOMContentLoaded', function () {
   const calendarEl = document.getElementById('doctorScheduleCalendar');
 
   if (calendarEl && window.FullCalendar) {
-    const calendarEvents = [];
+    function buildWeekEvents() {
+      const weekEvents = [];
 
-    schedules.forEach(function (schedule) {
-      if (!schedule.is_active) return;
+      schedules.forEach(function (schedule) {
+        if (!schedule.is_active) return;
 
-      const startTime = String(schedule.start_time || '').slice(0, 5);
-      const endTime = String(schedule.end_time || '').slice(0, 5);
-      const endsAtMidnight = endTime === '00:00';
-      const isOvernight = startTime > endTime || (startTime !== '00:00' && endsAtMidnight);
-      const fullTitle = `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`;
-      const colors = eventColors(schedule);
-      const timeLabel = `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`;
+        const startTime = String(schedule.start_time || '').slice(0, 5);
+        const endTime = String(schedule.end_time || '').slice(0, 5);
+        const endsAtMidnight = endTime === '00:00';
+        const isOvernight = startTime > endTime || (startTime !== '00:00' && endsAtMidnight);
+        const fullTitle = `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`;
+        const colors = eventColors(schedule);
+        const timeLabel = `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`;
 
-      if (!isOvernight) {
-        calendarEvents.push({
-          title: fullTitle,
-          daysOfWeek: [String(schedule.day_of_week)],
-          startTime: startTime,
-          endTime: endTime,
-          startRecur: schedule.start_date || undefined,
-          endRecur: schedule.end_date || undefined,
-          extendedProps: {
-            serviceLabel: schedule.service,
-            timeLabel: timeLabel,
-            scheduleId: schedule.id,
-            ...colors
+        if (!isOvernight) {
+          weekEvents.push({
+            title: fullTitle,
+            daysOfWeek: [String(schedule.day_of_week)],
+            startTime: startTime,
+            endTime: endTime,
+            startRecur: schedule.start_date || undefined,
+            endRecur: schedule.end_date || undefined,
+            extendedProps: {
+              serviceLabel: schedule.service,
+              timeLabel: timeLabel,
+              scheduleId: schedule.id,
+              ...colors
+            }
+          });
+        } else {
+          weekEvents.push({
+            title: `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)} overnight`,
+            daysOfWeek: [String(schedule.day_of_week)],
+            startTime: startTime,
+            endTime: endsAtMidnight ? '24:00:00' : '23:59',
+            startRecur: schedule.start_date || undefined,
+            endRecur: schedule.end_date || undefined,
+            classNames: ['overnight-source-event'],
+            extendedProps: {
+              serviceLabel: schedule.service,
+              timeLabel: `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
+              overnightLabel: 'Continues overnight',
+              overnightSourceSegment: true,
+              scheduleId: schedule.id,
+              ...colors
+            }
+          });
+
+          weekEvents.push({
+            title: `${schedule.service} ends at 12:00 AM`,
+            daysOfWeek: [String(nextDayIndex(schedule.day_of_week))],
+            startTime: '00:00',
+            endTime: endsAtMidnight ? '00:30' : endTime,
+            startRecur: schedule.start_date || undefined,
+            endRecur: addDaysToDateString(schedule.end_date, 1) || undefined,
+            classNames: endsAtMidnight
+              ? ['midnight-boundary-event', 'overnight-continuation-event']
+              : ['overnight-continuation-event'],
+            display: 'block',
+            extendedProps: {
+              serviceLabel: schedule.service,
+              timeLabel: endsAtMidnight ? 'Ends 12:00 AM' : `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
+              overnightLabel: endsAtMidnight ? 'Ends from previous day' : 'Continues from previous day',
+              continuationSegment: true,
+              scheduleId: schedule.id,
+              midnightBoundary: endsAtMidnight,
+              ...colors
+            }
+          });
+        }
+      });
+
+      return weekEvents;
+    }
+
+    function buildMonthEvents(viewStart, viewEnd) {
+      const monthEvents = [];
+      const visibleStart = cloneDateAtMidnight(viewStart);
+      const visibleEnd = cloneDateAtMidnight(viewEnd);
+
+      schedules.forEach(function (schedule) {
+        if (!schedule.is_active) return;
+
+        const startTime = String(schedule.start_time || '').slice(0, 5);
+        const endTime = String(schedule.end_time || '').slice(0, 5);
+        const endsAtMidnight = endTime === '00:00';
+        const isOvernight = startTime > endTime || (startTime !== '00:00' && endsAtMidnight);
+        const colors = eventColors(schedule);
+        const scheduleStart = parseDateString(schedule.start_date) || visibleStart;
+        const scheduleEnd = parseDateString(schedule.end_date) || addDaysToDate(visibleEnd, -1);
+
+        for (let cursor = cloneDateAtMidnight(visibleStart); cursor < visibleEnd; cursor = addDaysToDate(cursor, 1)) {
+          if (cursor < scheduleStart || cursor > scheduleEnd) {
+            continue;
           }
-        });
-      } else {
-        calendarEvents.push({
-          title: `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)} overnight`,
-          daysOfWeek: [String(schedule.day_of_week)],
-          startTime: startTime,
-          endTime: endsAtMidnight ? '24:00:00' : '23:59',
-          startRecur: schedule.start_date || undefined,
-          endRecur: schedule.end_date || undefined,
-          extendedProps: {
-            serviceLabel: schedule.service,
-            timeLabel: `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
-            overnightLabel: 'Continues overnight',
-            scheduleId: schedule.id,
-            ...colors
-          }
-        });
 
-        calendarEvents.push({
-          title: `${schedule.service} ends at 12:00 AM`,
-          daysOfWeek: [String(nextDayIndex(schedule.day_of_week))],
-          startTime: '00:00',
-          endTime: endsAtMidnight ? '00:30' : endTime,
-          startRecur: schedule.start_date || undefined,
-          endRecur: addDaysToDateString(schedule.end_date, 1) || undefined,
-          classNames: endsAtMidnight ? ['midnight-boundary-event'] : [],
-          display: 'block',
-          extendedProps: {
-            serviceLabel: schedule.service,
-            timeLabel: endsAtMidnight ? 'Ends 12:00 AM' : `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
-            overnightLabel: endsAtMidnight ? 'Ends from previous day' : 'Continues from previous day',
-            scheduleId: schedule.id,
-            midnightBoundary: endsAtMidnight,
-            ...colors
+          if (cursor.getDay() !== Number(schedule.day_of_week)) {
+            continue;
           }
-        });
-      }
-    });
 
-    const calendar = new FullCalendar.Calendar(calendarEl, {
+          const occurrenceStart = toDateKey(cursor);
+          const occurrenceEnd = toDateKey(addDaysToDate(cursor, isOvernight ? 2 : 1));
+
+          monthEvents.push({
+            title: `${schedule.service} - ${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
+            start: occurrenceStart,
+            end: occurrenceEnd,
+            allDay: true,
+            display: 'block',
+            extendedProps: {
+              serviceLabel: schedule.service,
+              timeLabel: `${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}`,
+              overnightLabel: isOvernight ? 'Continues overnight' : '',
+              monthSpan: true,
+              scheduleId: schedule.id,
+              sortTime: startTime,
+              ...colors
+            }
+          });
+        }
+      });
+
+      return monthEvents;
+    }
+
+    let calendar = null;
+
+    calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'dayGridMonth',
       height: 'auto',
-      events: calendarEvents,
+      events: function (fetchInfo, successCallback) {
+        const activeView = calendar ? calendar.view.type : 'dayGridMonth';
+
+        if (activeView === 'dayGridMonth') {
+          successCallback(buildMonthEvents(fetchInfo.start, fetchInfo.end));
+          return;
+        }
+
+        successCallback(buildWeekEvents());
+      },
 
       allDaySlot: false,
       dayMaxEvents: 2,
@@ -1987,11 +2128,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const title = escapeHtml(arg.event.title);
 
         if (isMonthView) {
-          const monthLabel = midnightBoundary ? 'Ends 12 AM' : serviceLabel;
+          const monthLabel = serviceLabel;
 
           return {
             html: `
-              <div class="fc-month-clean-event ${midnightBoundary ? 'month-midnight-boundary' : ''}" title="${title}">
+              <div class="fc-month-clean-event" title="${title}">
                 <span class="fc-month-dot"></span>
                 <span>${monthLabel}</span>
               </div>
@@ -2027,17 +2168,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
       eventDidMount: function (info) {
         const props = info.event.extendedProps;
+        const harness = info.el.parentElement;
 
         info.el.style.setProperty('--schedule-color', props.scheduleColor || '#2563eb');
         info.el.style.setProperty('--schedule-soft', props.scheduleSoft || '#dbeafe');
         info.el.style.setProperty('--schedule-border', props.scheduleBorder || '#93c5fd');
         info.el.style.setProperty('--schedule-ink', props.scheduleInk || '#1e3a8a');
+
+        if (info.view.type === 'dayGridMonth' && harness) {
+          if (info.event.classNames.includes('overnight-source-event')) {
+            harness.classList.add('overnight-source-harness');
+          }
+
+          if (info.event.classNames.includes('overnight-continuation-event')) {
+            harness.classList.add('overnight-continuation-harness');
+          }
+        }
       },
 
       dateClick: function (info) {
         if (info.view.type !== 'dayGridMonth') return;
 
-        openScheduleDay(info.dateStr, calendarEvents);
+        openScheduleDay(info.dateStr, calendar.getEvents());
       },
 
       eventClick: function (info) {
@@ -2045,10 +2197,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         info.jsEvent.preventDefault();
 
-        const dateString = (info.event.startStr || '').slice(0, 10);
+        const dateString = info.el.closest('.fc-daygrid-day')?.getAttribute('data-date')
+          || (info.event.startStr || '').slice(0, 10);
 
         if (dateString) {
-          openScheduleDay(dateString, calendarEvents);
+          openScheduleDay(dateString, calendar.getEvents());
         }
       }
     });
