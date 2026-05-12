@@ -57,52 +57,64 @@ class AppointmentController extends Controller
     }
 
     public function index(Request $request)
-    {
-        if ($request->has('export')) {
-            return redirect()->route('secretary.appointments.index', $request->except(['export', 'page']));
-        }
+{
+    $activeClinic = $this->activeClinic($request);
+    $activeClinicId = $activeClinic->id;
 
-        $activeClinic = $this->activeClinic($request);
-        $activeClinicId = $activeClinic->id;
-        $period = $this->appointmentPeriod($request);
+    $query = Appointment::with('user', 'clinic', 'service', 'doctor')
+        ->where('clinic_id', $activeClinicId);
 
-        $summaryQuery = $this->filteredAppointmentQuery($request, $activeClinicId, false, $period);
-        $query = $this->filteredAppointmentQuery($request, $activeClinicId, true, $period);
+    if ($request->filled('patient')) {
+        $term = trim((string) $request->input('patient'));
 
-        $summary = (clone $summaryQuery)
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw("SUM(status = 'scheduled') as scheduled")
-            ->selectRaw("SUM(status = 'completed') as completed")
-            ->selectRaw("SUM(status = 'cancelled') as cancelled")
-            ->first();
-
-        $appointments = $query
-            ->orderBy('appointment_date')
-            ->orderBy('appointment_time')
-            ->paginate(15)
-            ->appends($request->except(['page', 'export']));
-
-        $doctors = User::where('is_doctor', true)
-            ->whereHas('clinics', function ($q) use ($activeClinicId) {
-                $q->where('clinics.id', $activeClinicId);
-            })
-            ->orderBy('name')
-            ->get();
-
-        $services = $activeClinic->services()
-            ->orderBy('name')
-            ->get();
-
-        return view('secretary.appointments.index', compact(
-            'appointments',
-            'doctors',
-            'services',
-            'activeClinic',
-            'activeClinicId',
-            'summary',
-            'period'
-        ));
+        $query->whereHas('user', function ($q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+                ->orWhere('email', 'like', "%{$term}%")
+                ->orWhere('phone', 'like', "%{$term}%");
+        });
     }
+
+    if ($request->filled('status')) {
+        $query->where('status', (string) $request->input('status'));
+    }
+
+    if ($request->filled('date')) {
+        $query->whereDate('appointment_date', (string) $request->input('date'));
+    }
+
+    if ($request->filled('doctor_id')) {
+        $query->where('doctor_id', (int) $request->input('doctor_id'));
+    }
+
+    if ($request->filled('service_id')) {
+        $query->where('service_id', (int) $request->input('service_id'));
+    }
+
+    $appointments = $query
+        ->orderBy('appointment_date')
+        ->orderBy('appointment_time')
+        ->paginate(15)
+        ->appends($request->except(['page', 'export']));
+
+    $doctors = User::where('is_doctor', true)
+        ->whereHas('clinics', function ($q) use ($activeClinicId) {
+            $q->where('clinics.id', $activeClinicId);
+        })
+        ->orderBy('name')
+        ->get();
+
+    $services = $activeClinic->services()
+        ->orderBy('name')
+        ->get();
+
+    return view('secretary.appointments.index', compact(
+        'appointments',
+        'doctors',
+        'services',
+        'activeClinic',
+        'activeClinicId'
+    ));
+}
 
     public function edit(Request $request, Appointment $appointment)
     {
@@ -253,6 +265,8 @@ class AppointmentController extends Controller
             'doctor_id'        => 'required|exists:users,id',
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required',
+            'notes'            => 'nullable|string|max:500',
+            'medical_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,gif,webp|max:5120',
         ]);
 
         $patient = User::findOrFail($data['patient_id']);
@@ -363,6 +377,7 @@ class AppointmentController extends Controller
                 'appointment_date' => $appointmentDate,
                 'appointment_time' => $time,
                 'status'           => 'scheduled',
+                'notes'            => $data['notes'] ?? null,
             ]);
         } catch (QueryException $e) {
             $sqlState = (string) ($e->errorInfo[0] ?? '');
@@ -381,6 +396,11 @@ class AppointmentController extends Controller
             }
 
             throw $e;
+        }
+
+        if ($request->hasFile('medical_document')) {
+            $path = $request->file('medical_document')->store('medical-documents', 'public');
+            $appointment->update(['medical_document' => $path]);
         }
 
         $queueNumber = $queueService->getSlotQueueNumber(

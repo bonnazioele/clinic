@@ -300,6 +300,44 @@
     padding: 1.2rem;
   }
 
+  .sec-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .sec-action-card {
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding: 0.9rem;
+    color: #0f172a;
+    font-weight: 850;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    transition: 0.18s ease;
+  }
+
+  .sec-action-card:hover {
+    transform: translateY(-2px);
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #0d6efd;
+  }
+
+  .sec-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: #eff6ff;
+    color: #0d6efd;
+    flex: 0 0 40px;
+  }
+
   .sec-filter-grid {
     display: grid;
     grid-template-columns: 1.4fr 0.9fr 0.9fr auto;
@@ -539,6 +577,10 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .sec-actions-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .sec-filter-grid {
       grid-template-columns: 1fr 1fr;
     }
@@ -564,6 +606,7 @@
     }
 
     .sec-filter-grid,
+    .sec-actions-grid,
     .sec-cards-grid {
       grid-template-columns: 1fr;
     }
@@ -662,6 +705,54 @@
           </div>
         </div>
       </a>
+    </div>
+  </section>
+
+  <section class="sec-panel">
+    <div class="sec-card-head">
+      <h2 class="sec-card-title">
+        <i class="bi bi-lightning"></i>
+        Quick Actions
+      </h2>
+    </div>
+
+    <div class="sec-card-body">
+      <div class="sec-actions-grid">
+        <a href="{{ $secUrl('secretary.patients.create') }}" class="sec-action-card">
+          <span class="sec-action-icon">
+            <i class="bi bi-person-plus"></i>
+          </span>
+          <span>Register Patient</span>
+        </a>
+
+        <a href="{{ $secUrl('secretary.appointments.create') }}" class="sec-action-card">
+          <span class="sec-action-icon">
+            <i class="bi bi-calendar-plus"></i>
+          </span>
+          <span>New Appointment</span>
+        </a>
+
+        <a href="{{ $secUrl('secretary.queue.index') }}" class="sec-action-card">
+          <span class="sec-action-icon">
+            <i class="bi bi-people"></i>
+          </span>
+          <span>Manage Queue</span>
+        </a>
+
+        <a href="{{ $secUrl('secretary.doctors.index') }}" class="sec-action-card">
+          <span class="sec-action-icon">
+            <i class="bi bi-person-badge"></i>
+          </span>
+          <span>Manage Doctors</span>
+        </a>
+
+        <button type="button" class="sec-action-card" onclick="exportAppointments()">
+          <span class="sec-action-icon">
+            <i class="bi bi-download"></i>
+          </span>
+          <span>Export Data</span>
+        </button>
+      </div>
     </div>
   </section>
 
@@ -781,6 +872,7 @@
             <th class="px-4 py-3">Doctor</th>
             <th class="px-4 py-3">Date & Time</th>
             <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Document</th>
             <th class="px-4 py-3">Actions</th>
           </tr>
         </thead>
@@ -866,6 +958,19 @@
               </td>
 
               <td class="px-4 py-3">
+                @if($appointment->medical_document)
+                  <a href="{{ Storage::url($appointment->medical_document) }}"
+                     target="_blank"
+                     class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-file-earmark-medical me-1"></i>
+                    View
+                  </a>
+                @else
+                  <span class="text-muted small">No document</span>
+                @endif
+              </td>
+
+              <td class="px-4 py-3">
                 <div class="d-flex gap-2 flex-wrap sec-action-buttons">
                   <a href="{{ $secUrl('secretary.appointments.edit', ['appointment' => $appointment->id]) }}"
                      class="btn btn-sm btn-outline-primary">
@@ -874,6 +979,20 @@
                   </a>
 
                   @if(! in_array($appointment->status, ['completed', 'cancelled'], true))
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary reschedule-btn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#rescheduleAppointmentModal"
+                            data-action="{{ $secUrl('secretary.appointments.reschedule', ['appointment' => $appointment->id]) }}"
+                            data-service-id="{{ $appointment->service_id }}"
+                            data-doctor-id="{{ $appointment->doctor_id }}"
+                            data-date="{{ optional($appointment->appointment_date)->format('Y-m-d') }}"
+                            data-time="{{ $appointment->appointment_time ? substr($appointment->getRawOriginal('appointment_time'), 0, 5) : '' }}"
+                            data-patient="{{ $appointment->user->name ?? 'Patient' }}">
+                      <i class="bi bi-calendar2-week me-1"></i>
+                      Reschedule
+                    </button>
+
                     <form method="POST"
                           action="{{ $secUrl('secretary.appointments.cancel', ['appointment' => $appointment->id]) }}"
                           data-confirm="Cancel this appointment?"
@@ -893,7 +1012,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6">
+              <td colspan="7">
                 <div class="sec-empty">
                   <i class="bi bi-calendar-x d-block mb-3"></i>
                   <h5 class="fw-bold">No appointments found</h5>
@@ -960,6 +1079,20 @@
                 </a>
 
                 @if(! in_array($appointment->status, ['completed', 'cancelled'], true))
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary reschedule-btn"
+                          data-bs-toggle="modal"
+                          data-bs-target="#rescheduleAppointmentModal"
+                          data-action="{{ $secUrl('secretary.appointments.reschedule', ['appointment' => $appointment->id]) }}"
+                          data-service-id="{{ $appointment->service_id }}"
+                          data-doctor-id="{{ $appointment->doctor_id }}"
+                          data-date="{{ optional($appointment->appointment_date)->format('Y-m-d') }}"
+                          data-time="{{ $appointment->appointment_time ? substr($appointment->getRawOriginal('appointment_time'), 0, 5) : '' }}"
+                          data-patient="{{ $appointment->user->name ?? 'Patient' }}">
+                    <i class="bi bi-calendar2-week me-1"></i>
+                    Reschedule
+                  </button>
+
                   <form method="POST"
                         action="{{ $secUrl('secretary.appointments.cancel', ['appointment' => $appointment->id]) }}"
                         data-confirm="Cancel this appointment?"
@@ -995,6 +1128,67 @@
   </section>
 </div>
 
+<div class="modal fade" id="rescheduleAppointmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="POST" action="#" class="modal-content" id="rescheduleAppointmentForm">
+      @csrf
+      @method('PATCH')
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold">Reschedule Appointment</h5>
+          <div class="text-muted small" id="reschedulePatientLabel">Update appointment details.</div>
+        </div>
+
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Service</label>
+            <select name="service_id" id="rescheduleService" class="form-select" required>
+              @foreach($services as $service)
+                <option value="{{ $service->id }}">{{ $service->name }}</option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Doctor</label>
+            <select name="doctor_id" id="rescheduleDoctor" class="form-select" required>
+              @foreach($doctors as $doctor)
+                <option value="{{ $doctor->id }}">Dr. {{ $doctor->name }}</option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Date</label>
+            <input type="date" name="appointment_date" id="rescheduleDate" class="form-control" min="{{ date('Y-m-d') }}" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Time</label>
+            <input type="time" name="appointment_time" id="rescheduleTime" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="alert alert-info rounded-4 mt-3 mb-0">
+          The system will verify the doctor's clinic schedule and existing bookings before saving.
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary rounded-4 fw-bold" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary rounded-4 fw-bold">
+          <i class="bi bi-calendar2-check me-1"></i>
+          Save Reschedule
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -1029,6 +1223,31 @@
     const cardView = document.getElementById('cardView');
     const tableViewContent = document.getElementById('tableViewContent');
     const cardViewContent = document.getElementById('cardViewContent');
+    const rescheduleModal = document.getElementById('rescheduleAppointmentModal');
+    const rescheduleForm = document.getElementById('rescheduleAppointmentForm');
+    const reschedulePatientLabel = document.getElementById('reschedulePatientLabel');
+    const rescheduleService = document.getElementById('rescheduleService');
+    const rescheduleDoctor = document.getElementById('rescheduleDoctor');
+    const rescheduleDate = document.getElementById('rescheduleDate');
+    const rescheduleTime = document.getElementById('rescheduleTime');
+
+    if (rescheduleModal && rescheduleForm) {
+      rescheduleModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        if (!button) {
+          return;
+        }
+
+        rescheduleForm.action = button.dataset.action || '#';
+        reschedulePatientLabel.textContent = `Patient: ${button.dataset.patient || 'Patient'}`;
+        rescheduleService.value = button.dataset.serviceId || '';
+        rescheduleDoctor.value = button.dataset.doctorId || '';
+        rescheduleDate.value = button.dataset.date || '';
+        rescheduleTime.value = button.dataset.time || '';
+      });
+    }
+
     if (!tableView || !cardView || !tableViewContent || !cardViewContent) {
       return;
     }

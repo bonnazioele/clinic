@@ -68,7 +68,7 @@
       <div class="sec-form-grid">
         <main class="sec-card">
           <div class="sec-card-head"><h2 class="sec-card-title"><i class="bi bi-clipboard2-pulse"></i>Appointment Details</h2></div>
-          <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm" data-active-clinic="{{ $activeClinicId ?? 0 }}">
+          <form method="POST" action="{{ route('secretary.appointments.store') }}" id="appointmentForm" data-active-clinic="{{ $activeClinicId ?? 0 }}" enctype="multipart/form-data">
             @csrf
             <div class="sec-card-body">
               <div class="form-section">
@@ -101,6 +101,8 @@
                 <div class="soft-box mt-3" id="doctorScheduleWrap" style="display:none;"><label class="form-label"><i class="bi bi-list-check me-1"></i>Doctor Availability</label><div class="small" id="doctorScheduleInfo"></div></div>
               </div>
 
+              <div class="form-section"><div class="section-label"><i class="bi bi-sticky"></i>Notes</div><textarea name="notes" id="notes" class="form-control @error('notes') is-invalid @enderror" rows="3" placeholder="Any additional notes about the appointment...">{{ old('notes') }}</textarea>@error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
+              <div class="form-section"><div class="section-label"><i class="bi bi-file-earmark-medical"></i>Medical Document</div><input type="file" name="medical_document" id="medical_document" class="form-control @error('medical_document') is-invalid @enderror" accept=".pdf,image/*">@error('medical_document')<div class="invalid-feedback">{{ $message }}</div>@enderror<div class="form-text">Optional. Attach a PDF or image file up to your backend limit.</div></div>
               <div class="sec-actions"><button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-2"></i>Create Appointment</button><a href="{{ $secIndexUrl }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-2"></i>Cancel</a></div>
             </div>
           </form>

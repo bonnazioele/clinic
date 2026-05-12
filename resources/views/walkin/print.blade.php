@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registration Slip - CliniQ</title>
-    @vite(['resources/sass/app.scss'])
+    @vite(['resources/css/app.css'])
     <style>
         body {
             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;

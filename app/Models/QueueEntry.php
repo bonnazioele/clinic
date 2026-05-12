@@ -299,19 +299,13 @@ class QueueEntry extends Model
         return $query->whereNotNull('appointment_id');
     }
 
-    public function scopeWithDashboardRelations($query, bool $includeMedicalDocument = false)
+    public function scopeWithDashboardRelations($query)
     {
-        $appointmentColumns = 'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,status';
-
-        if ($includeMedicalDocument) {
-            $appointmentColumns = 'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,medical_document,status';
-        }
-
         return $query->with([
             'user:id,name,email,phone',
             'patient:id,patient_number,status,first_name,last_name,middle_name,email_address,mobile_number',
             'doctor:id,name,first_name,last_name,email',
-            $appointmentColumns,
+            'appointment:id,user_id,doctor_id,service_id,appointment_date,appointment_time,medical_document,status',
             'appointment.user:id,name,email,phone',
             'appointment.service:id,name',
             'clinic:id,name',

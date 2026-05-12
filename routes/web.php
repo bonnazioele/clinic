@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Storage;
 */
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\SecretaryRegisterController;
+
 use App\Http\Controllers\Frontend\DashboardController;
 use App\Http\Controllers\Frontend\ClinicController;
 use App\Http\Controllers\Frontend\PublicServiceController;
@@ -457,10 +459,6 @@ Route::prefix('secretary')
             ->whereNumber('appointment')
             ->name('appointments.update');
 
-        Route::patch('/appointments/{appointment}/cancel', [SecretaryAppointmentController::class, 'cancel'])
-            ->whereNumber('appointment')
-            ->name('appointments.cancel');
-
         Route::delete('/appointments/{appointment}', [SecretaryAppointmentController::class, 'destroy'])
             ->whereNumber('appointment')
             ->name('appointments.destroy');
@@ -739,13 +737,3 @@ Route::get('/permits/{permit}', function (\App\Models\ClinicPermit $permit) {
 
     return Storage::disk('public')->response($permit->attachment_path);
 })->name('permits.download');
-
-use App\Services\MoceanSmsService;
-
-Route::get('/test-mocean-sms', function (MoceanSmsService $sms) {
-    $sent = $sms->send('09289839549', 'CliniQ: This is a test SMS using Mocean.');
-
-    return $sent
-        ? 'Mocean SMS request sent.'
-        : 'Mocean SMS failed. Check storage/logs/laravel.log.';
-});
