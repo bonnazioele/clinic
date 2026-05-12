@@ -57,64 +57,46 @@ class AppointmentController extends Controller
     }
 
     public function index(Request $request)
-{
-    $activeClinic = $this->activeClinic($request);
-    $activeClinicId = $activeClinic->id;
+    {
+        $activeClinic = $this->activeClinic($request);
+        $activeClinicId = $activeClinic->id;
+        $query = $this->filteredAppointmentQuery($request, $activeClinicId);
+        $summaryQuery = $this->filteredAppointmentQuery($request, $activeClinicId);
 
-    $query = Appointment::with('user', 'clinic', 'service', 'doctor')
-        ->where('clinic_id', $activeClinicId);
+        $appointments = $query
+            ->orderBy('appointment_date')
+            ->orderBy('appointment_time')
+            ->paginate(15)
+            ->appends($request->except(['page', 'export']));
 
-    if ($request->filled('patient')) {
-        $term = trim((string) $request->input('patient'));
+        $totalAppointments = (clone $summaryQuery)->count();
+        $scheduledCount = (clone $summaryQuery)->where('status', 'scheduled')->count();
+        $inProgressCount = (clone $summaryQuery)->where('status', 'in_progress')->count();
+        $cancelledCount = (clone $summaryQuery)->where('status', 'cancelled')->count();
 
-        $query->whereHas('user', function ($q) use ($term) {
-            $q->where('name', 'like', "%{$term}%")
-                ->orWhere('email', 'like', "%{$term}%")
-                ->orWhere('phone', 'like', "%{$term}%");
-        });
+        $doctors = User::where('is_doctor', true)
+            ->whereHas('clinics', function ($q) use ($activeClinicId) {
+                $q->where('clinics.id', $activeClinicId);
+            })
+            ->orderBy('name')
+            ->get();
+
+        $services = $activeClinic->services()
+            ->orderBy('name')
+            ->get();
+
+        return view('secretary.appointments.index', compact(
+            'appointments',
+            'doctors',
+            'services',
+            'activeClinic',
+            'activeClinicId',
+            'totalAppointments',
+            'scheduledCount',
+            'inProgressCount',
+            'cancelledCount'
+        ));
     }
-
-    if ($request->filled('status')) {
-        $query->where('status', (string) $request->input('status'));
-    }
-
-    if ($request->filled('date')) {
-        $query->whereDate('appointment_date', (string) $request->input('date'));
-    }
-
-    if ($request->filled('doctor_id')) {
-        $query->where('doctor_id', (int) $request->input('doctor_id'));
-    }
-
-    if ($request->filled('service_id')) {
-        $query->where('service_id', (int) $request->input('service_id'));
-    }
-
-    $appointments = $query
-        ->orderBy('appointment_date')
-        ->orderBy('appointment_time')
-        ->paginate(15)
-        ->appends($request->except(['page', 'export']));
-
-    $doctors = User::where('is_doctor', true)
-        ->whereHas('clinics', function ($q) use ($activeClinicId) {
-            $q->where('clinics.id', $activeClinicId);
-        })
-        ->orderBy('name')
-        ->get();
-
-    $services = $activeClinic->services()
-        ->orderBy('name')
-        ->get();
-
-    return view('secretary.appointments.index', compact(
-        'appointments',
-        'doctors',
-        'services',
-        'activeClinic',
-        'activeClinicId'
-    ));
-}
 
     public function edit(Request $request, Appointment $appointment)
     {
@@ -462,16 +444,17 @@ class AppointmentController extends Controller
         return redirect()->route('secretary.appointments.index');
     }
 
-    private function filteredAppointmentQuery(Request $request, int $activeClinicId, bool $includeStatus = true, ?string $period = null)
+    private function filteredAppointmentQuery(Request $request, int $activeClinicId, bool $includeStatus = true)
     {
         $query = Appointment::with('user', 'clinic', 'service', 'doctor')
             ->where('clinic_id', $activeClinicId);
 
         $today = now()->toDateString();
-        $period = $period ?: $this->appointmentPeriod($request);
+        $dateMode = $request->query('date_mode') === 'specific' ? 'specific' : 'today';
 
-        if ($period === 'upcoming') {
-            $query->whereDate('appointment_date', '>', $today);
+        if ($dateMode === 'specific' && $request->filled('date')) {
+            $query->whereDate('appointment_date', (string) $request->input('date'))
+                ->whereDate('appointment_date', '>=', $today);
         } else {
             $query->whereDate('appointment_date', $today);
         }
@@ -497,17 +480,12 @@ class AppointmentController extends Controller
         if ($includeStatus && $request->filled('status')) {
             $status = (string) $request->input('status');
 
-            if (in_array($status, ['scheduled', 'completed', 'cancelled', 'no_show', 'rescheduled'], true)) {
+            if (in_array($status, ['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'], true)) {
                 $query->where('status', $status);
             }
         }
 
         return $query;
-    }
-
-    private function appointmentPeriod(Request $request): string
-    {
-        return $request->query('period') === 'upcoming' ? 'upcoming' : 'today';
     }
 
     private function exportAppointments($query, int $clinicId)
