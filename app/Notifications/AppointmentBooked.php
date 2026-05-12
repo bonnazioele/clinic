@@ -32,7 +32,7 @@ class AppointmentBooked extends Notification implements ShouldBroadcast
     public function toDatabase($notifiable): array
     {
         return [
-            'message'   => "Your appointment (#{$this->appt->id}) on {$this->appt->appointment_date} at {$this->appt->appointment_time} was booked.",
+            'message'   => "Your appointment has been confirmed for {$this->appt->appointment_date} at {$this->appt->appointment_time}.",
             'appointment_id' => $this->appt->id,
         ];
     }

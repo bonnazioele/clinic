@@ -16,7 +16,7 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
     public function via($n){ return ['database','broadcast']; }
     public function toDatabase($n): array
     { $formatted = $this->formatDateTime(); return [
-        'message' => "New patient (".$this->appointment->user?->name.") booked for {$formatted}.",
+        'message' => "New appointment: ".$this->appointment->user?->name." scheduled for {$formatted}.",
         'appointment_id' => $this->appointment->id,
         'role' => 'doctor'
       ]; }
@@ -27,7 +27,7 @@ class DoctorAppointmentBooked extends Notification implements ShouldBroadcast
 
     public function toArray($notifiable): array
     { $formatted = $this->formatDateTime(); return [
-        'message' => "New patient (".$this->appointment->user?->name.") booked for {$formatted}.",
+        'message' => "New appointment: ".$this->appointment->user?->name." scheduled for {$formatted}.",
         'appointment_id' => $this->appointment->id,
         'role' => 'doctor'
       ]; }

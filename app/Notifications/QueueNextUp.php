@@ -25,7 +25,7 @@ class QueueNextUp extends Notification implements ShouldBroadcast
     {
         $clinic = $this->entry->clinic?->name;
         return new DatabaseMessage([
-            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
+            'message' => "You're next! Please proceed to the clinic.",
             'queue_entry_id' => $this->entry->id,
             'clinic_id' => $this->entry->clinic_id,
             'type' => 'queue_next_up'
@@ -36,7 +36,7 @@ class QueueNextUp extends Notification implements ShouldBroadcast
     {
         $clinic = $this->entry->clinic?->name;
         return new BroadcastMessage([
-            'message' => "You're next in the queue (#{$this->entry->queue_number}) at {$clinic}.",
+            'message' => "You're next! Please proceed to the clinic.",
             'queue_entry_id' => $this->entry->id,
             'clinic_id' => $this->entry->clinic_id,
             'type' => 'queue_next_up'

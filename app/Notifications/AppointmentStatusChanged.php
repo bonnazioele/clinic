@@ -37,7 +37,7 @@ class AppointmentStatusChanged extends Notification implements ShouldBroadcast
     public function toArray($notifiable): array
     {
         return [
-            'message' => "Your appointment (#{$this->appointment->id}) status changed to “{$this->appointment->status}.”",
+            'message' => "Your appointment status has been updated to {$this->appointment->status}.",
             'appointment_id' => $this->appointment->id,
         ];
     }
@@ -45,7 +45,7 @@ class AppointmentStatusChanged extends Notification implements ShouldBroadcast
     public function toDatabase($notifiable): array
     {
         return [
-            'message' => "Your appointment (#{$this->appointment->id}) status changed to “{$this->appointment->status}.”",
+            'message' => "Your appointment status has been updated to {$this->appointment->status}.",
             'appointment_id' => $this->appointment->id,
         ];
     }

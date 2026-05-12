@@ -25,7 +25,7 @@ class SecretaryAppointmentBooked extends Notification implements ShouldBroadcast
         $formatted = $this->formatDateTime();
 
         return [
-            'message' => "New appointment (#{$this->appointment->id}) booked for {$formatted} (Patient: ".$this->appointment->user?->name.").",
+            'message' => "New appointment scheduled: ".$this->appointment->user?->name." on {$formatted}.",
             'appointment_id' => $this->appointment->id,
             'role' => 'secretary'
         ];
@@ -41,7 +41,7 @@ class SecretaryAppointmentBooked extends Notification implements ShouldBroadcast
         $formatted = $this->formatDateTime();
 
         return [
-            'message' => "New appointment (#{$this->appointment->id}) booked for {$formatted} (Patient: ".$this->appointment->user?->name.").",
+            'message' => "New appointment scheduled: ".$this->appointment->user?->name." on {$formatted}.",
             'appointment_id' => $this->appointment->id,
             'role' => 'secretary'
         ];
