@@ -114,7 +114,6 @@ class WalkInRegistrationController extends Controller
                     'date_of_birth' => $patient->date_of_birth?->format('Y-m-d'),
                     'age' => $patient->age,
                     'mobile_number' => $patient->mobile_number,
-                    'email_address' => $patient->email_address,
                     'complete_address' => $patient->complete_address,
                     'emergency_contact_name' => $patient->emergency_contact_name,
                     'emergency_contact_relationship' => $patient->emergency_contact_relationship,
@@ -306,7 +305,6 @@ class WalkInRegistrationController extends Controller
                 'first_name' => $data['first_name'] ?? $patient->first_name,
                 'last_name' => $data['last_name'] ?? $patient->last_name,
                 'middle_name' => $data['middle_name'] ?? $patient->middle_name,
-                'email_address' => $data['email_address'] ?? $patient->email_address,
                 'mobile_number' => $data['mobile_number'] ?? $patient->mobile_number,
                 'sex' => $data['sex'] ?? $patient->sex,
                 'date_of_birth' => $data['date_of_birth'] ?? $patient->date_of_birth,
@@ -319,9 +317,13 @@ class WalkInRegistrationController extends Controller
             return $patient;
         }
 
-        $existingPatient = Patient::where('email_address', $data['email_address'])
-            ->whereNull('user_id')
-            ->first();
+        $existingPatient = null;
+
+        if (! empty($data['mobile_number'])) {
+            $existingPatient = Patient::where('mobile_number', $data['mobile_number'])
+                ->whereNull('user_id')
+                ->first();
+        }
 
         if ($existingPatient) {
             $existingPatient->update([
@@ -351,7 +353,7 @@ class WalkInRegistrationController extends Controller
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'middle_name' => $data['middle_name'] ?? null,
-            'email_address' => $data['email_address'],
+            'email_address' => null,
             'mobile_number' => $data['mobile_number'] ?? null,
 
             'sex' => $data['sex'] ?? null,

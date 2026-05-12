@@ -370,30 +370,22 @@
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label">Last Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="last_name" id="walkin_last_name" required>
+              <input type="text" class="form-control" name="last_name" id="walkin_last_name" required placeholder="Enter your last name">
             </div>
 
             <div class="col-md-4">
               <label class="form-label">First Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="first_name" id="walkin_first_name" required>
+              <input type="text" class="form-control" name="first_name" id="walkin_first_name" required placeholder="Enter your first name">
             </div>
 
             <div class="col-md-4">
               <label class="form-label">Middle Name</label>
-              <input type="text" class="form-control" name="middle_name" id="walkin_middle_name">
+              <input type="text" class="form-control" name="middle_name" id="walkin_middle_name" placeholder="Enter your middle name">
             </div>
 
-            <div class="col-md-6">
-              <label class="form-label">Email Address <span class="text-danger">*</span></label>
-              <input type="email" class="form-control" name="email_address" id="walkin_email_address" placeholder="patient@email.com" required>
-              <div class="form-text">
-                This email will be used later for the account completion link.
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Mobile Number</label>
-              <input type="tel" class="form-control" name="mobile_number" id="walkin_mobile_number" placeholder="Optional">
+            <div class="col-md-4">
+              <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+              <input type="tel" class="form-control" name="mobile_number" id="walkin_mobile_number" required placeholder="Enter your cellphone number">
             </div>
           </div>
         </div>

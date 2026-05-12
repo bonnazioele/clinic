@@ -32,8 +32,7 @@ class StoreWalkInRegistrationRequest extends FormRequest
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
 
-            'email_address' => ['required', 'email', 'max:255'],
-            'mobile_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
+            'mobile_number' => ['required', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
 
             'requested_service' => $serviceRule,
             'doctor_id' => ['required', 'integer', 'exists:users,id'],
@@ -65,8 +64,7 @@ class StoreWalkInRegistrationRequest extends FormRequest
             'last_name.required' => 'Patient last name is required.',
             'first_name.required' => 'Patient first name is required.',
 
-            'email_address.required' => 'Patient email address is required.',
-            'email_address.email' => 'Patient email address must be valid.',
+            'mobile_number.required' => 'Patient mobile number is required.',
 
             'requested_service.required' => 'Requested service is required.',
             'requested_service.in' => 'The selected service is not available in this clinic.',
@@ -90,7 +88,6 @@ class StoreWalkInRegistrationRequest extends FormRequest
             'first_name' => 'first name',
             'middle_name' => 'middle name',
 
-            'email_address' => 'email address',
             'mobile_number' => 'mobile number',
 
             'requested_service' => 'requested service',
