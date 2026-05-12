@@ -986,19 +986,7 @@ document.addEventListener('DOMContentLoaded', function() {
     reschedModal.show();
   }
 
-  if (typeof Echo !== 'undefined' && typeof Swal !== 'undefined') {
-    Echo.private('user.notifications.{{ auth()->id() }}')
-      .listen('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (e) => {
-        if(e.notification.role === 'secretary') {
-          Swal.fire({
-            title: 'Update',
-            text: e.notification.message,
-            icon: 'info',
-            confirmButtonText: 'OK'
-          });
-        }
-      });
-  }
+    @include('partials.secretary-doctor-served-toast')
 });
 </script>
 @endpush

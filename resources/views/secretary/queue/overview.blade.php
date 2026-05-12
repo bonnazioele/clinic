@@ -630,3 +630,7 @@
   </section>
 </div>
 @endsection
+
+@push('scripts')
+  @include('partials.secretary-doctor-served-toast')
+@endpush
