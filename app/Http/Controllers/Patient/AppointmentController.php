@@ -303,13 +303,15 @@ class AppointmentController extends Controller
             $appointment->update(['medical_document' => $path]);
         }
 
-        $queueNumber = $queueService->getSlotQueueNumber(
-            (int) $data['clinic_id'],
-            (int) $data['doctor_id'],
-            (int) $data['service_id'],
-            $appointmentDate,
-            $time
-        );
+        $rawQueueNumber = $queueService->getSlotQueueNumber(
+    (int) $data['clinic_id'],
+    (int) $data['doctor_id'],
+    (int) $data['service_id'],
+    $appointmentDate,
+    $time
+);
+
+$queueNumber = 'APP-' . str_pad($rawQueueNumber, 2, '0', STR_PAD_LEFT);
 
         $queueService->createOrReuseSlotEntry(
             (int) $data['clinic_id'],
@@ -469,13 +471,15 @@ class AppointmentController extends Controller
                 'status' => 'scheduled',
             ]);
 
-            $queueNumber = $queueService->getSlotQueueNumber(
-                (int) $appointment->clinic_id,
-                (int) $appointment->doctor_id,
-                (int) $appointment->service_id,
-                $appointmentDate,
-                $time
-            );
+            $rawQueueNumber = $queueService->getSlotQueueNumber(
+    (int) $data['clinic_id'],
+    (int) $data['doctor_id'],
+    (int) $data['service_id'],
+    $appointmentDate,
+    $time
+);
+
+$queueNumber = 'APP-' . str_pad($rawQueueNumber, 2, '0', STR_PAD_LEFT);
 
             $queueService->createOrReuseSlotEntry(
                 (int) $appointment->clinic_id,
