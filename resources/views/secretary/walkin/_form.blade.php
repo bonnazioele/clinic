@@ -625,6 +625,22 @@
       ? new bootstrap.Modal(successModalEl)
       : null;
 
+    const showRegistrationError = (message) => {
+      const fallbackMessage = message || 'Registration failed. Please try again.';
+
+      if (typeof window.showGlobalModal === 'function') {
+        window.showGlobalModal({
+          title: 'Walk-In Registration',
+          message: fallbackMessage,
+          type: 'warning',
+          buttonText: 'OK'
+        });
+        return;
+      }
+
+      alert(fallbackMessage);
+    };
+
     form.addEventListener('submit', function (event) {
       event.preventDefault();
 
@@ -692,12 +708,12 @@
       })
       .catch(error => {
         if (error && error.errors) {
-          const messages = Object.values(error.errors).flat().join('\n');
-          alert('Validation failed:\n' + messages);
+          const messages = Object.values(error.errors).flat().join(' ');
+          showRegistrationError('Validation failed: ' + messages);
         } else if (error && error.message) {
-          alert(error.message);
+          showRegistrationError(error.message);
         } else {
-          alert('Registration failed. Please try again.');
+          showRegistrationError('Registration failed. Please try again.');
         }
       })
       .finally(() => {

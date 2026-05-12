@@ -25,11 +25,62 @@
     const continueBtn = document.getElementById('confirmActionContinue');
     const titleEl = document.getElementById('confirmActionTitle');
     const messageEl = document.getElementById('confirmActionMessage');
+    const cancelBtn = modalEl ? modalEl.querySelector('.modal-footer [data-bs-dismiss="modal"]') : null;
+    const headerEl = modalEl ? modalEl.querySelector('.modal-header') : null;
     if (!modalEl || !continueBtn || !titleEl || !messageEl || typeof bootstrap === 'undefined') {
       return;
     }
     const modal = new bootstrap.Modal(modalEl);
     let pendingForm = null;
+    let messageOnly = false;
+
+    const resetModal = () => {
+      messageOnly = false;
+      pendingForm = null;
+      titleEl.textContent = 'Please Confirm';
+      messageEl.textContent = 'Are you sure you want to continue?';
+      continueBtn.textContent = 'Confirm';
+      continueBtn.disabled = false;
+      continueBtn.className = 'btn btn-danger';
+      if (cancelBtn) {
+        cancelBtn.classList.remove('d-none');
+      }
+      if (headerEl) {
+        headerEl.className = 'modal-header bg-danger text-white';
+      }
+    };
+
+    window.showGlobalModal = function(options) {
+      const config = typeof options === 'string' ? { message: options } : (options || {});
+      const type = config.type || 'danger';
+      const headerClasses = {
+        danger: 'modal-header bg-danger text-white',
+        warning: 'modal-header bg-warning text-dark',
+        success: 'modal-header bg-success text-white',
+        info: 'modal-header bg-primary text-white',
+      };
+      const buttonClasses = {
+        danger: 'btn btn-danger',
+        warning: 'btn btn-warning',
+        success: 'btn btn-success',
+        info: 'btn btn-primary',
+      };
+
+      messageOnly = true;
+      pendingForm = null;
+      titleEl.textContent = config.title || 'Notice';
+      messageEl.textContent = config.message || 'Something went wrong. Please try again.';
+      continueBtn.textContent = config.buttonText || 'OK';
+      continueBtn.disabled = false;
+      continueBtn.className = buttonClasses[type] || buttonClasses.danger;
+      if (cancelBtn) {
+        cancelBtn.classList.add('d-none');
+      }
+      if (headerEl) {
+        headerEl.className = headerClasses[type] || headerClasses.danger;
+      }
+      modal.show();
+    };
 
     document.body.addEventListener('submit', function(event) {
       const target = event.target;
@@ -41,6 +92,7 @@
         return;
       }
       event.preventDefault();
+      messageOnly = false;
       pendingForm = target;
       titleEl.textContent = target.dataset.confirmTitle || 'Please Confirm';
       if (target.dataset.confirmHtml) {
@@ -54,6 +106,10 @@
     }, true);
 
     continueBtn.addEventListener('click', function() {
+      if (messageOnly) {
+        modal.hide();
+        return;
+      }
       if (!pendingForm) return;
       continueBtn.disabled = true;
       pendingForm.dataset.confirmed = 'true';
@@ -62,8 +118,7 @@
     });
 
     modalEl.addEventListener('hidden.bs.modal', function() {
-      continueBtn.disabled = false;
-      pendingForm = null;
+      resetModal();
     });
   };
 
