@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Patient;
 use App\Models\Service as ServiceModel;
 use Illuminate\Support\Facades\Response;
-use App\Services\QueueService;
 
 class ReportsController extends Controller
 {
@@ -119,9 +118,9 @@ class ReportsController extends Controller
         // Queue Performance
         $queueStats = [
             'total' => $queueEntries->count(),
-            'served' => $queueEntries->where('status', 'served')->count(),
+            'served' => $queueEntries->whereIn('status', ['served', 'completed'])->count(),
             'no_show' => $queueEntries->where('status', 'no_show')->count(),
-            'waiting' => $queueEntries->where('status', 'waiting')->count(),
+            'waiting' => $queueEntries->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving'])->count(),
             'cancelled' => $queueEntries->where('status', 'cancelled')->count(),
             'average_wait_time' => $this->calculateAverageWaitTime($queueEntries, $startDate, $endDate),
         ];
@@ -132,9 +131,9 @@ class ReportsController extends Controller
 
         $previousQueueStats = [
             'total' => $previousQueueEntries->count(),
-            'served' => $previousQueueEntries->where('status', 'served')->count(),
+            'served' => $previousQueueEntries->whereIn('status', ['served', 'completed'])->count(),
             'no_show' => $previousQueueEntries->where('status', 'no_show')->count(),
-            'waiting' => $previousQueueEntries->where('status', 'waiting')->count(),
+            'waiting' => $previousQueueEntries->whereIn('status', ['waiting', 'called', 'in_progress', 'now_serving'])->count(),
             'cancelled' => $previousQueueEntries->where('status', 'cancelled')->count(),
             'average_wait_time' => $this->calculateAverageWaitTime($previousQueueEntries, $previousStartDate, $previousEndDate),
         ];
@@ -683,7 +682,7 @@ class ReportsController extends Controller
     private function calculateAverageWaitTime($queueEntries, ?Carbon $startDate = null, ?Carbon $endDate = null)
     {
         $servedEntries = $queueEntries
-            ->where('status', 'served')
+            ->whereIn('status', ['served', 'completed'])
             ->whereNotNull('served_at')
             ->whereNotNull('called_at')
             ->filter(function ($entry) use ($startDate, $endDate) {

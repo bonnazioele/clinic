@@ -69,11 +69,9 @@
       isset($doctors) && method_exists($doctors, 'total') ? $doctors->total() : $doctorItems->count()
   ));
 
-  $withServicesCount = (int) ($doctorStats['with_services'] ?? $doctorItems->filter(function ($doctor) {
-      return isset($doctor->services) && $doctor->services && method_exists($doctor->services, 'count') && $doctor->services->count() > 0;
-  })->count());
+  $onQueueTodayCount = (int) ($doctorStats['on_queue_today'] ?? 0);
 
-  $withoutServicesCount = (int) ($doctorStats['without_services'] ?? max(0, $doctorCount - $withServicesCount));
+  $availableTodayCount = (int) ($doctorStats['available_today'] ?? 0);
 
   $matchingDoctorCount = isset($doctors) && method_exists($doctors, 'total')
       ? $doctors->total()
@@ -182,10 +180,6 @@
     box-shadow: 0 18px 42px rgba(15,23,42,.12);
   }
 
-  .doctor-stat-yellow:hover {
-    color: #162033;
-  }
-
   .doctor-stat-card.active {
     outline: 4px solid rgba(13,110,253,.28);
     outline-offset: 3px;
@@ -211,9 +205,8 @@
     background: linear-gradient(135deg, #087b3d, #2bbf6a);
   }
 
-  .doctor-stat-yellow {
-    background: linear-gradient(135deg, #ffd85a, #ffc107);
-    color: #162033;
+  .doctor-stat-teal {
+    background: linear-gradient(135deg, #0f766e, #14b8a6);
   }
 
   .doctor-stat-content {
@@ -508,37 +501,38 @@
       </div>
     </a>
 
-    <a href="{{ $doctorScopeUrl('with_services') }}"
-       class="doctor-stat-card doctor-stat-green {{ $activeServiceScope === 'with_services' ? 'active' : '' }}"
-       aria-label="Show doctors with services">
+    <a href="{{ $doctorScopeUrl('on_queue_today') }}"
+       class="doctor-stat-card doctor-stat-green {{ $activeServiceScope === 'on_queue_today' ? 'active' : '' }}"
+       aria-label="Show doctors with active queue entries today">
       <div class="doctor-stat-content">
         <div class="doctor-stat-icon">
-          <i class="bi bi-clipboard2-pulse"></i>
+          <i class="bi bi-people-fill"></i>
         </div>
 
         <div>
-          <div class="doctor-stat-value">{{ number_format($withServicesCount) }}</div>
-          <div class="doctor-stat-label">With Services</div>
-          <div class="doctor-stat-help">Can receive appointments</div>
+          <div class="doctor-stat-value">{{ number_format($onQueueTodayCount) }}</div>
+          <div class="doctor-stat-label">On Queue Today</div>
+          <div class="doctor-stat-help">Has waiting or in-progress patients</div>
         </div>
       </div>
     </a>
 
-    <a href="{{ $doctorScopeUrl('needs_setup') }}"
-       class="doctor-stat-card doctor-stat-yellow {{ $activeServiceScope === 'needs_setup' ? 'active' : '' }}"
-       aria-label="Show doctors needing setup">
+    <a href="{{ $doctorScopeUrl('available_today') }}"
+       class="doctor-stat-card doctor-stat-teal {{ $activeServiceScope === 'available_today' ? 'active' : '' }}"
+       aria-label="Show doctors available today">
       <div class="doctor-stat-content">
         <div class="doctor-stat-icon">
-          <i class="bi bi-exclamation-circle"></i>
+          <i class="bi bi-calendar2-check"></i>
         </div>
 
         <div>
-          <div class="doctor-stat-value">{{ number_format($withoutServicesCount) }}</div>
-          <div class="doctor-stat-label">Needs Setup</div>
-          <div class="doctor-stat-help">No services assigned yet</div>
+          <div class="doctor-stat-value">{{ number_format($availableTodayCount) }}</div>
+          <div class="doctor-stat-label">Available Today</div>
+          <div class="doctor-stat-help">Has an active schedule today</div>
         </div>
       </div>
     </a>
+
   </section>
 
   <section class="doctor-panel">
@@ -556,7 +550,7 @@
       @if($activeServiceScope)
         <a href="{{ $doctorScopeUrl(null) }}" class="doctor-pill text-decoration-none">
           <i class="bi bi-funnel"></i>
-          {{ $activeServiceScope === 'with_services' ? 'With services' : 'Needs setup' }}
+          {{ $activeServiceScope === 'on_queue_today' ? 'On queue today' : 'Available today' }}
           <i class="bi bi-x-lg"></i>
         </a>
       @endif

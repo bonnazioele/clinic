@@ -372,24 +372,13 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-lg-8">
+        <div class="col-12">
             <div class="report-card h-100">
                 <h5 class="report-title">Appointments Over Time</h5>
                 <p class="report-description">Daily appointment count for the selected report period.</p>
 
                 <div class="chart-box">
                     <canvas id="appointmentsOverTimeChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="report-card h-100">
-                <h5 class="report-title">Services Breakdown</h5>
-                <p class="report-description">How appointment volume is distributed by service.</p>
-
-                <div class="chart-box smaller-chart">
-                    <canvas id="servicesChart"></canvas>
                 </div>
             </div>
         </div>
@@ -410,103 +399,6 @@
         </div>
     </div>
 
-    <div class="row g-3 mt-4">
-        <div class="col-lg-6">
-            <div class="report-card h-100">
-                <h5 class="report-title">Services Report</h5>
-                <p class="report-description">
-                    Shows which services receive the most appointments.
-                </p>
-
-                @if(empty($serviceReport) || count($serviceReport) === 0)
-                    <div class="empty-state">
-                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                        No service data found for this period.
-                    </div>
-                @else
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Service</th>
-                                    <th class="text-end">Total</th>
-                                    <th class="text-end">Completed</th>
-                                    <th class="text-end">Cancelled</th>
-                                    <th class="text-end">No-show</th>
-                                    <th class="text-end">Rate</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                @foreach($serviceReport as $service)
-                                    <tr>
-                                        <td class="fw-semibold">{{ $service['name'] }}</td>
-                                        <td class="text-end">{{ number_format($service['total']) }}</td>
-                                        <td class="text-end">{{ number_format($service['completed']) }}</td>
-                                        <td class="text-end">{{ number_format($service['cancelled']) }}</td>
-                                        <td class="text-end">{{ number_format($service['no_show']) }}</td>
-                                        <td class="text-end">
-                                            <span class="status-pill pill-green">
-                                                {{ $service['completion_rate'] }}%
-                                            </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <div class="col-lg-6">
-            <div class="report-card h-100">
-                <h5 class="report-title">Patient Appointments</h5>
-                <p class="report-description">
-                    Appointment distribution by patient.
-                </p>
-
-                @if(empty($patientReport) || count($patientReport) === 0)
-                    <div class="empty-state">
-                        <i class="bi bi-person fs-2 d-block mb-2"></i>
-                        No patient appointment data found for this period.
-                    </div>
-                @else
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Patient</th>
-                                    <th class="text-end">Total</th>
-                                    <th class="text-end">Completed</th>
-                                    <th class="text-end">Cancelled</th>
-                                    <th class="text-end">No-show</th>
-                                    <th class="text-end">Rate</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                @foreach($patientReport as $patient)
-                                    <tr>
-                                        <td class="fw-semibold">{{ $patient['name'] }}</td>
-                                        <td class="text-end">{{ number_format($patient['total']) }}</td>
-                                        <td class="text-end">{{ number_format($patient['completed']) }}</td>
-                                        <td class="text-end">{{ number_format($patient['cancelled']) }}</td>
-                                        <td class="text-end">{{ number_format($patient['no_show']) }}</td>
-                                        <td class="text-end">
-                                            <span class="status-pill pill-blue">
-                                                {{ $patient['completion_rate'] }}%
-                                            </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -824,9 +716,6 @@
   const dailyLabels = @json(collect($dailyAppointments)->pluck('date')) || [];
   const dailyCounts = @json(collect($dailyAppointments)->pluck('count')) || [];
 
-  const servicesLabels = @json(collect($serviceStats)->pluck('name')) || [];
-  const servicesCounts = @json(collect($serviceStats)->pluck('count')) || [];
-
   const hourlyLabels = @json(collect($hourlyStats)->pluck('hour')) || [];
   const hourlyCounts = @json(collect($hourlyStats)->pluck('count')) || [];
 
@@ -860,14 +749,6 @@
       },
       plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } }
     },
-    plugins: [noDataPlugin]
-  });
-
-  // Services
-  new Chart(document.getElementById('servicesChart').getContext('2d'), {
-    type: 'pie',
-    data: { labels: servicesLabels, datasets:[{ data: servicesCounts, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6c757d','#0dcaf0'] }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: compactLegend } },
     plugins: [noDataPlugin]
   });
 

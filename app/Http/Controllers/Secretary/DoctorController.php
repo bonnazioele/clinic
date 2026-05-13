@@ -9,6 +9,8 @@ use App\Http\Middleware\SecretaryMiddleware;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\DoctorSchedule;
+use App\Models\QueueEntry;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +28,21 @@ class DoctorController extends Controller
     public function index(Request $request)
     {
         $activeClinicId = $this->activeClinicId($request);
+        $today = Carbon::today();
+        $todayDate = $today->toDateString();
+        $todayDayOfWeek = (int) $today->dayOfWeek;
+        $activeQueueStatuses = ['waiting', 'called', 'in_progress', 'now_serving'];
+
+        $onQueueDoctorIds = QueueEntry::query()
+            ->forDashboardPanel([$activeClinicId], $todayDate)
+            ->whereIn('status', $activeQueueStatuses)
+            ->with('appointment:id,doctor_id')
+            ->get()
+            ->map(fn ($entry) => $entry->doctor_id ?: $entry->appointment?->doctor_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
 
         $baseDoctorQuery = User::query()
             ->where('is_doctor', true)
@@ -35,25 +52,45 @@ class DoctorController extends Controller
 
         $doctorStats = [
             'total' => (clone $baseDoctorQuery)->count(),
-            'with_services' => (clone $baseDoctorQuery)
-                ->whereHas('services', function ($q) use ($activeClinicId) {
-                    $q->where('doctor_service.clinic_id', $activeClinicId);
+            'on_queue_today' => (clone $baseDoctorQuery)
+                ->whereIn('users.id', $onQueueDoctorIds)
+                ->count(),
+            'available_today' => (clone $baseDoctorQuery)
+                ->whereHas('doctorSchedules', function ($q) use ($activeClinicId, $todayDate, $todayDayOfWeek) {
+                    $q->where('clinic_id', $activeClinicId)
+                        ->where('is_active', true)
+                        ->where('day_of_week', $todayDayOfWeek)
+                        ->where(function ($dateQuery) use ($todayDate) {
+                            $dateQuery->whereNull('start_date')
+                                ->orWhereDate('start_date', '<=', $todayDate);
+                        })
+                        ->where(function ($dateQuery) use ($todayDate) {
+                            $dateQuery->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $todayDate);
+                        });
                 })
                 ->count(),
         ];
-        $doctorStats['without_services'] = max(0, $doctorStats['total'] - $doctorStats['with_services']);
 
         $serviceScope = (string) $request->input('service_scope', '');
 
-        if ($serviceScope === 'with_services') {
-            $baseDoctorQuery->whereHas('services', function ($q) use ($activeClinicId) {
-                $q->where('doctor_service.clinic_id', $activeClinicId);
-            });
+        if ($serviceScope === 'on_queue_today') {
+            $baseDoctorQuery->whereIn('users.id', $onQueueDoctorIds);
         }
 
-        if ($serviceScope === 'needs_setup') {
-            $baseDoctorQuery->whereDoesntHave('services', function ($q) use ($activeClinicId) {
-                $q->where('doctor_service.clinic_id', $activeClinicId);
+        if ($serviceScope === 'available_today') {
+            $baseDoctorQuery->whereHas('doctorSchedules', function ($q) use ($activeClinicId, $todayDate, $todayDayOfWeek) {
+                $q->where('clinic_id', $activeClinicId)
+                    ->where('is_active', true)
+                    ->where('day_of_week', $todayDayOfWeek)
+                    ->where(function ($dateQuery) use ($todayDate) {
+                        $dateQuery->whereNull('start_date')
+                            ->orWhereDate('start_date', '<=', $todayDate);
+                    })
+                    ->where(function ($dateQuery) use ($todayDate) {
+                        $dateQuery->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $todayDate);
+                    });
             });
         }
 
