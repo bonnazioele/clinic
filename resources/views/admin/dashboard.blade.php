@@ -817,7 +817,7 @@
               </h2>
               <p class="admin-panel-subtitle">Clinic registration requests awaiting your review</p>
             </div>
-            <a href="{{ route('admin.clinics.index', ['status' => 'pending']) }}"
+            <a href="{{ $pendingClinics->isNotEmpty() ? route('admin.clinics.application', $pendingClinics->first()) : route('admin.clinics.index', ['status' => 'pending']) }}"
                class="btn btn-sm btn-outline-primary rounded-pill px-3"
                style="font-size:0.80rem;font-weight:700;white-space:nowrap">
               View all <i class="bi bi-arrow-right ms-1"></i>
@@ -835,8 +835,7 @@
                   <p class="application-name">{{ $clinic->name }}</p>
                   <p class="application-meta">
                     <i class="bi bi-envelope" style="font-size:0.74rem"></i>
-                    @php $clinicEmail = (string) ($clinic->email ?? ''); @endphp
-                    {{ strlen($clinicEmail) > 7 ? Str::mask($clinicEmail, '*', 3, max(strlen($clinicEmail) - 7, 0)) : ($clinicEmail ?: 'No email') }}
+                    {{ $clinic->email ?: 'No email' }}
                     <span>&middot;</span>
                     <i class="bi bi-geo-alt" style="font-size:0.74rem"></i>
                     {{ $clinic->address ?: 'No address listed' }}
@@ -856,21 +855,6 @@
                     <i class="bi bi-hourglass-split" style="font-size:0.72rem"></i> Pending
                   </span>
                 @endif
-                <div class="app-actions">
-                  <form action="{{ route('admin.clinics.approve', $clinic->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn-approve">
-                      <i class="bi bi-check-lg me-1"></i> Approve
-                    </button>
-                  </form>
-                  <form action="{{ route('admin.clinics.decline', $clinic->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    <input type="hidden" name="decline_reason" value="Declined from the admin dashboard quick action.">
-                    <button type="submit" class="btn-reject">
-                      <i class="bi bi-x-lg me-1"></i> Reject
-                    </button>
-                  </form>
-                </div>
               </div>
             </div>
             @empty

@@ -499,7 +499,12 @@
             </thead>
             <tbody>
               @forelse($clinics as $clinic)
-              <tr class="clinic-row" onclick="window.location='{{ route('admin.clinics.show', $clinic) }}'">
+              @php
+                $clinicDetailsRoute = strtolower((string) $clinic->status) === 'pending'
+                    ? route('admin.clinics.application', $clinic)
+                    : route('admin.clinics.show', $clinic);
+              @endphp
+              <tr class="clinic-row" onclick="window.location='{{ $clinicDetailsRoute }}'">
                 <td class="clinic-cell" data-label="Clinic">
                   <div class="d-flex align-items-center gap-3">
                     @if($clinic->logo)
@@ -511,7 +516,7 @@
                     @endif
                     <div>
                       <div class="clinic-name">
-                        <a href="{{ route('admin.clinics.show', $clinic) }}" class="text-decoration-none text-reset" onclick="event.stopPropagation();">{{ $clinic->name }}</a>
+                        <a href="{{ $clinicDetailsRoute }}" class="text-decoration-none text-reset" onclick="event.stopPropagation();">{{ $clinic->name }}</a>
                       </div>
                       @if($clinic->branch_code)
                         <div class="clinic-branch">{{ $clinic->branch_code }}</div>
